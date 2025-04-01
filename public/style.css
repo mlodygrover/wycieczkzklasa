@@ -1,0 +1,788 @@
+body {
+    font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+    margin: 0;
+    padding: 0;
+    overflow-x: hidden;
+    overflow-x: clip !important;
+}
+
+
+.App {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+}
+
+.infotiles {
+    display: flex;
+    flex-direction: row;
+    justify-content: center;
+    align-items: center;
+    width: 100%;
+    position: relative;
+    /* Dodaj tę właściwość */
+    gap: 50px;
+}
+
+#serce:hover {
+    fill: black;
+}
+
+.IP-body {
+
+    width: 200px;
+    height: 400px;
+    border: 1px solid black;
+    border-bottom: none;
+    border-radius: 25px 25px 0px 0px;
+    margin-top: 30px;
+    background-image: url("/screenshot.png");
+    background-size: cover;
+    /* Obraz pokrywa cały div */
+    background-position: center;
+    /* Obraz jest wyśrodkowany */
+    background-repeat: no-repeat;
+    /* Obraz się nie powtarza */
+
+}
+
+.IP-notch {
+    width: 100px;
+    height: 20px;
+    background-color: black;
+    margin: auto;
+    border-bottom-left-radius: 10px;
+    border-bottom-right-radius: 10px;
+}
+
+.search-theme {
+    margin-top: 10px;
+    margin-bottom: 50px;
+    background-image: url("/background-snow.webp");
+    height: fit-content;
+    width: 100vw;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.InfoTile.a {
+
+    background-color: #ffcecc;
+}
+
+.InfoTile.b {
+
+    background-color: #c6d6ff;
+    /* półprzezroczysty niebieski */
+
+}
+
+.InfoTile.c {
+    background-color: #ffe7cb;
+}
+
+.InfoTile.d {
+    background-color: #ffc8e1;
+}
+
+.Macbook-mainbox {
+    height: 200px;
+    width: 200px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+
+.para {
+    display: flex;
+    flex-direction: column;
+
+}
+
+.para.f {
+    background-color: red;
+}
+
+.para.f .grupa {
+    display: flex;
+    flex-direction: row;
+    width: auto;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    background-color: white;
+    padding: 2px;
+    border-radius: 2px;
+    overflow: hidden;
+}
+
+.para a {
+    text-align: left;
+    padding: 2px;
+    padding-left: 10px;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 14px;
+    font-weight: 400;
+}
+
+.para.b {
+
+    margin-top: 5px;
+    flex-direction: row;
+    gap: 10px;
+    width: 233px;
+    justify-content: space-between;
+    align-items: center;
+
+}
+
+.Para.K {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+
+}
+
+.Para.K .info-hotel {
+    font-size: 11px;
+    font-weight: 300;
+    text-align: right;
+    display: flex;
+    align-items: center;
+    justify-content: right;
+    gap: 2px;
+    color: #255FF4;
+}
+
+.para.t {
+    padding-left: 20px;
+    text-align: left;
+    font-size: 16px;
+    max-width: 150px;
+    font-weight: 500;
+    margin: 0px;
+    padding-bottom: 5px;
+
+}
+
+.para.t a {
+    font-size: 12px;
+    max-width: 100px;
+
+}
+
+.ParaRow {
+
+    display: flex;
+    flex-direction: row;
+    gap: 10px;
+}
+
+.FormularzRightWyjazd-mainbox {
+    gap: 10px;
+    display: flex;
+    flex-direction: column;
+    background-color: rgb(247, 247, 247);
+    padding: 20px;
+    border-radius: 10px;
+    justify-content: center;
+    align-items: center;
+}
+
+.FormularzRightWyjazd-mainbox.b {
+    gap: 0px;
+
+}
+
+.DaysSwitch {
+
+    display: flex;
+    flex-direction: row;
+    height: fit-content;
+
+
+}
+
+.DaysCounter {
+    min-width: 80px;
+    height: fit-content;
+    margin: auto;
+    padding: 10px;
+    font-size: 22px;
+    border-top: 1px solid rgb(118, 118, 118);
+    ;
+    border-bottom: 1px solid rgb(118, 118, 118);
+    margin-left: 10px;
+    margin-right: 10px;
+
+
+}
+
+.KonfiguratorMainbox {
+
+    background-color: rgb(247, 247, 247);
+    width: 80%;
+    min-height: 200px;
+    border-radius: 10px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+
+
+
+.ActivityElementMainbox {
+    max-width: 80vw;
+    width: 400px;
+    min-height: 200px;
+    border-radius: 15px;
+    background-color: #ffe7e6;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    justify-content: left;
+    background-image: url("/white-waves.webp");
+    background-blend-mode: multiply;
+    margin: 10px auto;
+
+
+}
+
+.ActivityElementMainbox.b {
+    background-color: #e3ebff;
+}
+
+.ActivityElementMainbox .akapit {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    text-align: left;
+    justify-content: left;
+}
+
+.ActivityElementMainbox button {
+    width: 80%;
+    margin: auto;
+    background-color: #000000;
+    border: none;
+    color: #fff;
+    cursor: pointer;
+    padding: 10px 20px;
+    border-radius: 20px;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+    margin-top: 10px;
+    transition: 0.4s ease;
+}
+
+.ActivityElementMainbox button:hover {
+    background-color: #F42582;
+}
+
+.ActivityElementMainbox .subbox {
+    display: flex;
+    height: 200px
+}
+
+
+
+.ProgramTile {
+    height: 200px;
+    width: 100%;
+    max-width: 700px;
+    border-radius: 15px;
+    background-color: #ffe7e6;
+    background-image: url("/white-waves.webp");
+    background-blend-mode: multiply;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-around;
+}
+
+.ProgramTile.hotel {
+    background-color: #ffe7cb;
+}
+
+
+.akapit {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    text-align: left;
+    justify-content: left;
+}
+
+.ProgramTile .para.t a {
+    max-width: 100%;
+}
+
+.startStopStats {
+
+    display: flex;
+    flex-direction: row;
+}
+
+.aktywnosci-konfigurator {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 20px;
+}
+
+.ProgramTile--buttons {
+    display: flex;
+    flex-direction: row;
+    width: 100%;
+    justify-content: center;
+    gap: 10px;
+    min-width: 800px;
+}
+
+.controlling-buttons {
+
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    margin-top: auto;
+    margin-bottom: auto;
+    justify-content: center;
+    align-items: center;
+
+}
+
+.ProgramTileContainer {
+    display: flex;
+    align-items: flex-end;
+    /* Wyrównanie dolnych krawędzi */
+    gap: 20px;
+    /* Odstęp między ProgramTile a 2controlling-buttons */
+}
+
+.route-buttons {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    /* Centrowanie względem dolnej krawędzi ProgramTile */
+
+    width: 50px;
+    background-color: #e9e9e9;
+}
+
+.SliderContainer-polaWyboru {
+    background-color: #F49725;
+    margin-top: 10px;
+    border-radius: 10px;
+    padding: 5px;
+    display: flex;
+    flex-direction: row;
+    gap: 5px;
+}
+
+.poleWybor {
+    width: auto;
+    height: auto;
+    min-width: 200px;
+    max-width: 400px;
+    background-color: white;
+    border-radius: 5px;
+    display: flex;
+    flex-direction: row;
+    justify-content: left;
+    align-items: center;
+    padding: 2px 10px;
+}
+
+
+.poleWybor-picker {
+    display: inline-flex;
+    align-items: center;
+}
+
+.formularzSliderMainbox {
+    width: fit-content;
+    display: flex;
+    flex-direction: column;
+    justify-content: left;
+    align-items: flex-start;
+    margin: auto;
+}
+
+.formularzSliderMainbox .tytul {
+    color: rgb(0, 0, 0);
+    padding: 15px;
+    font-size: 30px;
+    font-weight: 200;
+    margin-top: 10px;
+    display: flex;
+    text-align: center;
+    align-items: left;
+    justify-content: center;
+    flex-direction: column;
+
+}
+
+.basicButton {
+    background-color: #000000;
+    color: rgb(255, 255, 255);
+    width: 150px;
+    height: 30px;
+    border-radius: 15px;
+    margin-top: 10px;
+    margin-right: 10px;
+    border: none;
+    font-size: 12px;
+    font-weight: 200;
+    cursor: pointer;
+    transition: 0.3s ease-in-out;
+}
+
+.basicButton:hover {
+    background-color: #F42582;
+
+}
+
+.titleButtonsContainer {
+    display: flex;
+    flex-direction: row;
+}
+
+.formularzMainbox {
+    width: auto;
+    display: flex;
+    flex-direction: column;
+}
+
+.kreatorBottomBox {
+    display: flex;
+    flex-direction: row;
+    margin-top: 30px;
+    background-color: rgb(235, 235, 235);
+    border-radius: 20px;
+    padding: 20px;
+    padding-left: 0;
+    background-image: url("/tlo1.png");
+}
+
+.kreatorBottomBox-left {
+    width: 350px;
+    height: 1000px;
+}
+
+.kreatorBottomBox-right {
+    width: 100%;
+    background-color: #ffffff;
+    height: 1000px;
+    border-radius: 10px;
+    max-width: 100%;
+
+}
+
+.kreatorBottomBox-title {
+    font-size: 25px;
+    font-weight: 200;
+}
+
+.wynikiAktywnosci {
+    width: 90%;
+    min-height: 500px;
+    background-color: rgb(252, 252, 252);
+    margin: auto;
+}
+
+
+
+
+.spotlight {
+    position: relative;
+    display: inline-block;
+    /* lub block, zależnie od potrzeb */
+    color: #333;
+    font-size: 2rem;
+    overflow: hidden;
+    /* Ukrywa nadmiar pseudo-elementu */
+}
+
+.spotlight::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: -150%;
+    width: 200%;
+    height: 100%;
+    background: linear-gradient(120deg, transparent 0%, rgba(255, 255, 255, 0.8) 50%, transparent 100%);
+    transform: skewX(-25deg);
+    animation: flashlight 6s infinite;
+}
+
+@keyframes flashlight {
+    from {
+        left: -150%;
+    }
+
+    to {
+        left: 150%;
+    }
+}
+
+
+
+.extAtrakcjaPreview {
+    display: flex;
+    flex-direction: column;
+    width: 400px;
+    height: 600px;
+    background-color: white;
+    border: 1px solid gray;
+    border-radius: 25px;
+    overflow: hidden;
+    font-family: Arial, sans-serif;
+    font-optical-sizing: auto;
+    font-style: normal;
+
+}
+
+.zdj-map {
+    display: flex;
+    flex-direction: row;
+    gap: 2px;
+}
+
+.ext-zdj {
+    height: 140px;
+    flex: 6;
+    background-image: URL("../icons/castle.svg");
+    background-size: contain;
+    /* lub 'contain' w zależności od efektu */
+    background-repeat: no-repeat;
+    background-position: center;
+    background-blend-mode: multiply;
+    background-color: #cbcbcb;
+}
+
+.ext-zdj.b {
+    flex: 5;
+    background-image: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+}
+
+.naz-oc-typ {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    padding: 10px;
+}
+
+.naz {
+    font-family: "Asap", sans-serif;
+    font-optical-sizing: auto;
+    font-style: normal;
+    font-size: 27px;
+    font-weight: 400;
+    text-align: left;
+}
+
+.oc {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: left;
+    padding-left: 3px;
+    text-align: center;
+    gap: 5px;
+}
+
+.oc img {
+    margin-top: 3px;
+    cursor: pointer;
+}
+
+.oc a {
+    padding-top: 3px;
+    font-size: 14px;
+    font-weight: 300;
+    color: #464646;
+}
+
+.ocCount {
+    padding-top: 3px;
+    font-weight: 300;
+    color: #255FF4;
+    font-size: 14px;
+}
+
+.typ {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: left;
+    padding-left: 3px;
+    text-align: center;
+    padding-top: 3px;
+    font-size: 12px;
+    font-weight: 300;
+    color: #464646;
+}
+
+.extAtrakcjaPrzyciski {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: left;
+    gap: 10px;
+    margin-left: 10px;
+
+}
+
+.extAtrakcjaPrzyciski .przycisk {
+    width: fit-content;
+    padding: 6px 12px;
+    font-size: 12px;
+    border-radius: 9999px;
+    border: 1px solid #464646;
+    font-weight: 400;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    cursor: pointer;
+    transition: 0.3s ease-in-out;
+}
+
+.przycisk:hover {
+    background-color: #f4f4f4;
+}
+
+.przyciskDodajPlan {
+    width: 80%;
+    background-color: #255FF4;
+    margin: 20px auto;
+    padding-top: 7px;
+    padding-bottom: 7px;
+    border-radius: 9999px;
+    color: white;
+    font-size: 16px;
+    font-weight: 400;
+    cursor: pointer;
+    transition: 0.3s ease-in-out;
+
+}
+
+.przyciskDodajPlan:hover {
+    background-color: #174bd0;
+}
+
+.statsBottom {
+    display: flex;
+    flex-direction: column;
+    align-items: left;
+    justify-content: left;
+}
+
+.statsBottom div {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    width: fit-content;
+    height: fit-content;
+    margin-left: 10px;
+    line-height: 15px;
+    height: 20px;
+    gap: 5px;
+    font-size: 14px;
+}
+
+
+
+.wyborTransportuPlan {
+    color: black;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    background-color: white;
+}
+
+.typTransportu {
+    background-color: rgb(237, 237, 237);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    gap: 5px;
+    padding: 2px 10px;
+    font-size: 14px;
+    border-radius: 5px;
+}
+
+.typTransportu.chosen {
+    background-color: #f2f2f2;
+    padding: 1px 9px;
+    border: 1px solid black;
+}
+
+.aktywnoscPlan {
+    color: black;
+    background-color: #ffe7e6;
+    background-image: url("/white-waves.webp");
+
+    background-blend-mode: multiply;
+}
+
+.aktywnoscPlan .atrybut {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: center;
+    width: 100%;
+    font-size: 17px;
+    font-weight: 300;
+}
+
+.aktywnoscPlan .atrybut label {
+    margin-left: 15px;
+    font-size: 12px;
+    text-align: center;
+}
+
+
+input[type=range] {
+    -webkit-appearance: none;
+    /* Hides the slider so that custom slider can be made */
+    appearance: none;
+    width: 100%;
+    /* Specific width is required for Firefox. */
+    background: transparent;
+    /* Otherwise white in Chrome */
+}
+
+input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    background-color: #ffffff;
+    height: 20px;
+    width: 7px;
+    border-radius: 90000px;
+    border: 1px solid black;
+    margin-top: -10px;
+}
+
+input[type=range]::-webkit-slider-runnable-track {
+    width: 100%;
+    height: 0px;
+    border: 1px solid black;
+    cursor: pointer;
+    background: #a93030;
+}
