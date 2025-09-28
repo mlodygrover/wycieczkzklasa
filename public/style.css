@@ -23,12 +23,17 @@ body {
     position: relative;
     /* Dodaj tę właściwość */
     gap: 50px;
+    background-color: #ffa500;
 }
-
+.leaflet-bottom.leaflet-right{
+    display: none;
+}
+.leaflet-top.leaflet-left{
+    display: none;
+}
 #serce:hover {
     fill: black;
 }
-
 .IP-body {
 
     width: 200px;
@@ -102,9 +107,7 @@ body {
 
 }
 
-.para.f {
-    background-color: red;
-}
+
 
 .para.f .grupa {
     display: flex;
@@ -378,12 +381,15 @@ body {
 
 .SliderContainer-polaWyboru {
     background-color: #F49725;
-    margin-top: 10px;
-    border-radius: 10px;
     padding: 5px;
     display: flex;
     flex-direction: row;
     gap: 5px;
+    /*background-image: linear-gradient(to right, rgb(255, 241, 223), rgb(255, 232, 205));
+    /*background-color: #fce7cb;*/
+    background-color: rgb(247, 247, 247);
+    border-left: 4px solid #F49725;
+    padding: 6px 14px;
 }
 
 .poleWybor {
@@ -446,7 +452,7 @@ body {
 
 .basicButton:hover {
     background-color: #F42582;
-
+    color: rgb(152, 0, 0);
 }
 
 .titleButtonsContainer {
@@ -457,43 +463,61 @@ body {
 .formularzMainbox {
     width: auto;
     display: flex;
+
     flex-direction: column;
+    width: 100%;
+
+
+}
+
+.kreatorBottomBoxG {
+    width: auto;
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    background-image: url("/pattern-photo.webp");
+    margin-top: 20px;
+    box-shadow: 0 -8px 16px rgba(0, 0, 0, 0.026);
+
 }
 
 .kreatorBottomBox {
     display: flex;
     flex-direction: row;
     margin-top: 30px;
-    background-color: rgb(235, 235, 235);
+    height: fit-content;
     border-radius: 20px;
     padding: 20px;
     padding-left: 0;
-    background-image: url("/tlo1.png");
+
+    width: fit-content;
+    margin: 10px auto;
+
 }
 
 .kreatorBottomBox-left {
     width: 350px;
-    height: 1000px;
+    height: fit-content;
+    border-right: 1px solid black;
+
 }
 
 .kreatorBottomBox-right {
-    width: 100%;
-    background-color: #ffffff;
-    height: 1000px;
-    border-radius: 10px;
-    max-width: 100%;
+    width: 900px;
+    height: fit-content;
+    max-width: 900px;
+
 
 }
 
 .kreatorBottomBox-title {
-    font-size: 25px;
+    font-size: 20px;
     font-weight: 200;
 }
 
 .wynikiAktywnosci {
     width: 90%;
     min-height: 500px;
-    background-color: rgb(252, 252, 252);
     margin: auto;
 }
 
@@ -679,6 +703,17 @@ body {
 
 }
 
+.przyciskDodajPlan.b {
+    padding-top: 4px;
+    padding-bottom: 4px;
+}
+
+.przyciskDodajPlan.b.loading {
+    background-color: #656565;
+    color: #a4a4a4;
+    cursor: wait;
+}
+
 .przyciskDodajPlan:hover {
     background-color: #174bd0;
 }
@@ -713,33 +748,79 @@ body {
     align-items: center;
     justify-content: center;
     gap: 10px;
-    background-color: white;
+    background-color: rgb(247, 247, 247);
+    border-left: 5px solid #F49725;
+    border-radius: 10px;
+    width: fit-content;
+    margin: 10px auto;
+    padding: 0px 10px;
+    box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.1);
+    /* Dodany cień */
 }
 
 .typTransportu {
-    background-color: rgb(237, 237, 237);
     display: flex;
     align-items: center;
     justify-content: center;
     text-align: center;
     gap: 5px;
-    padding: 2px 10px;
+    padding: 5px 10px;
     font-size: 14px;
-    border-radius: 5px;
+    border-radius: 9999px;
+    color: white;
+    transition: 0.3s ease-in-out;
+    background-color: black;
+
 }
 
 .typTransportu.chosen {
-    background-color: #f2f2f2;
-    padding: 1px 9px;
-    border: 1px solid black;
+    background-color: #F49725;
+}
+
+.aktywnoscPlanGroup {
+    margin: auto;
+    width: 90%;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
 }
 
 .aktywnoscPlan {
     color: black;
-    background-color: #ffe7e6;
-    background-image: url("/white-waves.webp");
+    /*
+    
+    background-image: linear-gradient(to right, #e6e6e6, #c2c2c2);*/
+    border-left: 8px solid #F42F25;
+    background-color: rgb(255, 255, 255);
+    box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.1);
 
+    width: 90%;
+    height: fit-content;
+    padding: 10px 20px;
     background-blend-mode: multiply;
+    border-radius: 20px;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    gap: 20px;
+    margin: auto;
+}
+
+.aktywnoscPlan.hotel {
+    /*
+    background-image: linear-gradient(to right, #fffdea, rgb(255, 248, 187)); background-color: rgb(249, 252, 255);*/
+    border-left: 8px solid #255FF4;
+
+}
+
+.aktywnoscPlan.basic {
+    /*
+    background-image: linear-gradient(to right, #fffdea, rgb(255, 248, 187));background-color: rgb(255, 249, 254);*/
+    border-left: 8px solid #f425ea;
+
 }
 
 .aktywnoscPlan .atrybut {
@@ -747,15 +828,230 @@ body {
     flex-direction: column;
     align-items: flex-start;
     justify-content: center;
-    width: 100%;
-    font-size: 17px;
+    text-align: center;
+    width: 200px;
+    font-size: 15px;
     font-weight: 300;
+
+}
+
+.dodawaniePlan {
+    color: black;
+    border-left: 8px solid #c1c1c1;
+    background-color: #f5f5f5;
+    box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.1);
+
+    width: 90%;
+    height: fit-content;
+    padding: 10px 20px;
+    background-blend-mode: multiply;
+    border-radius: 20px;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    gap: 20px;
+    margin: auto;
+    height: 150px;
+    margin: 25px auto;
+    transition: 0.3s ease-in-out;
+    cursor: pointer;
+}
+
+.dodawaniePlan:hover {
+    color: black;
+    border-left: 8px solid #9a9a9a;
+    background-color: #ebebeb;
+
+
+}
+
+.dodawanieBox {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    margin: auto;
+}
+
+.atrybut label {
+    text-align: center;
+    display: flex;
+    align-items: center;
+    /* centrowanie pionowe */
+    justify-content: center;
+    /* centrowanie poziome */
+    gap: 5px;
+}
+
+.atrybut label img {
+    margin: auto;
+
+}
+
+.wyborCzasu {
+    margin-top: 10px;
+    width: fit-content;
+    width: 90%;
+}
+
+.wyborCzasu .atrybut {
+    width: fit-content;
+    padding: 10px 10px;
+    padding-bottom: 2px;
+    flex-direction: row;
+    gap: 10px;
+    max-width: 100%;
+}
+
+.wyborCzasuGroup {
+    margin-top: 10px;
+    padding-top: 5px;
+    border-top: 1px solid black;
+}
+
+.wyborCzasu .etykiety {
+    display: flex;
+    flex-direction: column;
+
+
+}
+
+.wyborCzasu .etykieta {
+    margin-right: auto;
+    font-size: 12px;
+    max-width: 80px;
+
+    /* 1) najprościej: */
+    display: inline-block;
+    width: auto;
+}
+
+.etykieta.R {
+    max-width: 90px;
+}
+
+.etykieta.R.b {
+    max-width: 220px;
+}
+
+.wyborCzasu .etykietaBottom {
+    font-size: 14px;
+    font-weight: 500;
+    white-space: nowrap;
+
+
+}
+
+.godzinaGodzina {
+    margin-top: auto;
+    margin-bottom: auto;
+    font-size: 18px;
+    ;
 }
 
 .aktywnoscPlan .atrybut label {
     margin-left: 15px;
-    font-size: 12px;
+    font-size: 11px;
     text-align: center;
+}
+
+.blinking {
+    animation: blink 2s infinite;
+}
+
+@keyframes blink {
+    0% {
+        opacity: 0;
+    }
+
+    50% {
+        opacity: 1;
+    }
+
+    100% {
+        opacity: 0;
+    }
+}
+
+.aktywnoscPlan .atrybut a {
+    text-align: left;
+}
+
+.aktywnoscPlan .atrybut.b {
+    align-items: center;
+    justify-content: center;
+}
+
+.atrybutGroup {
+    width: 400px;
+    display: flex;
+    flex-direction: row;
+    align-items: flex-start;
+    justify-content: center;
+}
+
+.nawigacjaDni {
+    width: 250px;
+    margin: 20px auto;
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+
+    padding: 10px 20px;
+    border-radius: 15px;
+    border-left: 8px solid #F49725;
+    background-color: rgb(247, 247, 247);
+    box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.nawigacjaDni-dzien {
+    font-size: 20px;
+    font-weight: 300;
+}
+
+.nawigacjaDni .nawButton {
+    background-color: #000000;
+    border: none;
+    outline: none;
+    color: white;
+    width: 30px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 15px;
+    cursor: pointer;
+    transition: 0.3s ease-in-out;
+}
+
+.nawigacjaDni .nawButton:hover {
+    background-color: #F49725;
+
+
+}
+
+.nawigacjaDni-dzien .liczba {
+    font-weight: 600;
+}
+
+.aktywnoscPlanL {
+    height: fit-content;
+    flex: 3;
+    height: 200px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.aktywnoscPlanR {
+    height: 100%;
+    flex: 5;
+
+
+
 }
 
 
@@ -785,4 +1081,645 @@ input[type=range]::-webkit-slider-runnable-track {
     border: 1px solid black;
     cursor: pointer;
     background: #a93030;
+}
+
+
+
+
+
+
+
+
+
+
+.wyszukiwanieResBoxGroup {
+    width: 100%;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    padding-left: 10px;
+}
+
+.wyszukiwanieResBox {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: left;
+
+}
+
+.wyszukiwanieResBox:hover .ResBoxTitle {
+    padding-left: 5px;
+    cursor: pointer;
+    color: #4e4e4e;
+
+    white-space: nowrap;
+    /* nie zawijaj tekstu */
+    overflow: hidden;
+    /* ukryj nadmiar tekstu */
+    text-overflow: ellipsis;
+    /* zamień nadmiar na wielokropek */
+    display: block;
+
+}
+
+.wyszukiwanieResBox:hover .ResBoxSubtitle {
+    box-sizing: border-box;
+    padding-left: 10px;
+    cursor: pointer
+}
+
+.ResBoxTitle {
+    font-size: 16px;
+    transition: 0.4s ease-in-out;
+    font-weight: 300;
+    text-align: left;
+    white-space: nowrap;
+    /* nie zawijaj tekstu */
+    overflow: hidden;
+    /* ukryj nadmiar tekstu */
+    text-overflow: ellipsis;
+    /* zamień nadmiar na wielokropek */
+    display: block;
+    width: 200px;
+}
+
+.ResBoxSubtitle {
+    font-size: 12px;
+    transition: 0.6s ease-in-out;
+    text-align: left;
+    white-space: nowrap;
+    /* nie zawijaj tekstu */
+    overflow: hidden;
+    /* ukryj nadmiar tekstu */
+    text-overflow: ellipsis;
+    /* zamień nadmiar na wielokropek */
+    display: block;
+    width: 200px;
+
+
+}
+
+.dodawaniePanelMainbox {
+    width: 100%;
+}
+
+.dodawanieTyt {
+    font-size: 25px;
+    font-weight: 300;
+}
+
+.dodawanieWyszukiwanieBox {
+    height: 60px;
+    width: 100%;
+    display: flex;
+    flex-direction: row;
+    gap: 5px;
+    align-items: center;
+    justify-content: center;
+    margin: 10px 0px;
+}
+
+.pasekWyszukiwania {
+    width: 90%;
+    height: 35px;
+    border-radius: 99999px;
+    max-width: 600px;
+    display: flex;
+    flex-direction: row;
+    gap: 5px;
+    align-items: center;
+    justify-content: center;
+    background-color: #fcfcfc;
+    border: 1px solid rgb(226, 226, 226);
+    padding: 2px 10px;
+}
+
+.pasekWyszukiwania input {
+    width: 100%;
+    height: 35px;
+    border-radius: 99999px;
+    max-width: 600px;
+    border: none;
+    padding-left: 20px;
+    font-size: 14px;
+    font-weight: 100;
+    outline: none;
+    background-color: #fcfcfc;
+}
+
+.pasekWyszukiwania .wyszukiwanieBut {
+    background-color: black;
+    width: 30px;
+    height: 20px;
+    padding: 5px;
+    border-radius: 20000px;
+    transition: 0.3s ease-in-out;
+    cursor: pointer;
+
+}
+
+.wyszukiwanieBut:hover {
+    background-color: #F42582;
+}
+
+.dodawanieWyborKategorii {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    margin-top: 20px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid black;
+}
+
+.dodawanieWybor {
+    background-color: black;
+    color: white;
+    padding: 5px 15px;
+    border-radius: 9999px;
+    transition: 0.3s ease-in-out;
+    cursor: pointer;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+
+}
+
+.dodawanieWybor:hover,
+.dodawanieWybor.k {
+    background-color: #F42582;
+
+}
+
+.dodawanieResults {
+    display: flex;
+    flex-wrap: wrap;
+    /* pozwalamy elementom zawijać się w kolejne wiersze */
+    gap: 16px;
+    /* odstęp między kafelkami */
+    justify-content: center;
+}
+
+.resultBox {
+    background-color: #f6f6f6;
+    padding: 1px;
+    min-height: 150px;
+    width: 400px;
+    border-radius: 25px;
+    border: 1px solid rgb(218, 218, 218);
+    border-left: 5px solid red;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    transition: 0.1s ease-in-out;
+    cursor: pointer;
+}
+
+.resultBox.b {
+    border-left: 5px solid #F42582;
+}
+
+.resultBox.k {
+    border: 2px groove black;
+    padding: 0px;
+    border-left: 5px solid red;
+}
+
+.resultBox.b.k {
+
+    border: 2px groove black;
+    padding: 0px;
+    border-left: 5px solid #F42582;
+}
+
+.resultBox-left {
+    width: 200px;
+    height: 150px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    border-radius: 0px;
+    overflow: hidden;
+    margin-bottom: auto;
+}
+
+.resultBox-left img {
+    border-radius: 10px;
+}
+
+.resultBox-right {
+
+    width: 200px;
+    min-height: 150px;
+    display: flex;
+    flex-direction: column;
+    align-items: left;
+    justify-content: left;
+    border-left: 1px solid lightgray;
+    padding-left: 5px;
+}
+
+.resultTyt {
+
+    font-size: 16px;
+    font-weight: 600;
+    width: 100%;
+    display: flex;
+    flex-direction: row;
+    align-items: left;
+    justify-content: left;
+    text-align: left;
+    gap: 3px;
+    margin-top: 4px;
+
+}
+
+.resultTyt.atr {
+    font-size: 12px;
+    font-weight: 300;
+    margin-top: 0px;
+}
+
+.resultPrzyciski {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    margin-top: auto;
+    margin-bottom: 5px;
+
+}
+
+.resultPrzycisk {
+    font-size: 12px;
+    color: black;
+    font-weight: 300;
+    padding: 2px 5px;
+    border-radius: 5px;
+    ;
+    transition: 0.3s ease-in-out;
+    cursor: pointer;
+    text-align: center;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+
+}
+
+.resultPrzycisk.k {
+    background-color: #e4e4e4;
+}
+
+
+
+.resultPrzycisk:hover {
+    background-color: #e4e4e4;
+    gap: 3px;
+
+}
+
+.resultPrzycisk div {
+    font-size: 0px;
+    transition: 0.2s ease-in-out;
+    height: fit-content;
+    text-align: center;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+}
+
+.resultPrzycisk:hover div {
+    font-size: 10px;
+}
+
+
+.kreatorAtrakcjiMainbox {
+    background-color: #f9f9f9;
+    max-width: 800px;
+    min-height: 500px;
+    width: 90%;
+    margin-top: 20px;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: left;
+    border-radius: 25px;
+    box-shadow: 0px 0px 20px rgba(0, 0, 0, 0.146);
+}
+
+.kreatorAtrakcjiAtrybuty {
+    width: 50%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    height: 90%;
+    margin-top: auto;
+
+
+}
+
+.linia {
+    width: 1px;
+    height: 80%;
+    background-color: rgb(139, 139, 139);
+}
+
+.paraInputDiv {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: flex-start;
+    width: 80%;
+}
+
+.paraTyt {
+    font-size: 12px;
+    font-weight: 300;
+    padding: 3px 10px;
+}
+
+.paraInput {
+    width: 90%;
+}
+
+.paraInput.b {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    font-size: 12px;
+}
+
+.paraInput.c {
+    width: 100%;
+}
+
+.paraInput input {
+    width: 100%;
+    height: 25px;
+    border-radius: 999999px;
+    border: 1px solid rgb(226, 226, 226);
+    padding-left: 20px;
+    font-size: 14px;
+    font-weight: 100;
+    outline: none;
+}
+
+.paraInput.b input {
+    border: none;
+    width: 60%;
+}
+
+.paraInput.d input {
+    background-color: rgba(255, 255, 255, 0);
+
+}
+
+.paraInput input:focus {
+    border: 1px solid #255FF4;
+}
+
+.paraInput.b input:focus {
+    border: none;
+
+}
+
+.kreatorName {
+    width: 75%;
+    text-align: left;
+    font-size: 16px;
+    font-weight: 300;
+    padding-bottom: 10px;
+}
+
+.dodawanieZaznaczone {
+    font-size: 10px;
+    font-weight: 300;
+    min-height: 15px;
+    width: 400px;
+    background-color: rgb(244, 244, 244);
+
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: flex-start;
+    /* wyrównanie wszystkich wierszy do lewej */
+    gap: 2px;
+    padding: 2px 5px;
+
+
+}
+
+.dodawanieZaznaczoneBox {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: fit-content;
+    margin: 10px auto;
+    height: fit-content;
+    background-color: rgb(244, 244, 244);
+    border-radius: 5px;
+    overflow: hidden;
+    padding-left: 20px;
+}
+
+.dodawanieZaznaczoneReset {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 12px;
+    padding-right: 7px;
+    padding-left: 7px;
+    height: 19px;
+    text-align: center;
+    cursor: pointer;
+    transition: 0.2s ease-in-out;
+    border-left: 1px solid black;
+}
+
+.dodawanieZaznaczoneReset:hover {
+    background-color: rgb(229, 229, 229);
+
+}
+
+.dodawanieDodaj {
+    margin-right: 5px;
+    display: flex;
+    flex-direction: row;
+    justify-content: flex-end;
+    align-items: center;
+    font-size: 0px;
+    cursor: pointer;
+    transition: 0.3s ease-in-out;
+    width: 50px;
+}
+
+.dodawanieDodaj:hover {
+    font-size: 8px;
+}
+
+
+
+
+
+
+
+
+
+
+
+.podsumowanie {
+    font-size: 30px;
+    font-weight: 200;
+    background-color: rgb(252, 252, 252);
+    margin: 20px auto;
+    min-height: 300px;
+    width: 80%;
+    border-radius: 10px;
+}
+
+.podsumowanieTitle {
+    display: flex;
+    flex-direction: row;
+    justify-content: center;
+    align-items: center;
+    padding: 20px;
+    gap: 20px;
+}
+
+
+
+
+
+
+/*ooooooos czasuuuuuuuuu osss czasuuuu*/
+.osCzasuMainbox {
+    font-size: 15px;
+    border-left: 1px solid black;
+    width: 80%;
+    min-height: 100px;
+    margin: 10px auto;
+    padding: 0px 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    align-items: flex-start;
+}
+
+.linieBox {
+    display: flex;
+    flex-direction: row;
+    align-items: flex-start;
+    justify-content: flex-start;
+    gap: 50px;
+}
+
+.liniaCzasu {
+    border-bottom: 3px solid black;
+    color: rgba(255, 0, 0, 0);
+
+}
+
+.liniaStart {
+    min-height: 20px;
+    border-left: 2px solid black;
+    width: 10px;
+    border-top: 2px solid black;
+    max-height: 100px;
+
+}
+
+.liniaStart.b {
+    border-left: 2px solid rgb(255, 140, 0);
+    border-top: 0px solid black;
+}
+
+.liniaGroup {
+    display: flex;
+    flex-direction: row;
+    justify-content: flex-start;
+    align-items: stretch;
+    height: fit-content;
+
+}
+
+.liniaDesc {
+    font-size: 10px;
+    align-self: stretch;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-direction: column;
+}
+
+.descGodzina {
+    margin-left: 5px;
+    height: 10px;
+    margin-top: -5px;
+    text-align: left;
+    margin-right: auto;
+}
+
+.descGodzina.b {
+    height: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-direction: column;
+    font-size: 12px;
+    font-weight: 300;
+}
+
+.dzienOs {
+    margin-top: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    align-items: flex-start;
+}
+
+.dzienOs a {
+    width: 100%;
+    text-align: left;
+    padding: 10px;
+    padding-right: 0px;
+}
+
+/* 1.  GŁÓWNA REGUŁA ---------------------------------------------------- */
+.blob {
+    width: 60vw;
+    aspect-ratio: 3 / 2;
+    padding: 4rem;
+    background: url("/screenshot.png") center / cover no-repeat;
+    color: #fff;
+    border-radius: 20px;
+
+    /* płynny kontur – wszystkie wierzchołki w % */
+    clip-path: path("M 5% 35% C 15% 10% 35% 5% 55% 10%\ C 75% 15% 95% 35% 90% 60%\ C 85% 80% 60% 95% 35% 90%\ C 15% 85% 5% 60% 5% 35% Z");
+
+
+
+}
+.test1, .test2{
+    color: black;
+    padding: 20px;
+    font-size: 24px;
+}
+.test2{
+    font-family: 'Roboto', sans-serif;
 }

@@ -34,9 +34,7 @@ export const TopKreatorSlider = () => {
     const handlePauseClick = () => {
         setPaused(prev => !prev);
     };
-    useEffect(()=>{
-      console.log("test5")
-    }, [])
+    
     return (
         <>
             <SliderContainer>

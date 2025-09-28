@@ -2,6 +2,10 @@ const express = require('express');
 const axios = require('axios');
 const cors = require('cors');
 const mongoose = require('mongoose');
+
+const cheerio = require('cheerio');
+const pLimit = require('p-limit').default;
+const { URL } = require('url');
 require('dotenv').config();
 
 const app = express();
@@ -13,7 +17,6 @@ const API_KEY = process.env.GOOGLE_API_KEY;
 const GOOGLE_API_KEY = API_KEY;
 const OPENAI_API_KEY = "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"
 const uri = "mongodb+srv://admin:Karimbenzema9@cluster0.1u4tl.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0";
-
 const SERPAPI_KEY = "0b128158989c3289368318d44c823dae1118db7c50c2a06e6f06de41403d49c4"
 mongoose.connect(uri, { useNewUrlParser: true, useUnifiedTopology: true })
     .then(() => console.log("Połączono z MongoDB w chmurze"))
@@ -99,7 +102,8 @@ const routeSchema = new mongoose.Schema({
     trasaKomunikacja: Array
 });
 const Route = mongoose.model('Route', routeSchema, "TRASY");
-app.get('/api/travel-info', async (req, res) => {
+
+/*app.get('/api/travel-info', async (req, res) => {
     try {
 
         const { origin, destination, date } = req.query;
@@ -113,9 +117,9 @@ app.get('/api/travel-info', async (req, res) => {
             console.log("Znaleziono zapis w bazie");
             return res.json(cachedRoute);
 
-            
+
         }
-        /*
+
         // Jeśli rekord nie istnieje, obliczamy trasę
         const departureTime = date
             ? Math.floor(new Date(date).getTime() / 1000)
@@ -146,17 +150,17 @@ app.get('/api/travel-info', async (req, res) => {
 
         const driving = drivingResponse.data.rows[0]?.elements[0] || {};
         const walking = walkingResponse.data.rows[0]?.elements[0] || {};
-        */
+
         const randomN = () => Math.floor(Math.random() * (20 - 5 + 1)) + 5;
         const randint = randomN();
         console.log("TEST3", randint, 3 * randint, 2 * randint)
         const result = {
             start: origin,
             end: destination,
-            czasAutem: String(randint) + "mins",//driving.duration?.text || "Brak danych",
-            czasPieszo: String(3 * randint) + "mins",//walking.duration?.text || "Brak danych",
-            czasKomunikacja: String(2 * randint) + "mins",//,
-            trasaKomunikacja: []
+            czasAutem: driving.duration?.text || 15,//String(randint) + "mins",//
+            czasPieszo: walking.duration?.text || 30,//String(3 * randint) + "mins",//
+            czasKomunikacja,//String(2 * randint) + "mins",// 
+            trasaKomunikacja,//,[]
         };
 
         // Zapisujemy wynik w bazie
@@ -171,8 +175,56 @@ app.get('/api/travel-info', async (req, res) => {
     }
 });
 
+*/
+app.get('/api/travel-info', async (req, res) => {
+    try {
+
+        const { origin, destination, date } = req.query;
+        if (!origin || !destination) {
+            return res.status(400).json({ error: "Brak wymaganych parametrów" });
+        }
+
+        // Sprawdzamy, czy rekord już istnieje w bazie (przyjmujemy, że w polu start zapisujemy wartość origin, a w end – destination)
+        const cachedRoute = await Route.findOne({ start: origin, end: destination });
+        if (cachedRoute) {
+            console.log("Znaleziono zapis w bazie");
+            return res.json(cachedRoute);
 
 
+        }
+
+        // Jeśli rekord nie istnieje, obliczamy trasę
+        const departureTime = date
+            ? Math.floor(new Date(date).getTime() / 1000)
+            : Math.floor(Date.now() / 1000);
+
+
+
+
+
+        const randomN = () => Math.floor(Math.random() * (20 - 5 + 1)) + 5;
+        const randint = randomN();
+        console.log("TEST3", randint, 3 * randint, 2 * randint)
+        const result = {
+            start: origin,
+            end: destination,
+            czasAutem: String(randint) + "mins",//driving.duration?.text || 15,//
+            czasPieszo: String(3 * randint) + "mins",//walking.duration?.text || 30,//
+            czasKomunikacja: String(2 * randint) + "mins",// 
+            trasaKomunikacja: [],
+        };
+
+        // Zapisujemy wynik w bazie
+        const newRoute = new Route(result);
+        await newRoute.save();
+        console.log("Trasa została pomyślnie zapisana w bazie:", result);
+
+        res.json(result);
+    } catch (error) {
+        console.error("Błąd w /api/travel-info:", error.response ? error.response.data : error.message);
+        res.status(500).json({ error: "Błąd serwera" });
+    }
+});
 app.get('/api/popular-attractions', async (req, res) => {
     try {
         const { city } = req.query;
@@ -457,7 +509,7 @@ const atrakcjaSchema = new mongoose.Schema(
         nazwa: { type: String, required: true },
         adres: { type: String, required: true },
         czasZwiedzania: { type: Number },
-        cenaOsoba: { type: Number },
+        cenaZwiedzania: { type: Number },
         idGoogle: { type: String },
         ocenaGoogle: { type: Number },
         liczbaOcen: { type: Number },
@@ -465,7 +517,9 @@ const atrakcjaSchema = new mongoose.Schema(
         location: {
             lat: Number,
             lng: Number
-        }
+        },
+        zdjecie: { type: String },
+        zdjecieGoogle: { type: String },
 
     }
 )
@@ -623,12 +677,19 @@ app.get('/api/pobierz-atrakcje', async (req, res) => {
 });
 
 app.post('/ask', async (req, res) => {
-    const userQuestion = req.body.question;
+
+    const { question, idGoogle } = req.body;
+    const userQuestion = question;
+    console.log(req.body)
     if (!userQuestion) {
         return res.status(400).json({ error: 'Missing "question" in request body.' });
     }
     const randomN = () => Math.floor(Math.random() * (20 - 5 + 1)) + 5;
     const randint = randomN();
+    console.log("TEST1", req.body.question)
+
+
+
 
 
     try {
@@ -665,6 +726,21 @@ app.post('/ask', async (req, res) => {
       });
         */
         const answer = randint;//gptResponse.data.choices[0].message.content.trim();
+        if (typeof answer === 'number') {
+            const updated = await Atrakcja.findOneAndUpdate(
+                { idGoogle },
+                { $set: { cenaZwiedzania: answer } },
+                { new: true }
+            );
+            if (!updated) {
+                console.warn(`Nie znaleziono dokumentu Atrakcja o idGoogle=${idGoogle}`);
+            } else {
+                console.log(`Zaktualizowano Atrakcję ${idGoogle}, cenaZwiedzania=${answer}`);
+            }
+        } else {
+            console.warn(`fetchPriceInfo zwróciło wartość nie‑liczbową: ${answer}`);
+        }
+        //todo
         res.json({ answer });
 
     } catch (err) {
@@ -761,7 +837,406 @@ app.get('/api/attraction-location', async (req, res) => {
     }
 });
 
+app.get('/reverse-geocode', async (req, res) => {
+    console.log("ABCBDBD")
+    const { lat, lng } = req.query;
+    console.log(lat, lng)
+
+    if (!lat || !lng) {
+        return res.status(400).json({ error: 'Brakuje parametrów lat i lng' });
+    }
+
+    try {
+        const response = await axios.get('https://maps.googleapis.com/maps/api/geocode/json', {
+            params: {
+                latlng: `${lat},${lng}`,
+                key: GOOGLE_API_KEY,
+            }
+        });
+
+        const data = response.data;
+        if (data.status !== 'OK' || !data.results.length) {
+            return res.status(502).json({ error: 'Nie udało się odczytać adresu', details: data.status });
+        }
+
+        // weź pierwszy wynik
+        const address = data.results[0].formatted_address;
+        res.json({ address });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Błąd serwera', details: err.message });
+    }
+});
+
+
+
+
+function normalizeUrl(u) {
+    return u.replace(/#.*$/, '').replace(/\?.*$/, '').replace(/\/$/, '');
+}
+
+async function fetchHtml(pageUrl) {
+    const { data } = await axios.get(pageUrl, {
+        headers: { 'User-Agent': 'Mozilla/5.0' },
+        timeout: 10000
+    });
+    return data;
+}
+
+function extractLinks(html, baseUrl) {
+    const $ = cheerio.load(html);
+    const origin = new URL(baseUrl).origin;
+    const out = new Set();
+
+    $('a[href]').each((_, el) => {
+        const href = $(el).attr('href');
+        if (!href) return;
+        try {
+            const abs = normalizeUrl(new URL(href, baseUrl).toString());
+            if (abs.startsWith(origin)) {
+                out.add(abs);
+            }
+        } catch { }
+    });
+
+    return Array.from(out);
+}
+
+function extractPriceLines(html) {
+    const pattern = /\b(?:cen\w*|zł|bilet|pln)\b/i;
+    return html
+        .split(/\r?\n/)
+        .filter(line => pattern.test(line))
+        .map(line => line.trim());
+}
+/**
+ * Crawluje stronę główną i **jedno­poziomowo** jej linki,
+ * zbierając linie z "cena" tylko z tych URLi.
+ */
+async function crawlPriceLines(startUrl, concurrency = 5) {
+    const normStart = normalizeUrl(startUrl);
+    const htmlRoot = await fetchHtml(normStart);
+
+    // 1) Wyciągamy linki **tylko** ze strony głównej
+    const links = extractLinks(htmlRoot, normStart);
+
+    // Opcjonalnie dodajemy samą stronę główną do przeszukania:
+    const toCheck = [normStart, ...links];
+
+    const limit = pLimit(concurrency);
+    const results = [];
+
+    // 2) Pobieramy każdą stronę z toCheck, bez dalszego wydobywania linków
+    await Promise.all(
+        toCheck.map(url =>
+            limit(async () => {
+                let html;
+                try {
+                    console.log(`Pobieram: ${url}`);
+                    html = await fetchHtml(url);
+                } catch (e) {
+                    console.warn(`⚠️ Błąd pobrania ${url}: ${e.message}`);
+                    return;
+                }
+                extractPriceLines(html).forEach(line =>
+                    results.push({ url, line })
+                );
+            })
+        )
+    );
+
+    return results;
+}
+
+
+app.get('/api/price-lines', async (req, res) => {
+    const rawUrl = req.query.url || 'https://palmiarnia.poznan.pl/';
+    const url = normalizeUrl(rawUrl);
+
+    console.log('Start crawlPriceLines (depth=1) dla:', url);
+    try {
+        const lines = await crawlPriceLines(url, 5);
+        console.log('Zakończono crawling, znaleziono linii:', lines.length);
+        res.json(lines);
+    } catch (err) {
+        console.error('Crawler error:', err);
+        res.status(500).json({ error: 'Błąd podczas crawlowania' });
+    }
+});
+
+
+
+
+const WIKI_API = 'https://en.wikipedia.org/w/api.php';
+const GOOGLE_CX = '64f549210ce9e471c';
+const GOOGLE_KEY = GOOGLE_API_KEY;
+
+app.get('/api/attraction-image', async (req, res) => {
+    const { nazwa = '', adres = '', idGoogle = '' } = req.query;
+    if (!nazwa) return res.status(400).json({ error: 'Brakuje parametru nazwa' });
+
+    // jeśli mamy idGoogle, sprawdź w DB
+    if (idGoogle) {
+        try {
+            const istniejąca = await Atrakcja.findOne({ idGoogle });
+            if (istniejąca?.zdjecie) {
+                console.log("KORZYSTAM")
+                return res.json({ url: istniejąca.zdjecie, source: 'cache' });
+
+            }
+        } catch (err) {
+            console.warn('Błąd przy sprawdzaniu DB:', err);
+        }
+    }
+
+    let foundUrl = null, foundSource = null;
+
+    // 1) Spróbuj w Wikipedii
+    try {
+        const title = encodeURIComponent(`${nazwa} ${adres}`.trim());
+        const wiki = await axios.get(WIKI_API, {
+            params: {
+                action: 'query',
+                prop: 'pageimages',
+                format: 'json',
+                piprop: 'original',
+                titles: title,
+                origin: '*'
+            }
+        });
+        const pages = wiki.data.query.pages;
+        for (let pid in pages) {
+            if (pages[pid].original?.source) {
+                foundUrl = pages[pid].original.source;
+                foundSource = 'wiki';
+                break;
+            }
+        }
+    } catch (e) {
+        console.warn('Wiki lookup failed:', e.message);
+    }
+
+    // 2) Fallback: Google Custom Search Image
+    if (!foundUrl) {
+        if (!GOOGLE_KEY || !GOOGLE_CX) {
+            return res.status(500).json({ error: 'Brakuje GOOGLE_KEY/GOOGLE_CX' });
+        }
+        try {
+            const google = await axios.get('https://www.googleapis.com/customsearch/v1', {
+                params: {
+                    key: GOOGLE_KEY,
+                    cx: GOOGLE_CX,
+                    q: `${nazwa} ${adres}`.trim(),
+                    searchType: 'image',
+                    num: 1
+                }
+            });
+            const item = google.data.items?.[0];
+            if (item?.link) {
+                foundUrl = item.link;
+                foundSource = 'google';
+            }
+        } catch (e) {
+            console.error('Google Image lookup failed:', e.message);
+        }
+    }
+
+    if (!foundUrl) {
+        return res.status(404).json({ error: 'Nie znaleziono zdjęcia' });
+    }
+
+    // zapisz w DB, jeśli mamy idGoogle
+    if (idGoogle) {
+        try {
+            console.log("ZAPISUJE W BAZIE")
+            await Atrakcja.updateOne(
+                { idGoogle },
+                { $set: { zdjecie: foundUrl } }
+            );
+        } catch (err) {
+            console.warn('Błąd przy aktualizacji DB:', err);
+        }
+    }
+
+    return res.json({ url: foundUrl, source: foundSource });
+});
+
+const PLACE_API_KEY = GOOGLE_API_KEY;
+const PLACE_DETAILS_URL = 'https://maps.googleapis.com/maps/api/place/details/json';
+const PLACE_PHOTO_URL = 'https://maps.googleapis.com/maps/api/place/photo';
+
+// ...
+
+/**
+ * Dziala ale nie zapisuje do bazy zdjecia tylko link
+ * GET /api/valid-attraction-photos?idGoogle=<PLACE_ID>
+ * Zwraca tablicę działających URL-i do zdjęć.
+ 
+app.get('/api/valid-attraction-photo', async (req, res) => {
+    const { idGoogle } = req.query;
+    if (!idGoogle) {
+        return res.status(400).json({ error: 'Brakuje parametru idGoogle' });
+    }
+
+    try {
+        // 0) Sprawdź w DB, czy mamy już zapisany działający link
+        const existing = await Atrakcja.findOne({ idGoogle });
+        if (existing?.zdjecieGoogle) {
+            return res.json({ url: existing.zdjecieGoogle, source: 'cache' });
+        }
+
+        // 1) Pobierz informacje o zdjęciach z Place Details
+        const details = await axios.get(PLACE_DETAILS_URL, {
+            params: {
+                place_id: idGoogle,
+                fields: 'photos',
+                key: PLACE_API_KEY
+            }
+        });
+        const photos = details.data.result?.photos || [];
+        if (!photos.length) {
+            return res.status(404).json({ error: 'Brak zdjęć w Google Places' });
+        }
+
+        // 2) Ułóż listę maks. 5 kandydatów
+        const candidates = photos.slice(0, 5).map(p =>
+            `${PLACE_PHOTO_URL}?maxwidth=400&photoreference=${p.photo_reference}&key=${PLACE_API_KEY}`
+        );
+
+        // 3) Sprawdzaj po kolei każdy URL, aż znajdziesz działający
+        let workingUrl = null;
+        for (const url of candidates) {
+            try {
+                await axios.head(url, { timeout: 5000 });
+                workingUrl = url;
+                break;
+            } catch {
+                // HEAD zwrócił błąd — idź do następnego kandydata
+            }
+        }
+
+        if (!workingUrl) {
+            return res.status(404).json({ error: 'Nie znaleziono działającego zdjęcia' });
+        }
+
+        // 4) Zapisz w DB w polu zdjecieGoogle i odeślij
+        await Atrakcja.updateOne(
+            { idGoogle },
+            { $set: { zdjecieGoogle: workingUrl } }
+        );
+
+        return res.json({ url: workingUrl, source: 'google' });
+    } catch (err) {
+        console.error('Błąd w /api/valid-attraction-photo:', err.message);
+        return res.status(500).json({ error: 'Wewnętrzny błąd serwera' });
+    }
+});
+*/
+// ... na górze pliku:
+const AWS = require('aws-sdk');
+
+
+const s3 = new AWS.S3({
+  endpoint: new AWS.Endpoint(process.env.WASABI_ENDPOINT),
+  accessKeyId: process.env.WASABI_KEY,
+  secretAccessKey: process.env.WASABI_SECRET,
+  region: process.env.WASABI_REGION,
+  s3ForcePathStyle: true
+});
+
+app.get('/api/valid-attraction-photo', async (req, res) => {
+  const { idGoogle } = req.query;
+  if (!idGoogle) return res.status(400).json({ error: 'Brakuje idGoogle' });
+
+  // 0) Cache w DB:
+  const existing = await Atrakcja.findOne({ idGoogle });
+  if (existing?.zdjecieS3) {
+    return res.json({ url: existing.zdjecieS3, source: 'cache' });
+  }
+
+  // 1) Pobierz kandydatów z Google Places API...
+  const details = await axios.get(PLACE_DETAILS_URL, {
+    params: { place_id: idGoogle, fields: 'photos', key: PLACE_API_KEY }
+  });
+  const photos = details.data.result?.photos || [];
+  if (!photos.length) return res.status(404).json({ error: 'Brak zdjęć' });
+
+  // 2) Sprawdź pierwszy działający:
+  let workingUrl = null;
+  for (const p of photos.slice(0,5)) {
+    const url = `${PLACE_PHOTO_URL}?maxwidth=800&photoreference=${p.photo_reference}&key=${PLACE_API_KEY}`;
+    try {
+      await axios.head(url, { timeout: 5000 });
+      workingUrl = url;
+      break;
+    } catch {}
+  }
+  if (!workingUrl) return res.status(404).json({ error: 'Brak działającego zdjęcia' });
+
+  // 3) Pobierz do buffer i wrzuć na Wasabi:
+  const img = await axios.get(workingUrl, { responseType: 'arraybuffer' });
+  const key = `attractions/${idGoogle}/${Date.now()}.jpg`;
+  await s3.putObject({
+    Bucket: process.env.S3_BUCKET,
+    Key: key,
+    Body: Buffer.from(img.data, 'binary'),
+    ContentType: 'image/jpeg',
+    ACL: 'public-read'
+  }).promise();
+
+  const s3Url = `https://${process.env.S3_BUCKET}.${process.env.WASABI_ENDPOINT}/${key}`;
+
+  // 4) Zapisz w DB i odeślij:
+  await Atrakcja.updateOne({ idGoogle }, { $set: { zdjecieS3: s3Url } });
+  res.json({ url: s3Url, source: 'wasabi' });
+});
+
+
+app.post('/api/upload-test', async (req, res) => {
+    const { imageUrl } = req.body;
+    if (!imageUrl) return res.status(400).json({ error: 'No imageUrl provided' });
+  
+    try {
+      // Download image
+      const response = await axios.get(imageUrl, { responseType: 'arraybuffer' });
+      const buffer = Buffer.from(response.data, 'binary');
+  
+      // Generate unique key
+      const key = `test/${Date.now()}.jpg`;
+      await s3.putObject({
+        Bucket: process.env.S3_BUCKET,
+        Key: key,
+        Body: buffer,
+        ContentType: response.headers['content-type'],
+        ACL: 'public-read',
+      }).promise();
+  
+      // Public URL
+      const url = `https://${process.env.S3_BUCKET}.${process.env.WASABI_ENDPOINT}/${key}`;
+      res.json({ url });
+    } catch (err) {
+      console.error('Upload error:', err);
+      res.status(500).json({ error: 'Upload failed' });
+    }
+  });
+  
+
+
+
+
+
+
+
+
 
 app.listen(PORT, () => {
     console.log(`Serwer działa na porcie ${PORT}`);
 });
+
+
+//access-key= 7YUREAXL4WZUAPM1WRF6
+//secret-key= 46AZFfiWyMJiizJQg11jvpegKkCJR297b1HA5e46
+/*dla jasiu
+access-key= T9R9QB7AIBEZSACGTNNL
+secret-key= ca4rF1ZkkzeHyB6RiLDLjetursLZ6DBQ5AFCGJDU
+*/

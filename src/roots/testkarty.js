@@ -1,16 +1,20 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import styled from 'styled-components';
 
-export const ChromeTabs = () => {
+export const ChromeTabs = ({ wybranaKat = 1, setWybranaKat }) => {
   // Domyślnie wybrana karta to numer 1
-  const [wybor, setWybor] = useState(1);
-
+  const [wybor, setWybor] = useState(wybranaKat);
+  useEffect(() => {
+    setWybranaKat(wybor);
+    
+  }, [wybor])
   // Tablice obiektów definiujące karty; ikony można dostosować według potrzeb
   const tabs = [
     { id: 1, icon: "../icons/trend.svg", label: "Popularne" },
     { id: 2, icon: "../icons/castle.svg", label: "Atrakcje turystyczne" },
-    { id: 3, icon:"../icons/park.svg", label: "Podstawowe aktywności"  },
-    { id: 4, icon:"../icons/serce.svg", label: "Polubione"  }
+    { id: 3, icon: "../icons/park.svg", label: "Podstawowe aktywności" },
+    { id: 4, icon: "../icons/serce.svg", label: "Polubione" },
+    { id: 5, icon: "../icons/serce.svg", label: "Własne" }
   ];
 
   return (

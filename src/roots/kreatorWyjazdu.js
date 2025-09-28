@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { createContext, useState, useContext, useEffect, useRef } from 'react';
 import axios from "axios";
 import styled from 'styled-components';
 import TopKreatorSlider from './topKreatorSlider';
@@ -10,13 +10,156 @@ import ChromeTabs from './testkarty.js';
 import { WyborPoleAtrakcja } from './wyborPoleAtrakcja.js';
 import Loader from './loader.js';
 import { LoadScript } from '@react-google-maps/api';
+import { AktwnoscSlider } from './aktywnoscSlider.js';
+import Timer from './timerAnimation.js';
+import { AktywnosciNaw } from './aktywnosciNaw.js';
+import { AktywnoscPlan } from './aktywnoscPlan.js';
+import { HotelPlan } from './hotelPlan.js';
+import { HotelPlanEnd } from './hotelEnd.js';
+import { HotelMeldowanie } from './hotelMeldowanie.js';
+import MapLocationPicker from './wyborLokalizacji.js';
+import { RoutePlan, RoutePlanBack } from './RoutePlan.js';
+import { DodawaniePlan } from './dodawaniePlan.js';
+import { useSchedule } from './ScheduleContext.js';
+import { PodsumowanieKreator } from './podsumowanieKreator.js';
 const startingHotel = {
     nazwa: "Ładowanie...",
     adres: "Ładowanie...",
     zameldowanie: "16:00",
     wymeldowanie: "11:00",
 };
+const podstawoweAktywnosci = [
+    {
+        item: {
+            rodzaj: "Czas wolny",
+            adres: "",
+            nazwa: "Czas wolny",
+            cenaZwiedzania: "0",
+            czasZwiedzania: 60,
+            idGoogle: "FREE",
+        },
+    },
+    {
+        item: {
+            rodzaj: "Posiłek",
+            adres: "",
+            nazwa: "Obiad / Lunch",
+            cenaZwiedzania: "0",
+            czasZwiedzania: 60,
+            idGoogle: "FREE",
+        },
+    },
+    {
+        item: {
+            rodzaj: "Przekąska / kawa",
+            adres: "",
+            nazwa: "Przerwa na kawę",
+            cenaZwiedzania: "0",
+            czasZwiedzania: 30,
+            idGoogle: "FREE",
+        },
+    },
+    {
+        item: {
+            rodzaj: "Grupowy spacer",
+            adres: "",
+            nazwa: "Spacer po okolicy",
+            cenaZwiedzania: "0",
+            czasZwiedzania: 90,
+            idGoogle: "FREE",
+        },
+    },
+    {
+        item: {
+            rodzaj: "Wizyta w muzeum",
+            adres: "",
+            nazwa: "Muzeum / wystawa",
+            cenaZwiedzania: "0",
+            czasZwiedzania: 120,
+            idGoogle: "FREE",
+        },
+    },
+    {
+        item: {
+            rodzaj: "Zakupy pamiątek",
+            adres: "",
+            nazwa: "Zakupy",
+            cenaZwiedzania: "0",
+            czasZwiedzania: 60,
+            idGoogle: "FREE",
+        },
+    },
+    {
+        item: {
+            rodzaj: "Gra zespołowa",
+            adres: "",
+            nazwa: "Zabawy integracyjne",
+            cenaZwiedzania: "0",
+            czasZwiedzania: 60,
+            idGoogle: "FREE",
+        },
+    },
+    {
+        item: {
+            rodzaj: "Sesja zdjęciowa",
+            adres: "",
+            nazwa: "Zdjęcia grupowe",
+            cenaZwiedzania: "0",
+            czasZwiedzania: 30,
+            idGoogle: "FREE",
+        },
+    },
+    {
+        item: {
+            rodzaj: "Prezentacja / wykład",
+            adres: "",
+            nazwa: "Prelekcja",
+            cenaZwiedzania: "0",
+            czasZwiedzania: 45,
+            idGoogle: "FREE",
+        },
+    },
+    {
+        item: {
+            rodzaj: "Warsztat",
+            adres: "",
+            nazwa: "Warsztaty tematyczne",
+            cenaZwiedzania: "0",
+            czasZwiedzania: 90,
+            idGoogle: "FREE",
+        },
+    },
+    {
+        item: {
+            rodzaj: "Odpoczynek",
+            adres: "",
+            nazwa: "Przerwa / relaks",
+            cenaZwiedzania: "0",
+            czasZwiedzania: 30,
+            idGoogle: "FREE",
+        },
+    },
+    {
+        item: {
+            rodzaj: "Program wieczorny",
+            adres: "",
+            nazwa: "Wieczorne spotkanie",
+            cenaZwiedzania: "0",
+            czasZwiedzania: 120,
+            idGoogle: "FREE",
+        },
+    },
+];
 
+
+function formatTime(totalMinutes) {
+    const hours = Math.floor(totalMinutes / 60);
+    const minutes = totalMinutes % 60;
+    if (hours > 0) {
+        return `${hours} godz ${minutes} min`;
+    }
+    return `${minutes} min`;
+}
 
 function initialDayObject(hotel) {
     return {
@@ -31,7 +174,7 @@ function initialDayObject(hotel) {
 }
 
 function minutesToTimeString(minutes) {
-    const hours = Math.floor(minutes / 60);
+    const hours = Math.floor(minutes / 60) % 24;
     const mins = minutes % 60;
     return `${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}`;
 }
@@ -55,15 +198,14 @@ const znajdzIdMiasta = async (city) => {
 };
 let lastFetchTime = 0;
 
-const fetchPriceInfo = async (atrakcja, miasto) => {
-
+export const fetchPriceInfo = async (atrakcja_bas, miasto) => {
+    const atrakcja = atrakcja_bas.item.nazwa;
     const now = Date.now();
     const THROTTLE_INTERVAL = 3000; // 3 sekundy
-
-    if (now - lastFetchTime < THROTTLE_INTERVAL) {
+    /*if (now - lastFetchTime < THROTTLE_INTERVAL) {
         console.warn("Funkcja fetchPriceInfo została zablokowana (limit 1 wywołanie na 3 sekundy)");
         return;
-    }
+    }*/
 
     lastFetchTime = now;
 
@@ -71,14 +213,16 @@ const fetchPriceInfo = async (atrakcja, miasto) => {
 
     try {
         const response = await axios.post('http://localhost:5002/ask', {
-            question: prompt
+            question: prompt,
+            idGoogle: atrakcja_bas.item.idGoogle,
+
         });
-        console.log(`Cena zwiedzania dla "${atrakcja}" w "${miasto}":`, response.data.answer);
         return response.data.answer;
     } catch (error) {
         console.error("Błąd podczas wywoływania endpointa:", error);
         return null;
     }
+
 };
 
 const znajdzDostepneHotele = async (idMiasta = "-523642", przyjazd, wyjazd, lGosci, hStandard) => {
@@ -148,6 +292,7 @@ async function hotelsearch(dataWyjazdu, dataPrzyjazdu, liczbaUczestnikow, liczba
     const prevHotele = localStorage.getItem(saveName);
     if (!prevHotele) {
         try {
+
             const result = await znajdzHotel(miasto, dataWyjazdu, dataPrzyjazdu, liczbaUczestnikow, hotelStandard);
             localStorage.setItem(saveName, JSON.stringify(result));
             return result;
@@ -219,25 +364,70 @@ const ParametryWyjazdu = ({
         </>
     );
 };
-
+function validateOrOffset(dateStr, offsetDays = 0) {
+    // sparsuj wejściowy string
+    const [y, m, d] = dateStr.split('-').map(Number);
+    const inputDate = new Date(y, m - 1, d);
+    // ustaw dziś na 00:00
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+  
+    // jeśli wejściowa data jest niepoprawna lub < dziś
+    if (isNaN(inputDate) || inputDate < today) {
+      const result = new Date(today);
+      result.setDate(result.getDate() + offsetDays);
+      return result;
+    }
+  
+    // w przeciwnym razie zwróć oryginalną datę
+    return inputDate;
+  }
+  
 export const KreatorWyjazdu = ({ tyt = "Zaplanuj Wasz wyjazd do Poznania!" }) => {
     // Inicjalizacja stanów
-    const [dataPrzyjazdu, setDataPrzyjazdu] = useState(() => localStorage.getItem("dataPrzyjazdu") || "");
-    const [dataWyjazdu, setDataWyjazdu] = useState(() => localStorage.getItem("dataWyjazdu") || "");
+    const [dataPrzyjazdu, setDataPrzyjazdu] = useState(() => {
+        // pobieramy z localStorage albo ustawiamy domyślnie
+        const stored = validateOrOffset(localStorage.getItem("dataPrzyjazdu") || '2025-06-20');
+       
+        return stored;
+    });
+    const [dataWyjazdu, setDataWyjazdu] = useState(() => {
+        // pobieramy z localStorage albo ustawiamy domyślnie
+        const storedDate = validateOrOffset(localStorage.getItem("dataWyjazdu") || '2025-06-22', 1);
+        return storedDate;
+    });
 
+    const [startLok, setStartLok] = useState(null);
     const [liczbaUczestnikow, setLiczbaUczestnikow] = useState(10);
-    const [liczbaOpiekunów, setLiczbaOpiekunów] = useState(() => localStorage.getItem("liczbaOpiekunów") || "");
+    const [liczbaOpiekunów, setLiczbaOpiekunów] = useState(0/*() => localStorage.getItem("liczbaOpiekunów") || ""*/);
     const [hotelStandard, setHotelStandard] = useState(() => localStorage.getItem("hotelStandard") || "");
     const [rodzajTransportu, setRodzajTransportu] = useState(() => localStorage.getItem("rodzajTransportu") || "");
     const [miasto, setMiasto] = useState(() => localStorage.getItem("miasto") || "Poznań");
 
     // Nawigacja i dane strony
+    const [wybranaKat, setWybranaKat] = useState(1);
+
+    const [godzinaWyjazdStart, setGodzinaWyjazdStart] = useState(10 * 60)
     const [aktywnosciWMiescie, setAktywnosciWMiescie] = useState();
     const [wybranyDzien, setWybranyDzien] = useState(0);
-    const [daysCount, setDaysCount] = useState(calculateDays(dataWyjazdu, dataPrzyjazdu));
+    const [daysCount, setDaysCount] = useState(calculateDays(dataWyjazdu, dataPrzyjazdu) > 1 ? calculateDays(dataWyjazdu, dataPrzyjazdu) : 1);
+    const [godzinyStart, setGodzinyStart] = useState(() =>
+        Array(daysCount).fill(8 * 60)
+    );
+    const [validGodzinyStart, setValidGodzinyStart] = useState([]);
+    useEffect(() => {
+        setGodzinyStart(prev => {
+            // jeśli długość się nie zmieniła, zwróć prev i nic nie rób
+            if (prev.length === daysCount) return prev;
+            const next = [...prev];
+            while (next.length < daysCount) next.push(8 * 60);
+            return next.slice(0, daysCount);
+        });
+    }, [daysCount]);
     const [aktywnosci, setAktywnosci] = useState(() =>
         Array.from({ length: daysCount + 1 }, () => initialDayObject(startingHotel))
     );
+    const [validAktywnosci, setValidAktywnosci] = useState([]);
     const [schedule, setSchedule] = useState([]);
     const [wybranyHotel, setWybranyHotel] = useState(startingHotel);
 
@@ -251,18 +441,17 @@ export const KreatorWyjazdu = ({ tyt = "Zaplanuj Wasz wyjazd do Poznania!" }) =>
     useEffect(() => { localStorage.setItem("hotelStandard", hotelStandard); }, [hotelStandard]);
     useEffect(() => { localStorage.setItem("rodzajTransportu", rodzajTransportu); }, [rodzajTransportu]);
     useEffect(() => { localStorage.setItem("miasto", miasto); }, [miasto]);
-
     useEffect(() => {
         const lDni = calculateDays(dataWyjazdu, dataPrzyjazdu);
         setDaysCount(lDni + 1);
     }, [dataWyjazdu, dataPrzyjazdu]);
 
     useEffect(() => {
+       
         setAktywnosci((prevDays) => {
             let updatedDays = [...prevDays];
             const lDni = daysCount;
             const prevLength = updatedDays.length;
-
             if (prevLength < lDni) {
                 const newDays = Array.from(
                     { length: lDni - prevLength },
@@ -304,34 +493,62 @@ export const KreatorWyjazdu = ({ tyt = "Zaplanuj Wasz wyjazd do Poznania!" }) =>
 
             return updatedDays;
         });
+        
     }, [daysCount, wybranyHotel]);
 
     // Aktualizacja baseActivityStart i baseActivityEnd przy zmianie hotelu
+    // Aktualizacja baseActivityStart i baseActivityEnd przy zmianie hotelu lub miejsca zbiórki
     useEffect(() => {
-        setAktywnosci((prevDays) =>
+        setAktywnosci(prevDays =>
             prevDays.map((day, idx) => {
-                let updatedDay = {
+                // przygotuj bazową strukturę
+                const selectedTransport = day.baseActivityStart?.selectedTransport || "czasAutem";
+
+                // dla dnia 0 – start z miejsca zbiórki
+                const baseStart = idx === 0 && startLok
+                    ? {
+                        nazwa: startLok.title,
+                        adres: startLok.subtitle,
+                        selectedTransport,
+                    }
+                    : {
+                        nazwa: wybranyHotel.nazwa,
+                        adres: wybranyHotel.adres,
+                        selectedTransport,
+                    };
+
+                // koniec dnia zawsze w hotelu
+                const baseEnd = idx === daysCount - 1 && startLok
+                    ? {
+                        nazwa: startLok.title,
+                        adres: startLok.subtitle,
+
+                    }
+                    : {
+                        nazwa: wybranyHotel.nazwa,
+                        adres: wybranyHotel.adres,
+                    };
+
+                const updatedDay = {
                     ...day,
-                    baseActivityStart: {
-                        nazwa: wybranyHotel.nazwa,
-                        adres: wybranyHotel.adres,
-                        selectedTransport: day.baseActivityStart?.selectedTransport || "czasAutem"
-                    },
-                    baseActivityEnd: {
-                        nazwa: wybranyHotel.nazwa,
-                        adres: wybranyHotel.adres,
-                    },
+                    baseActivityStart: baseStart,
+                    baseActivityEnd: baseEnd,
                 };
+
+                // hotelActivity (zameldowanie / wymeldowanie) tylko pierwszego i ostatniego dnia
                 if (idx === 0 || idx === prevDays.length - 1) {
                     updatedDay.hotelActivity = {
-                        minGodzina: idx === 0 ? wybranyHotel.zameldowanie : wybranyHotel.wymeldowanie,
+                        minGodzina: idx === 0
+                            ? wybranyHotel.zameldowanie
+                            : wybranyHotel.wymeldowanie,
                         godzina: "23:00",
                     };
                 }
                 return updatedDay;
             })
         );
-    }, [wybranyHotel]);
+    }, [wybranyHotel, startLok]);
+
 
     // Debouncing hotelsearch
     const debounceTimer = useRef(null);
@@ -348,13 +565,14 @@ export const KreatorWyjazdu = ({ tyt = "Zaplanuj Wasz wyjazd do Poznania!" }) =>
                     hotelStandard,
                     miasto
                 );
-                console.log("SZUKAM HOTELU", dataPrzyjazdu, dataWyjazdu, result)
+
                 setWybranyHotel({
                     nazwa: result?.data?.hotels[0]?.property.name,
                     adres: result?.data?.hotels[0]?.property.name,
                     gwiazdki: result?.data?.hotels[0]?.property.propertyClass,
                     zameldowanie: result?.data?.hotels[0]?.property.checkin.fromTime || "16:00",
                     wymeldowanie: result?.data?.hotels[0]?.property.checkout?.untilTime || "11:00",
+
                 });
             } catch (error) {
                 console.error("Błąd w hotelsearch:", error);
@@ -365,37 +583,84 @@ export const KreatorWyjazdu = ({ tyt = "Zaplanuj Wasz wyjazd do Poznania!" }) =>
 
     useEffect(() => {
         const timeoutId = setTimeout(() => {
-          const handleFetchAtrakcje = async () => {
-            const storageKey = "atrakcje" + miasto;
-            const cachedData = localStorage.getItem(storageKey);
-            if (cachedData) {
-              setAktywnosciWMiescie(JSON.parse(cachedData));
-              console.log("Using cached data", JSON.parse(cachedData));
-              return;
-            }
-            try {
-              const response = await fetch(
-                `http://localhost:5002/api/pobierz-atrakcje?miasto=${encodeURIComponent(miasto)}`
-              );
-              const data = await response.json();
-              setAktywnosciWMiescie(data);
-              localStorage.setItem(storageKey, JSON.stringify(data));
-              console.log("Fetched data", data);
-            } catch (error) {
-              console.error("Błąd pobierania atrakcji:", error);
-            }
-          };
-          handleFetchAtrakcje();
+            const handleFetchAtrakcje = async () => {
+                const storageKey = "atrakcj222e" + miasto;
+                const cachedJson = localStorage.getItem(storageKey);
+
+                if (cachedJson) {
+                    let cachedData = JSON.parse(cachedJson);
+                    setAktywnosciWMiescie(cachedData);
+
+                    // TODO: uzupełnij brakujące ceny
+                    const updatedData = await Promise.all(
+                        cachedData.map(async (atrakcja) => {
+                            if (atrakcja.cenaZwiedzania == null) {
+                                // wywołaj fetchPriceInfo
+                                const price = await fetchPriceInfo({ item: atrakcja }, miasto);
+                                // jeśli fetch zwróci liczbę, ustaw w obiekcie
+                                if (typeof price === "number") {
+                                    atrakcja.cenaZwiedzania = price;
+                                }
+                            }
+                            return atrakcja;
+                        })
+                    );
+
+                    // Zaktualizowany stan i localStorage
+                    setAktywnosciWMiescie(updatedData);
+                    localStorage.setItem(storageKey, JSON.stringify(updatedData));
+
+                    return;
+                }
+                try {
+                    const response = await fetch(
+                        `http://localhost:5002/api/pobierz-atrakcje?miasto=${encodeURIComponent(miasto)}`
+                    );
+                    let data = await response.json();
+
+                    // 4) Ustawiamy początkowy stan
+                    setAktywnosciWMiescie(data);
+
+                    // 5) Weryfikujemy brakujące pola na nowo pobranych danych
+                    const verified = await Promise.all(
+                        data.map(async (atrakcja) => {
+                            if (atrakcja.cenaZwiedzania == null) {
+                                const price = await fetchPriceInfo({ item: atrakcja }, miasto);
+                                if (typeof price === "number") {
+                                    atrakcja.cenaZwiedzania = price;
+                                }
+                            }
+                            if (!atrakcja.dataDodania) {
+                                atrakcja.dataDodania = new Date().toISOString().slice(0, 10);
+                            }
+                            return atrakcja;
+                        })
+                    );
+
+                    // 6) Zapis do stanu i cache
+                    setAktywnosciWMiescie(verified);
+                    localStorage.setItem(storageKey, JSON.stringify(verified));
+                } catch (error) {
+                    console.error("Błąd pobierania atrakcji:", error);
+                }
+            };
+            handleFetchAtrakcje();
         }, 1000); // debouncer 1 sekunda
-      
+
         return () => clearTimeout(timeoutId);
-      }, [miasto]);
-      
+    }, [miasto]);
+
 
     const [scheduleLoading, setScheduleLoading] = useState(false);
+    const [scheduleLoadingStart, setScheduleLoadingStart] = useState(true);
     const scheduleTimeoutRef = useRef(null);
 
-    // Funkcja aktualizująca trasę z uwzględnieniem wybranych opcji transportu
+    const { setScheduleLoadingGlobal } = useSchedule();
+    useEffect(() => {
+        setScheduleLoadingGlobal(scheduleLoading);
+    }, [scheduleLoading, setScheduleLoadingGlobal]);
+
+
     useEffect(() => {
         // Cache dla wyników wywołań API
         const routeCache = {};
@@ -408,7 +673,6 @@ export const KreatorWyjazdu = ({ tyt = "Zaplanuj Wasz wyjazd do Poznania!" }) =>
                 return routeCache[key];
             }
             try {
-                console.log("probuje dla: ", origin, " oraz ", destination)
                 const response = await axios.get('http://localhost:5002/api/travel-info', {
                     params: {
                         origin,
@@ -438,15 +702,34 @@ export const KreatorWyjazdu = ({ tyt = "Zaplanuj Wasz wyjazd do Poznania!" }) =>
             }
             return totalMinutes;
         };
+        function timeStringToMinutes(timeStr) {
+            // Rozdzielamy string według dwukropka.
+            const parts = timeStr.split(':');
+            if (parts.length !== 2) {
+                throw new Error('Invalid time format. Expected "HH:MM".');
+            }
 
+            // Parsujemy godziny i minuty.
+            const hours = parseInt(parts[0], 10);
+            const minutes = parseInt(parts[1], 10);
+
+            // Zwracamy sumaryczną liczbę minut.
+            return hours * 60 + minutes;
+        }
         // Funkcja zaokrąglająca w górę do najbliższej dziesiątki
         const zaokr = (licz) => {
             return licz % 10 === 0 ? licz + 10 : licz - (licz % 10) + 10;
         };
+        const maxim = (a, b) => {
+            if (a > b) return a
+            return b
+        }
 
         setScheduleLoading(true);
         if (scheduleTimeoutRef.current) clearTimeout(scheduleTimeoutRef.current);
         scheduleTimeoutRef.current = setTimeout(async () => {
+            const godzinaZameldowania = wybranyHotel.zameldowanie;
+            const godzinaWymeldowania = wybranyHotel.wymeldowanie
             async function computeSchedule() {
                 const newSchedule = [];
                 for (let i = 0; i < daysCount; i++) {
@@ -457,7 +740,7 @@ export const KreatorWyjazdu = ({ tyt = "Zaplanuj Wasz wyjazd do Poznania!" }) =>
                         continue;
                     }
                     const daySchedule = [];
-                    let currentTimeMinutes = 8 * 60; // początek dnia: 08:00
+                    let currentTimeMinutes = godzinyStart[i]; // początek dnia: 08:00
 
                     // Pierwszy segment: z baseActivityStart do pierwszej aktywności
                     let originAddress = day.baseActivityStart.adres;
@@ -493,7 +776,14 @@ export const KreatorWyjazdu = ({ tyt = "Zaplanuj Wasz wyjazd do Poznania!" }) =>
                             const travelInfo = await getRouteInfo(originName + " " + originAddress, activity.nazwa + " " + activity.adres, selectedMode, departureDate);
                             let travelTimeMinutes = wyciagnijMinuty(travelInfo[selectedMode] || "");
                             travelTimeMinutes = zaokr(travelTimeMinutes);
-                            const segmentStartTime = minutesToTimeString(currentTimeMinutes);
+                            let segmentStartTime = minutesToTimeString(currentTimeMinutes);
+                            if (day.dayActivities[j - 1].idGoogle == "ABCD") {
+
+                                segmentStartTime = minutesToTimeString(maxim(timeStringToMinutes(segmentStartTime), timeStringToMinutes(godzinaZameldowania)));
+                                currentTimeMinutes = timeStringToMinutes(segmentStartTime)
+
+                            }
+
                             daySchedule.push({ startTime: segmentStartTime, travelInfo });
                             currentTimeMinutes += travelTimeMinutes + (parseInt(previousActivity.czasZwiedzania, 10) || 0);
                             originAddress = activity.adres;
@@ -505,11 +795,13 @@ export const KreatorWyjazdu = ({ tyt = "Zaplanuj Wasz wyjazd do Poznania!" }) =>
 
                     // Ostatni segment: z ostatniej aktywności do baseActivityEnd
                     let lastActivity = day.dayActivities[day.dayActivities.length - 1];
+
                     let selectedModeFinal = lastActivity.selectedTransport || "czasAutem";
                     let departureDateFinal = new Date();
                     departureDateFinal.setHours(Math.floor(currentTimeMinutes / 60));
                     departureDateFinal.setMinutes(currentTimeMinutes % 60);
                     try {
+
                         const travelInfo = await getRouteInfo(
                             originName + " " + originAddress,
                             day.baseActivityEnd.nazwa + " " + day.baseActivityEnd.adres,
@@ -519,7 +811,12 @@ export const KreatorWyjazdu = ({ tyt = "Zaplanuj Wasz wyjazd do Poznania!" }) =>
                         let travelTimeMinutes = wyciagnijMinuty(travelInfo[selectedModeFinal] || "");
                         travelTimeMinutes = zaokr(travelTimeMinutes);
                         // Dodajemy element dla segmentu przed dotarciem do baseActivityEnd
-                        const segmentStartTime = minutesToTimeString(currentTimeMinutes);
+                        let segmentStartTime = minutesToTimeString(currentTimeMinutes);
+                        if (lastActivity.idGoogle == "ABCD") {
+                            segmentStartTime = minutesToTimeString(maxim(timeStringToMinutes(segmentStartTime), timeStringToMinutes(godzinaZameldowania)));
+                            currentTimeMinutes = timeStringToMinutes(segmentStartTime)
+
+                        }
                         daySchedule.push({ startTime: segmentStartTime, travelInfo });
 
                         // Aktualizujemy czas – to będzie czas przybycia do baseActivityEnd
@@ -533,19 +830,68 @@ export const KreatorWyjazdu = ({ tyt = "Zaplanuj Wasz wyjazd do Poznania!" }) =>
                     }
                     newSchedule.push(daySchedule);
                 }
-                console.log("Obliczony harmonogram:", newSchedule);
-                setSchedule(newSchedule);
+                console.log("Obliczony harmonogram:", newSchedule, "aktywnosci", aktywnosci, "poprzednie", validAktywnosci);
+                let dcbaIdx;
+                const lastDayActivities = aktywnosci[daysCount - 1].dayActivities;
+                for (let i = 0; i < lastDayActivities.length; i++) {
+                    if (lastDayActivities[i]?.idGoogle == "DCBA") {
+                        dcbaIdx = i + 1;
+                        break;          // opcjonalnie, jeśli szukasz tylko pierwszego wystąpienia
+                    }
+                }
+                //console.log("TEST103,", timeStringToMinutes(newSchedule[daysCount-1][dcbaIdx]?.startTime || ),newSchedule[daysCount-1][dcbaIdx]?.startTime, godzinaZameldowania, godzinaWymeldowania, wybranyHotel);
+                if (newSchedule[daysCount - 1][dcbaIdx]?.startTime && timeStringToMinutes(newSchedule[daysCount - 1][dcbaIdx]?.startTime) <= timeStringToMinutes(godzinaWymeldowania)) {
+                    setSchedule(newSchedule);
+                    setValidAktywnosci(aktywnosci);
+                    setValidGodzinyStart(godzinyStart);
+
+                }
+                else if (daysCount > 1 && newSchedule[daysCount - 1][dcbaIdx]?.startTime) {
+                    setAktywnosci(validAktywnosci)
+                    setGodzinyStart(validGodzinyStart)
+                }
+                else {
+                    setSchedule(newSchedule);
+                }
+                //setSchedule(newSchedule);
                 setScheduleLoading(false);
+                setScheduleLoadingStart(false)
             }
             await computeSchedule();
         }, 3000);
         return () => {
             if (scheduleTimeoutRef.current) clearTimeout(scheduleTimeoutRef.current);
         };
-    }, [aktywnosci, daysCount]);
+    }, [aktywnosci, daysCount, godzinyStart, validGodzinyStart]);
 
 
     function dodajAktywnosc(nowaAktywnosc) {
+        if (Array.isArray(nowaAktywnosc.item)) {
+            console.log("Nowa aktywność musi być pojedynczym obiektem, nie tablicą");
+            nowaAktywnosc.item.forEach((akt, idx) => {
+                dodajAktywnoscM({ item: akt });
+            });
+            return;
+        }
+        const cena = fetchPriceInfo(nowaAktywnosc, miasto);
+        if (!scheduleLoading) {
+            setAktywnosci((prev) => {
+                const updated = [...prev];
+                const dayObject = { ...updated[wybranyDzien] };
+                dayObject.dayActivities = [
+                    ...dayObject.dayActivities,
+                    {
+                        ...nowaAktywnosc.item,
+                        godzinaRozpoczecia: "08:00",
+                    }
+                ];
+                updated[wybranyDzien] = dayObject;
+                return updated;
+            });
+        }
+
+    }
+    function dodajAktywnoscM(nowaAktywnosc) {
         setAktywnosci((prev) => {
             const updated = [...prev];
             const dayObject = { ...updated[wybranyDzien] };
@@ -557,6 +903,22 @@ export const KreatorWyjazdu = ({ tyt = "Zaplanuj Wasz wyjazd do Poznania!" }) =>
                 }
             ];
             updated[wybranyDzien] = dayObject;
+            return updated;
+        });
+
+    }
+    function dodajAktywnoscD(nowaAktywnosc, d) {
+        setAktywnosci((prev) => {
+            const updated = [...prev];
+            const dayObject = { ...updated[d] };
+            dayObject.dayActivities = [
+                ...dayObject.dayActivities,
+                {
+                    ...nowaAktywnosc.item,
+                    godzinaRozpoczecia: "08:00",
+                }
+            ];
+            updated[d] = dayObject;
             return updated;
         });
     }
@@ -588,6 +950,7 @@ export const KreatorWyjazdu = ({ tyt = "Zaplanuj Wasz wyjazd do Poznania!" }) =>
             dayObject.dayActivities = updatedActivities;
             updated[dayIndex] = dayObject;
             return updated;
+
         });
     }
 
@@ -604,163 +967,114 @@ export const KreatorWyjazdu = ({ tyt = "Zaplanuj Wasz wyjazd do Poznania!" }) =>
             return updated;
         });
     }
+    function swapAttractions(dayIndex, activityIndex, dir = -1) {
+        setAktywnosci(prevState => {
+            // 1) Wyciągamy poprzednie aktywności danego dnia
+            const previousActivities = prevState;
+            // zapisujemy je do validAktywnosci
+            setValidAktywnosci(previousActivities);
+
+            // 2) Teraz wykonujemy faktyczną zamianę
+            const updatedState = [...prevState];
+            const currentDay = { ...updatedState[dayIndex] };
+            const activities = [...currentDay.dayActivities];
+
+            // check boundary
+            if ((activityIndex === 0 && dir === -1) ||
+                (activityIndex === activities.length - 1 && dir === 1)) {
+                return prevState;
+            }
+
+            // swap
+            const tmp = activities[activityIndex + dir];
+            activities[activityIndex + dir] = activities[activityIndex];
+            activities[activityIndex] = tmp;
+
+            currentDay.dayActivities = activities;
+            updatedState[dayIndex] = currentDay;
+            return updatedState;
+        });
+    }
     useEffect(() => {
-        console.log("test6")
-    }, [])
+        function removeActivityById(dayIndex, id) {
+            setAktywnosci(prevState => {
+                // Tworzymy kopię tablicy dla danego dnia, usuwając elementy o podanym id.
+                const updatedDays = [...prevState];
+                updatedDays[dayIndex] = {
+                    ...updatedDays[dayIndex],
+                    dayActivities: updatedDays[dayIndex].dayActivities.filter(
+                        activity => activity.idGoogle !== id
+                    ),
+                };
+                return updatedDays;
+            });
+        }
+        const timer = setTimeout(() => {
+            const testMeldowanieHotel = {
+                item: {
+                    rodzaj: "Zameldowanie w hotelu",
+                    adres: wybranyHotel.adres,
+                    nazwa: wybranyHotel.nazwa,
+                    cenaZwiedzania: "100zl",
+                    czasZwiedzania: 30,
+                    idGoogle: "ABCD",
+                    godzinaZameldowania: "15:00",
+                    godzinaWymeldowania: "11:00"
 
-    /*
-    return (
-        <>
-            <ParametryWyjazdu
-                dataWyjazdu={dataWyjazdu}
-                dataPrzyjazdu={dataPrzyjazdu}
-                liczbaUczestnikow={liczbaUczestnikow}
-                liczbaOpiekunów={liczbaOpiekunów}
-                hotelStandard={hotelStandard}
-                rodzajTransportu={rodzajTransportu}
-                setDataWyjazdu={setDataWyjazdu}
-                setDataPrzyjazdu={setDataPrzyjazdu}
-                setLiczbaUczestnikow={setLiczbaUczestnikow}
-                setLiczbaOpiekunów={setLiczbaOpiekunów}
-                setHotelStandard={setHotelStandard}
-                setRodzajTransportu={setRodzajTransportu}
-            />
-            <input type="number" max={daysCount} min={0} value={wybranyDzien} onChange={(e) => setWybranyDzien(e.target.value)} />
+                },
+            };
+            const startWymeldowanieHotel = {
+                item: {
+                    rodzaj: "Wymeldowanie z hotelu",
+                    adres: wybranyHotel.adres,
+                    nazwa: wybranyHotel.nazwa,
+                    cenaZwiedzania: "100zl",
+                    czasZwiedzania: 30,
+                    idGoogle: "DCBA",
+                    godzinaZameldowania: "15:00",
+                    godzinaWymeldowania: "10:00"
 
-            <KreatorMainbox>
-                <div>
-                    <h4>Atrakcje w mieście {miasto} (kliknij, żeby dodać):</h4>
-                    {aktywnosciWMiescie ? (
-                        aktywnosciWMiescie.map((item, index) => (
-                            <div
-                                key={index}
-                                style={{ fontSize: '10px', cursor: 'pointer' }}
-                                onClick={() => dodajAktywnosc({ item })}
-                            >
-                                {item.nazwa}, {item.adres}, {item.czasZwiedzania}
-                            </div>
-                        ))
-                    ) : (
-                        "Brak danych"
-                    )}
-                </div>
-                <div>
-                    <h4>Atrakcje w dniach:</h4>
-                    {aktywnosci && aktywnosci.length > 0 ? (
-                        aktywnosci.map((dayItem, dayIndex) => (
-                            <div key={dayIndex} style={{ marginBottom: '10px' }}>
-                                <strong>Dzień {dayIndex + 1}</strong>
-                                <div style={{ fontSize: '10px', marginLeft: '10px' }}>
-                                    <em>Start:</em> {dayItem.baseActivityStart.nazwa}, {dayItem.baseActivityStart.adres}
-                                    <div>
-                                        <label>
-                                            <input
-                                                type="radio"
-                                                name={`transport-base-${dayIndex}`}
-                                                value="czasAutem"
-                                                checked={!dayItem.baseActivityStart.selectedTransport || dayItem.baseActivityStart.selectedTransport === "czasAutem"}
-                                                onChange={(e) => handleBaseTransportChange(dayIndex, e.target.value)}
-                                            />
-                                            Samochód
-                                        </label>
-                                        <label>
-                                            <input
-                                                type="radio"
-                                                name={`transport-base-${dayIndex}`}
-                                                value="czasKomunikacja"
-                                                checked={dayItem.baseActivityStart.selectedTransport === "czasKomunikacja"}
-                                                onChange={(e) => handleBaseTransportChange(dayIndex, e.target.value)}
-                                            />
-                                            Komunikacja
-                                        </label>
-                                        <label>
-                                            <input
-                                                type="radio"
-                                                name={`transport-base-${dayIndex}`}
-                                                value="czasPieszo"
-                                                checked={dayItem.baseActivityStart.selectedTransport === "czasPieszo"}
-                                                onChange={(e) => handleBaseTransportChange(dayIndex, e.target.value)}
-                                            />
-                                            Pieszo
-                                        </label>
-                                    </div>
-                                    {(dayIndex === 0 || dayIndex === aktywnosci.length - 1) && dayItem.hotelActivity && (
-                                        <span>
-                                            {" "}
-                                            - Hotel: {dayItem.hotelActivity.minGodzina} - {dayItem.hotelActivity.godzina}
-                                        </span>
-                                    )}
-                                </div>
-                                {dayItem.dayActivities && dayItem.dayActivities.length > 0 ? (
-                                    dayItem.dayActivities.map((activity, activityIndex) => (
-                                        <div key={activityIndex} style={{ fontSize: '10px', marginLeft: '10px' }}>
-                                            {activity.nazwa}, {activity.adres}, {activity.czasZwiedzania}
-                                            <input
-                                                type="range"
-                                                max="360"
-                                                step="10"
-                                                value={activity.czasZwiedzania}
-                                                onChange={(e) =>
-                                                    handleCzasZwiedzaniaChange(dayIndex, activityIndex, e.target.value)
-                                                }
-                                            />
-                                            <div>
-                                                <label>
-                                                    <input
-                                                        type="radio"
-                                                        name={`transport-${dayIndex}-${activityIndex}`}
-                                                        value="czasAutem"
-                                                        checked={!activity.selectedTransport || activity.selectedTransport === "czasAutem"}
-                                                        onChange={(e) =>
-                                                            handleTransportModeChange(dayIndex, activityIndex, e.target.value)
-                                                        }
-                                                    />
-                                                    Samochód
-                                                </label>
-                                                <label>
-                                                    <input
-                                                        type="radio"
-                                                        name={`transport-${dayIndex}-${activityIndex}`}
-                                                        value="czasKomunikacja"
-                                                        checked={activity.selectedTransport === "czasKomunikacja"}
-                                                        onChange={(e) =>
-                                                            handleTransportModeChange(dayIndex, activityIndex, e.target.value)
-                                                        }
-                                                    />
-                                                    Komunikacja
-                                                </label>
-                                                <label>
-                                                    <input
-                                                        type="radio"
-                                                        name={`transport-${dayIndex}-${activityIndex}`}
-                                                        value="czasPieszo"
-                                                        checked={activity.selectedTransport === "czasPieszo"}
-                                                        onChange={(e) =>
-                                                            handleTransportModeChange(dayIndex, activityIndex, e.target.value)
-                                                        }
-                                                    />
-                                                    Pieszo
-                                                </label>
-                                            </div>
-                                        </div>
-                                    ))
-                                ) : (
-                                    <div style={{ fontSize: '10px', marginLeft: '10px' }}>
-                                        Brak atrakcji dodanych w tym dniu.
-                                    </div>
-                                )}
-                                <div style={{ fontSize: '10px', marginLeft: '10px' }}>
-                                    <em>Koniec:</em> {dayItem.baseActivityEnd.nazwa}, {dayItem.baseActivityEnd.adres}
-                                </div>
-                            </div>
-                        ))
-                    ) : (
-                        "Brak aktywności"
-                    )}
-                </div>
-            </KreatorMainbox>
-        </>
-    );*/
+                },
+            };
+            const powrotStart = {
+                item: {
+                    rodzaj: "uGABUGA",
+                    adres: startLok?.subtitle || "Błąd adresu",
+                    nazwa: startLok?.title || "Błąd adresu",
+                    cenaZwiedzania: "100zl",
+                    czasZwiedzania: 30,
+                    idGoogle: "CBA",
+                    godzinaZameldowania: "15:00",
+                    godzinaWymeldowania: "10:00"
+
+                },
+            };
+            if (wybranyHotel.adres !== "Ładowanie...") {
+                // Usuwamy ewentualne wcześniejsze aktywności z idGoogle "ABCD" z pierwszego dnia (indeks 0) lub dowolnego innego, który Cię interesuje
+                for (let i = 0; i < daysCount; i++) {
+                    removeActivityById(i, "ABCD");
+                    removeActivityById(i, "DCBA");
+                }
+                removeActivityById(0, "ABCD");
+                removeActivityById(daysCount - 1, "DCBA");
+                //removeActivityById(daysCount - 1, "CBA");
+                // Następnie dodajemy nową aktywność
+                if (daysCount > 1) {
+                    dodajAktywnoscD(testMeldowanieHotel, 0);
+                    dodajAktywnoscD(startWymeldowanieHotel, daysCount - 1);
+                    //dodajAktywnoscD(powrotStart, daysCount - 1)
+                }
+
+
+            }
+        }, 500); // Opóźnienie 500 ms // Opóźnienie 500 ms
+
+        // Funkcja czyszcząca
+        return () => clearTimeout(timer);
+    }, [wybranyHotel, startLok]);
+
+
+
     return (
         <>
 
@@ -778,6 +1092,15 @@ export const KreatorWyjazdu = ({ tyt = "Zaplanuj Wasz wyjazd do Poznania!" }) =>
 
                     </div>
                     <div className='SliderContainer-polaWyboru'>
+                        <div className='poleWybor'>
+                            <div className='poleWybor-icon'>
+                                <img height="30px" width="30px" src="../icons/icon-rocket.svg" />
+                            </div>
+                            <div className="poleWybor-picker">
+                                <MapLocationPicker startLoK={startLok} setStartLok={setStartLok} />
+                            </div>
+
+                        </div>
                         <div className='poleWybor'>
                             <div className='poleWybor-icon'>
                                 <img height="30px" width="30px" src="../icons/calendar-svgrepo-com.svg" />
@@ -830,27 +1153,61 @@ export const KreatorWyjazdu = ({ tyt = "Zaplanuj Wasz wyjazd do Poznania!" }) =>
                             </div>
 
                         </div>
-                        <div className='poleWybor'>
-                            <div className='poleWybor-icon'>
-                                <img height="30px" width="30px" src="../icons/filter.svg" />
-                            </div>
-                            <div className="poleWybor-picker">
-                                <TransportSelector />
-                            </div>
 
-                        </div>
 
 
                     </div>
                 </div>
-                <div className='kreatorBottomBox'>
-                    <div className='kreatorBottomBox-left'>
-                        <div className='kreatorBottomBox-title'>
-                            Wybierz aktywność
-                            <ChromeTabs />
-                        </div>
-                        <div className='wynikiAktywnosci'>
-                            {aktywnosciWMiescie && aktywnosciWMiescie.length > 0 ? (
+
+
+
+                <div className='kreatorBottomBoxG'>
+                    <div className='kreatorBottomBox'>
+                        <div className='kreatorBottomBox-left'>
+                            <div className='kreatorBottomBox-title'>
+                                Szybkie dodawanie aktywności
+                                <ChromeTabs wybranaKat={wybranaKat} setWybranaKat={setWybranaKat} />
+                            </div>
+                            <div className='wynikiAktywnosci' style={{ zIndex: '20' }} key={wybranaKat}>
+
+                                {wybranaKat == 1
+                                    ? (
+                                        aktywnosciWMiescie && aktywnosciWMiescie.length > 0
+                                            ? (
+                                                <>
+                                                    {aktywnosciWMiescie.slice(0, visibleCount).map((item, index) => (
+                                                        <WyborPoleAtrakcja
+                                                            key={item.idGoogle || index}
+                                                            atrakcja={item}
+                                                            onClick={() => dodajAktywnosc({ item })}
+                                                        />
+                                                    ))}
+                                                    {visibleCount < aktywnosciWMiescie.length && (
+                                                        <LoadMoreButton onClick={() => setVisibleCount(visibleCount + 20)}>
+                                                            Load More
+                                                        </LoadMoreButton>
+                                                    )}
+                                                </>
+                                            )
+                                            : <Loader />
+                                    )
+                                    : (
+                                        <>
+
+                                            {podstawoweAktywnosci.map(({ item }, idx) => (
+
+                                                <WyborPoleAtrakcja
+                                                    key={item.nazwa || idx}
+                                                    atrakcja={item}
+                                                    onClick={() => dodajAktywnosc({ item })}
+                                                    typ={2}
+                                                />
+                                            ))}
+                                        </>
+                                    )
+                                }
+
+                                {/*aktywnosciWMiescie && aktywnosciWMiescie.length > 0 ? (
                                 <>
                                     {aktywnosciWMiescie.slice(0, visibleCount).map((item, index) => (
                                         <WyborPoleAtrakcja key={item.idGoogle || index} atrakcja={item} onClick={() => dodajAktywnosc({ item })} />
@@ -863,161 +1220,297 @@ export const KreatorWyjazdu = ({ tyt = "Zaplanuj Wasz wyjazd do Poznania!" }) =>
                                 </>
                             ) : (
                                 <div><Loader /></div>
-                            )}
-                        </div>
-
-
-                    </div>
-                    <div className='kreatorBottomBox-right'>
-                        <div className='nawigacja'>
-
-                        </div>
-                        <KreatorMainbox>
-
-                            <div>
-                                <h4>Atrakcje w dniach:</h4>
-                                {aktywnosci && aktywnosci.length > 0 ? (
-                                    aktywnosci.map((dayItem, dayIndex) => (
-                                        <div key={dayIndex} style={{ marginBottom: '10px' }}>
-                                            <strong>Dzień {dayIndex + 1}</strong>
-                                            <div style={{ fontSize: '10px', marginLeft: '10px' }}>
-                                                <em>Start:</em> {dayItem.baseActivityStart.nazwa}, {dayItem.baseActivityStart.adres}
-                                                <div className='wyborTransportuPlan'>
-                                                    <img src="../icons/next-route.svg" style={{ height: '40px', width: '40px', objectFit: 'fill' }} />
-                                                    <div
-                                                        className={dayItem.baseActivityStart.selectedTransport === "czasAutem" ? 'typTransportu chosen' : 'typTransportu'}
-                                                        onClick={() => handleBaseTransportChange(dayIndex, "czasAutem")}
-                                                        style={{ cursor: 'pointer' }}
-                                                    >
-
-                                                        <img src="../icons/icon-private-bus.svg" height={'20px'} />
-                                                        Autokar
-
-                                                    </div>
-
-                                                    <div
-                                                        className={dayItem.baseActivityStart.selectedTransport === "czasKomunikacja" ? 'typTransportu chosen' : 'typTransportu'}
-                                                        onClick={() => handleBaseTransportChange(dayIndex, "czasKomunikacja")}
-                                                        style={{ cursor: 'pointer' }}
-                                                    >
-
-                                                        <img src="../icons/icon-public-trannsport.svg" height={'20px'} />
-                                                        Komunikacja
-                                                    </div>
-
-                                                    <div
-                                                        className={dayItem.baseActivityStart.selectedTransport === "czasPieszo" ? 'typTransportu chosen' : 'typTransportu'}
-                                                        onClick={() => handleBaseTransportChange(dayIndex, "czasPieszo")}
-                                                        style={{ cursor: 'pointer' }}
-                                                    >
-
-                                                        <img src="../icons/icon-walk.svg" height={'20px'} />
-                                                        Pieszo
-                                                    </div>
-                                                </div>
-                                                {(dayIndex === 0 || dayIndex === aktywnosci.length - 1) && dayItem.hotelActivity && (
-                                                    <span>
-                                                        {" "}
-                                                        - Hotel: {dayItem.hotelActivity.minGodzina} - {dayItem.hotelActivity.godzina}
-                                                    </span>
-                                                )}
-                                            </div>
-
-                                            <input type="range"/>
-                                            {dayItem.dayActivities && dayItem.dayActivities.length > 0 ? (
-                                                dayItem.dayActivities.map((activity, activityIndex) => (
-                                                    <div key={activityIndex} style={{ backgroundColor: 'blue', fontSize: '10px', marginLeft: '10px' }}>
-                                                        <div className='aktywnoscPlan'>
-
-                                                            <div className='atrybut'><label>Nazwa <img src="../icons/icon-location.svg" height={'15px'}/></label><a>{activity.nazwa}</a></div>
-                                                            <div className='atrybut'><label>Adres<img src="../icons/icon-location.svg" height={'15px'}/></label><a>{activity.adres}</a></div>
-                                                            <div className='atrybut'><label>Cena biletu<img src="../icons/icon-ticket.svg" height={'15px'}/></label><a>24zł</a></div>
-                                                            <div className='atrybut'><label>Godziny otwarcia<img src="../icons/icon-ticket.svg" height={'15px'}/></label><a>9:00-18:30</a></div>
-
-                                                            <div className='atrybut'><label>Czas trwania<img src="../icons/icon-ticket.svg" height={'15px'}/></label><a><input
-                                                                type="range"
-                                                                max="360"
-                                                                step="10"
-                                                                value={activity.czasZwiedzania}
-                                                                onChange={(e) =>
-                                                                    handleCzasZwiedzaniaChange(dayIndex, activityIndex, e.target.value)
-                                                                }
-                                                            /></a></div>
-                                                            {activity.nazwa}, {activity.adres}, {activity.czasZwiedzania}
-                                                            <input
-                                                                type="range"
-                                                                max="360"
-                                                                step="10"
-                                                                value={activity.czasZwiedzania}
-                                                                onChange={(e) =>
-                                                                    handleCzasZwiedzaniaChange(dayIndex, activityIndex, e.target.value)
-                                                                }
-                                                            />
-                                                        </div>
-
-
-
-                                                        <div className='wyborTransportuPlan'>
-                                                            <img src="../icons/next-route.svg" style={{ height: '40px', width: '40px', objectFit: 'fill' }} />
-
-                                                            <div
-                                                                className={!activity.selectedTransport || activity.selectedTransport === "czasAutem" ? 'typTransportu chosen' : 'typTransportu'}
-                                                                onClick={() => handleTransportModeChange(dayIndex, activityIndex, "czasAutem")}
-                                                                style={{ cursor: 'pointer' }}
-                                                            >
-                                                                <img src="../icons/icon-private-bus.svg" height={'20px'} />
-                                                                Autokar
-                                                            </div>
-
-                                                            <div
-                                                                className={activity.selectedTransport === "czasKomunikacja" ? 'typTransportu chosen' : 'typTransportu'}
-                                                                onClick={() => handleTransportModeChange(dayIndex, activityIndex, "czasKomunikacja")}
-                                                                style={{ cursor: 'pointer' }}
-                                                            >
-                                                                <img src="../icons/icon-public-trannsport.svg" height={'20px'} />
-                                                                Komunikacja
-                                                            </div>
-
-                                                            <div
-                                                                className={activity.selectedTransport === "czasPieszo" ? 'typTransportu chosen' : 'typTransportu'}
-                                                                onClick={() => handleTransportModeChange(dayIndex, activityIndex, "czasPieszo")}
-                                                                style={{ cursor: 'pointer' }}
-                                                            >
-                                                                <img src="../icons/icon-walk.svg" height={'20px'} />
-                                                                Pieszo
-                                                            </div>
-                                                        </div>
-
-                                                    </div>
-                                                ))
-                                            ) : (
-                                                <div style={{ fontSize: '10px', marginLeft: '10px' }}>
-                                                    Brak atrakcji dodanych w tym dniu.
-                                                </div>
-                                            )}
-                                            <div style={{ fontSize: '10px', marginLeft: '10px' }}>
-                                                <em>Koniec:</em> {dayItem.baseActivityEnd.nazwa}, {dayItem.baseActivityEnd.adres}
-                                            </div>
-                                        </div>
-                                    ))
-                                ) : (
-                                    "Brak aktywności"
-                                )}
+                            )*/}
                             </div>
-                        </KreatorMainbox>
+
+
+                        </div>
+
+
+
+
+                        <div className='kreatorBottomBox-right'>
+
+                            <div className='nawigacjaDni'>
+                                <div className='nawButton' onClick={() => setWybranyDzien((wybranyDzien - 1 + daysCount) % daysCount)}>
+                                    <img src="./icons/icon-arrow.svg" style={{ transform: 'rotate(-90deg)', width: '15px', height: '15px' }} />
+                                </div>
+
+                                <div className='nawigacjaDni-dzien'>Wybrany dzień: <span className='liczba'>{wybranyDzien + 1}</span></div>
+
+                                <div className='nawButton' onClick={() => setWybranyDzien((wybranyDzien + 1) % daysCount)}>
+                                    <img src="./icons/icon-arrow.svg" style={{ transform: 'rotate(90deg)', width: '15px', height: '15px' }} />
+                                </div>
+                            </div>
+                            {scheduleLoadingStart
+                                ? <div style={{ width: '100%', textAlign: 'center', padding: '20px' }}><Loader /></div>
+                                : (
+                                    <KreatorMainbox>
+
+                                        <div style={{ width: '100%' }}>
+                                            {aktywnosci && aktywnosci.length > 0 ? (
+                                                (() => {
+                                                    const dayItem = aktywnosci[wybranyDzien];
+                                                    return (
+                                                        <div key={wybranyDzien} style={{ marginBottom: '10px', width: '100%' }}>
+
+
+                                                            <div style={{ fontSize: '10px', marginLeft: '10px' }}>
+                                                                {wybranyDzien === 0
+                                                                    ? <RoutePlan
+
+                                                                        hotel={aktywnosci[wybranyDzien].baseActivityStart}
+                                                                        startValue={godzinyStart[wybranyDzien]}
+                                                                        setGodzinaStart={newMin => {
+                                                                            setGodzinyStart(prev => {
+                                                                                // jeśli user wybrał tę samą wartość co już w state — nic nie rób
+                                                                                if (prev[wybranyDzien] === newMin) return prev;
+                                                                                const arr = [...prev];
+                                                                                arr[wybranyDzien] = newMin;
+                                                                                return arr;
+                                                                            });
+
+                                                                        }}
+                                                                    />
+                                                                    : <HotelPlan
+                                                                        hotel={wybranyHotel}
+                                                                        startValue={godzinyStart[wybranyDzien]}
+                                                                        setGodzinaStart={newMin => {
+                                                                            setGodzinyStart(prev => {
+                                                                                // jeśli user wybrał tę samą wartość co już w state — nic nie rób
+                                                                                if (prev[wybranyDzien] === newMin) return prev;
+                                                                                //if(wybranyDzien == daysCount - 1)return prev;
+                                                                                const arr = [...prev];
+                                                                                arr[wybranyDzien] = newMin;
+                                                                                return arr;
+                                                                            });
+
+                                                                        }}
+                                                                    />
+                                                                }
+                                                                <div className='wyborTransportuPlan'>
+                                                                    <img src="../icons/next-route.svg" style={{ height: '40px', width: '40px', objectFit: 'fill' }} />
+                                                                    <div
+                                                                        className={dayItem.baseActivityStart.selectedTransport === "czasAutem" ? 'typTransportu chosen' : 'typTransportu'}
+                                                                        onClick={() => handleBaseTransportChange(wybranyDzien, "czasAutem")}
+                                                                        style={{ cursor: 'pointer' }}
+                                                                    >
+
+                                                                        <img src="../icons/icon-private-bus.svg" style={{ filter: 'invert(100%)' }} height={'20px'} />
+                                                                        <div>
+                                                                            Autokar
+                                                                            <a style={{ fontSize: '9px' }}>
+                                                                                {(scheduleLoading ||
+                                                                                    !schedule?.[wybranyDzien] ||
+                                                                                    schedule[wybranyDzien].length < 1 ||
+                                                                                    !schedule?.[wybranyDzien]?.[0]?.travelInfo?.czasAutem) ? (
+                                                                                    <span className="blinking"> chwila...</span>
+                                                                                ) : (
+                                                                                    <span> {schedule[wybranyDzien][0].travelInfo.czasAutem}</span>
+                                                                                )}
+                                                                            </a>
+                                                                        </div>
+
+                                                                    </div>
+
+                                                                    <div
+                                                                        className={dayItem.baseActivityStart.selectedTransport === "czasKomunikacja" ? 'typTransportu chosen' : 'typTransportu'}
+                                                                        onClick={() => handleBaseTransportChange(wybranyDzien, "czasKomunikacja")}
+                                                                        style={{ cursor: 'pointer' }}
+                                                                    >
+
+                                                                        <img src="../icons/icon-public-trannsport.svg" style={{ filter: 'invert(100%)' }} height={'20px'} fill={'white'} />
+                                                                        <div>
+                                                                            Komunikacja
+                                                                            <a style={{ fontSize: '9px' }}>
+                                                                                {(scheduleLoading ||
+                                                                                    !schedule?.[wybranyDzien] ||
+                                                                                    schedule[wybranyDzien].length < 1 ||
+                                                                                    !schedule?.[wybranyDzien]?.[0]?.travelInfo?.czasKomunikacja) ? (
+                                                                                    <span className="blinking"> chwila...</span>
+                                                                                ) : (
+                                                                                    <span> {schedule[wybranyDzien][0].travelInfo.czasKomunikacja}</span>
+                                                                                )}
+                                                                            </a>
+                                                                        </div>
+                                                                    </div>
+
+                                                                    <div
+                                                                        className={dayItem.baseActivityStart.selectedTransport === "czasPieszo" ? 'typTransportu chosen' : 'typTransportu'}
+                                                                        onClick={() => handleBaseTransportChange(wybranyDzien, "czasPieszo")}
+                                                                        style={{ cursor: 'pointer' }}
+                                                                    >
+
+                                                                        <img src="../icons/icon-walk.svg" style={{ filter: 'invert(100%)' }} height={'20px'} />
+                                                                        <div>
+                                                                            Pieszo
+                                                                            <a style={{ fontSize: '9px' }}>
+                                                                                {(scheduleLoading ||
+                                                                                    !schedule?.[wybranyDzien] ||
+                                                                                    schedule[wybranyDzien].length < 1 ||
+                                                                                    !schedule?.[wybranyDzien]?.[0]?.travelInfo?.czasPieszo) ? (
+                                                                                    <span className="blinking"> chwila...</span>
+                                                                                ) : (
+                                                                                    <span> {schedule[wybranyDzien][0].travelInfo.czasPieszo}</span>
+                                                                                )}
+                                                                            </a>
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+
+                                                            </div>
+
+                                                            {dayItem.dayActivities && dayItem.dayActivities.length > 0 ? (
+                                                                dayItem.dayActivities.map((activity, activityIndex) => (
+                                                                    <div key={activityIndex} style={{
+                                                                        width: '100%',
+                                                                        fontSize: '10px',
+
+
+
+                                                                    }}>
+                                                                        {activity.idGoogle == "ABCD" || activity.idGoogle == "DCBA" || activity.idGoogle == "CBA" ?
+                                                                            <HotelMeldowanie wybranyDzien={wybranyDzien} dayIndex={wybranyDzien} activityIndex={activityIndex} swapAttractions={swapAttractions} activity={activity} schedule={schedule} handleCzasZwiedzaniaChange={handleCzasZwiedzaniaChange} formatTime={formatTime} scheduleLoading={scheduleLoading} />
+                                                                            : <AktywnoscPlan wybranyDzien={wybranyDzien} dayIndex={wybranyDzien} activityIndex={activityIndex} swapAttractions={swapAttractions} activity={activity} schedule={schedule} handleCzasZwiedzaniaChange={handleCzasZwiedzaniaChange} formatTime={formatTime} scheduleLoading={scheduleLoading} />
+                                                                        }
+
+
+                                                                        <div className='wyborTransportuPlan'>
+                                                                            <img src="../icons/next-route.svg" style={{ height: '40px', width: '40px', objectFit: 'fill' }} />
+
+                                                                            <div
+                                                                                className={!activity.selectedTransport || activity.selectedTransport === "czasAutem" ? 'typTransportu chosen' : 'typTransportu'}
+                                                                                onClick={() => handleTransportModeChange(wybranyDzien, activityIndex, "czasAutem")}
+                                                                                style={{ cursor: 'pointer' }}
+                                                                            >
+                                                                                <img src="../icons/icon-private-bus.svg" style={{ filter: 'invert(100%)' }} height={'20px'} />
+                                                                                <div>
+                                                                                    Autokar
+                                                                                    <a style={{ fontSize: '9px' }}>
+                                                                                        {(scheduleLoading ||
+                                                                                            !schedule?.[wybranyDzien] ||
+                                                                                            schedule[wybranyDzien].length < activityIndex + 1 ||
+                                                                                            !schedule?.[wybranyDzien]?.[activityIndex + 1]?.travelInfo?.czasAutem) ? (
+                                                                                            <span className="blinking"> chwila...</span>
+                                                                                        ) : (
+                                                                                            <span> {schedule[wybranyDzien][activityIndex + 1].travelInfo.czasAutem}</span>
+                                                                                        )}
+                                                                                    </a>
+                                                                                </div>
+                                                                            </div>
+
+                                                                            <div
+                                                                                className={activity.selectedTransport === "czasKomunikacja" ? 'typTransportu chosen' : 'typTransportu'}
+                                                                                onClick={() => handleTransportModeChange(wybranyDzien, activityIndex, "czasKomunikacja")}
+                                                                                style={{ cursor: 'pointer' }}
+                                                                            >
+                                                                                <img src="../icons/icon-public-trannsport.svg" style={{ filter: 'invert(100%)' }} height={'20px'} />
+                                                                                <div>
+                                                                                    Komunikacja
+                                                                                    <a style={{ fontSize: '9px' }}>
+                                                                                        {(scheduleLoading ||
+                                                                                            !schedule?.[wybranyDzien] ||
+                                                                                            schedule[wybranyDzien].length < activityIndex + 1 ||
+                                                                                            !schedule?.[wybranyDzien]?.[activityIndex + 1]?.travelInfo?.czasKomunikacja) ? (
+                                                                                            <span className="blinking"> chwila...</span>
+                                                                                        ) : (
+                                                                                            <span> {schedule[wybranyDzien][activityIndex + 1].travelInfo.czasKomunikacja}</span>
+                                                                                        )}
+                                                                                    </a>
+                                                                                </div>
+                                                                            </div>
+
+                                                                            <div
+                                                                                className={activity.selectedTransport === "czasPieszo" ? 'typTransportu chosen' : 'typTransportu'}
+                                                                                onClick={() => handleTransportModeChange(wybranyDzien, activityIndex, "czasPieszo")}
+                                                                                style={{ cursor: 'pointer' }}
+                                                                            >
+                                                                                <img src="../icons/icon-walk.svg" style={{ filter: 'invert(100%)' }} height={'20px'} />
+                                                                                <div>
+                                                                                    Pieszo
+                                                                                    <a style={{ fontSize: '9px' }}>
+                                                                                        {(scheduleLoading ||
+                                                                                            !schedule?.[wybranyDzien] ||
+                                                                                            schedule[wybranyDzien].length < activityIndex + 1 ||
+                                                                                            !schedule?.[wybranyDzien]?.[activityIndex + 1]?.travelInfo?.czasPieszo) ? (
+                                                                                            <span className="blinking"> chwila...</span>
+                                                                                        ) : (
+                                                                                            <span> {schedule[wybranyDzien][activityIndex + 1].travelInfo.czasPieszo}</span>
+                                                                                        )}
+                                                                                    </a>
+                                                                                </div>
+                                                                            </div>
+                                                                        </div>
+
+
+                                                                    </div>
+
+                                                                ))
+
+                                                            ) : (
+                                                                <div style={{ fontSize: '10px', marginLeft: '10px' }}>
+                                                                    Brak atrakcji dodanych w tym dniu.
+                                                                </div>
+                                                            )}
+                                                            {wybranyDzien != daysCount - 1 ?
+                                                                <HotelPlanEnd
+                                                                    godzinaEnd={
+                                                                        schedule?.[wybranyDzien]
+                                                                            ? schedule[wybranyDzien][schedule[wybranyDzien].length - 1]?.startTime
+                                                                            : "08:00"
+                                                                    }
+                                                                /> :
+                                                                <RoutePlanBack
+
+                                                                    hotel={aktywnosci[daysCount - 1].baseActivityEnd}
+                                                                    startValue={
+                                                                        (scheduleLoading || !schedule[wybranyDzien][schedule[wybranyDzien].length - 1]?.startTime)
+                                                                            ? "chwila..."
+                                                                            : schedule[wybranyDzien][schedule[wybranyDzien].length - 1]?.startTime
+                                                                    }
+                                                                    setGodzinaStart={newMin => {
+                                                                        setGodzinyStart(prev => {
+                                                                            // jeśli user wybrał tę samą wartość co już w state — nic nie rób
+                                                                            if (prev[wybranyDzien] === newMin) return prev;
+                                                                            const arr = [...prev];
+                                                                            arr[wybranyDzien] = newMin;
+                                                                            return arr;
+                                                                        });
+
+                                                                    }}
+                                                                />
+                                                            }
+
+                                                        </div>
+                                                    );
+                                                })()
+                                            ) : (
+                                                "Brak aktywności"
+                                            )}
+                                            <DodawaniePlan onAddActivity={dodajAktywnosc} katP={wybranaKat == 5} key={wybranaKat == 5} />
+                                        </div>
+
+                                    </KreatorMainbox>
+                                )
+                            }
+
+
+
+
+                        </div>
 
 
                     </div>
-
-
                 </div>
 
 
 
             </div>
+            <PodsumowanieKreator key={scheduleLoading} schedule={schedule} aktywnosci={aktywnosci} wait={scheduleLoading}/>
         </>
     )
 };
+
 
 const KreatorMainbox = styled.div`
   display: flex;
@@ -1025,7 +1518,6 @@ const KreatorMainbox = styled.div`
   width: 100%;
   justify-content: flex-start;
   align-items: flex-start;
-  color: red;
 `;
 const LoadMoreButton = styled.button`
   margin: 10px auto;

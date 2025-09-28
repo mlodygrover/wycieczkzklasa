@@ -5,12 +5,13 @@ import { GoogleMap, LoadScript, Marker } from '@react-google-maps/api';
 import { useEffect, useState } from 'react';
 import axios from 'axios';
 import Loader from './loader';
+import { DodajAtrakcjePrzycisk } from './dodawaniePanel';
 const containerStyle = {
     width: '100%',
     height: '100%',
 };
 
-export const MapLoc = ({ aktywnosc }) => {
+export const MapLoc = ({ aktywnosc, onClick }) => {
     const [center, setCenter] = useState({ lat: 52.4064, lng: 16.9252 });
     const [loading, setLoading] = useState(true);
     const miasto = "Poznań";
@@ -98,7 +99,7 @@ export const MapLoc = ({ aktywnosc }) => {
 
 
 export const GoogleLikeCard = ({
-    aktywnosc
+    aktywnosc, onClick
 }) => {
 
     const [zdjecie, setZdjecie] = useState(" ")
@@ -171,9 +172,9 @@ export const GoogleLikeCard = ({
                             <a>Pomoc</a>
                         </div>
                     </div>
-                    <div className='przyciskDodajPlan'>
-                        Dodaj do twojego planu
-                    </div>
+                    
+                    
+                    <DodajAtrakcjePrzycisk onClick={onClick}/>
                     <div className='statsBottom'>
                         <div><p style={{ fontWeight: '600' }}>Adres: </p>  {aktywnosc.adres}</div>
                         <div><p style={{ fontWeight: '600' }}>Czas zwiedzania: </p> {aktywnosc.czasZwiedzania} minut</div>
@@ -192,4 +193,5 @@ const CardContainer = styled.div`
 width: 100%;
 background-color: gray;
 border-radius: 25px;
+z-index: 0;
 `
