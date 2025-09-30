@@ -139,7 +139,7 @@ export const AtrakcjaResultMid = styled.div`
   overflow: hidden;
   font-weight: 300;
   padding-bottom: 20px;
-
+  min-height: fit-content;
   div{
   display: flex;
   align-items: center;
@@ -677,3 +677,4 @@ export const AddActivityPanel = ({ setModAct, modActIdx, dayIndex, closePanel, a
 
     )
 }
+

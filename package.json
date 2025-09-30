@@ -20,6 +20,7 @@
     "framer-motion": "^12.23.12",
     "lodash.debounce": "^4.0.8",
     "mongodb": "^6.15.0",
+    "mongoose": "^8.18.2",
     "p-limit": "^6.2.0",
     "p-queue": "^8.1.1",
     "react": "^19.0.0",

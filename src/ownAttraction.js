@@ -2,7 +2,9 @@ import { useState, useEffect, useRef } from "react"
 import styled from "styled-components"
 import Loader from "./roots/loader"
 import { minutesToStringTime } from "./roots/attractionResults"
-import { SuccessAlert } from "./konfigurator/addActivityPanel"
+import { AtrakcjaResultMid, SuccessAlert } from "./konfigurator/addActivityPanel"
+import LeafletMap from "./roots/googleMapViewer"
+import { StarRating } from "./roots/wyborPoleAtrakcja"
 
 const OwnAttractionMainbox = styled.div`
     width: 100%;
@@ -23,6 +25,7 @@ const OwnAttractionMainbox = styled.div`
     justify-content: center;
     gap: 5px;
     }
+    
 `
 const OwnAttractionTitle = styled.div`
     font-size: 20px;
@@ -59,6 +62,9 @@ const OwnAttractionContent = styled.div`
     justify-content: space-between;
     gap: 5px;
     margin-top: 20px;
+    @media screen and (max-width: 800px){
+        flex-direction: column;
+    }
 
 `
 const OwnAttractionLeft = styled.div`
@@ -78,42 +84,6 @@ const OwnAttractionLeft = styled.div`
         color: #404040;
     
    }
-`
-const OwnAttractionBorder = styled.div`
-    border-left: 0px solid gray;
-`
-const OwnAttractionRight = styled.div`
-    
-    flex: 1;
-    border-left: 2px solid orange;
-    box-shadow: 0px 0px 5px lightgray;
-    border-radius: 2px;
-    display: flex;
-    flex-direction: column;
-    justify-content: flex-start;
-    align-items: flex-start; 
-    padding: 10px;
-    height: fit-content;
-    .ownAttrTitle{
-            
-            font-size: 16px;
-            font-weight: 300;
-            color: #404040;
-        
-    }
-    .emptyResults{
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    width: 100%;
-
-    a{
-        color: #404040;
-        font-weight: 300;
-    }
-
-    }
     .paraInputAttr{
         margin-right: 100px;
         margin-bottom: 5px;
@@ -322,6 +292,266 @@ const OwnAttractionRight = styled.div`
 
         }
     }
+`
+const OwnAttractionBorder = styled.div`
+    border-left: 0px solid gray;
+`
+const OwnAttractionRight = styled.div`
+    
+    flex: 1;
+    border-left: 2px solid orange;
+    box-shadow: 0px 0px 5px lightgray;
+    border-radius: 2px;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    align-items: flex-start; 
+    padding: 10px;
+    height: fit-content;
+    .ownAttrTitle{
+            
+            font-size: 16px;
+            font-weight: 300;
+            color: #404040;
+        
+    }
+    .emptyResults{
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+
+    a{
+        color: #404040;
+        font-weight: 300;
+    }
+
+    }
+    .paraInputAttr{
+        margin-right: 100px;
+        margin-bottom: 5px;
+        width: 100%;
+        min-height: 35px;
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        justify-content: flex-start;
+        gap: 2px;
+        box-sizing: border-box;
+        position: relative;
+
+        .priceWrapper{
+            width: 100%;
+            height: 40px;
+            position: relative;
+            display: inline-block;
+            input{
+                height: 35px;
+                padding-right: 35px;
+            }
+         
+        }
+        .priceWrapperC{
+            display: flex;
+            flex-direction: row;
+            align-items: center;
+            justify-content: flex-start;
+            padding-right: 10px;
+            height: 35px;
+            width: 100%;
+            box-sizing: border-box;
+            height: 40px;
+            border-radius: 5px;
+            font-size: 14px;
+            font-weight: 400;
+            gap: 10px;
+            color: #505050;
+            background-color: #eeeeee;
+            border: 1px solid lightgray;
+            a{
+                width: 70px;
+                font-size: 12px;
+            }   
+            input{
+            
+            border: none;}
+        }
+        .priceWrapper::after {
+            content: "zł";
+            position: absolute;
+            right: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #555;
+            pointer-events: none; /* nie blokuje kliknięć w input */
+            font-size: 12px;
+        }
+        .priceWrapper.b::after {
+            content: "min";
+            
+            
+        }
+        .searchButtonParaInputWrapper{
+            position: absolute;
+            right: 0px;
+            bottom: 0%;
+            height: 35px;
+            width: 45px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+
+            .searchButtonParaInput{
+                height: 25px;
+                width: 35px;
+                background-color: #f49725;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                text-align: center;
+                border-radius: 5px;
+                cursor: pointer;
+                transition: 0.3s ease-in-out;
+                &:hover{
+                    background-color: #e38614;
+                }
+
+            }
+        }
+       
+        input{
+            width: 100%;
+            box-sizing: border-box;
+            outline: none;
+            border: none;
+            height: 35px;
+            border-radius: 5px;
+            padding-left: 10px;
+            font-size: 14px;
+            font-weight: 400;
+            color: #505050;
+            background-color: #eeeeee;
+            border: 1px solid lightgray;
+            
+            &.opened{
+                border-bottom: 0;
+                border-bottom-left-radius: 0;
+                border-bottom-right-radius: 0;
+                  box-shadow: 4px 4px 4px lightgray;
+            }
+
+        }
+        .paraInputTitle{
+            font-size: 14px;
+            font-weight: 400;
+            color: #505050;
+            padding-left: 1px;
+        }
+        .paraInputAttrResults {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            width: 100%;
+            color: #404040;
+            z-index: 999;
+            pointer-events: none;
+            /* początkowy stan */
+            height: 0;
+            min-height: 0;
+            transition: 0.3s ease;   /* animacja */
+
+            /* opcjonalnie: delikatny efekt przesuwania w dół */
+            opacity: 0;
+            background-color:  #eeeeee;
+            box-shadow: 4px 4px 4px lightgray;
+            border: 1px solid lightgray;
+            border-top: 1px;
+            border-bottom-left-radius: 5px;
+            border-bottom-right-radius: 5px;
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            justify-content: flex-start;
+            gap: 2px;
+        }
+        .paraInputAttrResults.b{
+            align-items: stretch;
+            justify-content: center;
+            gap: 15px;
+            padding-top: 5px;
+        }
+
+        .paraInputAttrResults.open {
+            min-height: 500px; /* docelowa wysokość */
+            height: fit-content;
+            opacity: 1;
+            pointer-events: auto; 
+        }
+        .paraInputAttrResults.b.open{
+            min-height: 300px;
+            max-height: 500px;
+            overflow-y: auto;
+            div{
+                flex-shrink: 0;
+            }
+        }
+
+        .searchingAdressResult{
+            width: 98%;
+            height: 40px;
+            background-color: #dadada;
+            border-top-right-radius: 10px;
+            border-bottom-right-radius: 10px;
+            transition: 0.3s ease-in-out;
+            cursor: pointer;
+            display: flex;
+            flex-direction: row;
+            align-items: stretch;
+            justify-content: flex-start;
+            gap: 10px;
+            .resultLeftBorder{
+                width: 5px;
+                transition: 0.3s ease-in-out;
+                border-top-right-radius: 6px;
+                border-bottom-right-radius: 6px;
+                background-color: #d0d0d0;;
+            }
+            &:hover{
+                background-color: #d4d4d4;
+                .resultLeftBorder{
+                    background-color: #f49725;
+
+                }
+            }
+            .resultsRightContent{
+                display: flex;
+                flex: 1;
+                flex-direction: column;
+                align-items: flex-start;
+                justify-content: center;
+                overflow: hidden;
+                
+                .resultRightContentName {
+                    font-size: 15px;
+                    font-weight: 400;
+                    white-space: nowrap;  /* zapobiega zawijaniu tekstu */
+                    overflow: hidden;     /* ukrywa tekst wychodzący poza kontener */
+                    text-overflow: ellipsis; /* opcjonalnie – dodaje "..." na końcu jeśli tekst nie mieści się w divie */
+                    overflow: hidden;
+                }
+                .resultRightContentDesc{
+                     font-size: 13px;
+                     text-wrap: no-wrap;
+                    overflow: hidden;
+                
+                }
+
+            }
+
+        }
+    }
     .addButtonOwn{
         width: 100%;
         border-radius: 5px;
@@ -345,24 +575,35 @@ function maxDoDrugiegoPrzecinka(str) {
 }
 export const OwnAttraction = ({ setModAct, modActIdx, dayIndex, closePanel, addActivity }) => {
     const [searchingAdressValue, setSearchingAdressValue] = useState("");
+    const [searchingLocationValue, setSearchingLocationValue] = useState("");
     const [creatingNameValue, setCreatingNameValue] = useState("");
     const [searchingAdressOpened, setSearchingAdressOpened] = useState(false);
     const [searchingAdressResults, setSearchingAdressResults] = useState([]);
+    const [searchingLocationResults, setSearchingLocationResults] = useState([]);
+    const [searchingLocationOpened, setSearchingLocationOpened] = useState(false);
     const [creatingTime, setCreatingTime] = useState(60)
     const [ownAttraction, setOwnAttracion] = useState({})
     const [creatingPriceValue, setCreatingPriceValue] = useState(0)
     const containerRef = useRef(null);
     const [alerts, setAlerts] = useState([])
     // zamykanie dropdownu po kliknięciu poza nim
+    const locationRef = useRef(null);
+    const addressRef = useRef(null);
+
     useEffect(() => {
         function handleClickOutside(e) {
-            if (containerRef.current && !containerRef.current.contains(e.target)) {
+            if (locationRef.current && !locationRef.current.contains(e.target)) {
+                setSearchingLocationOpened(false);
+            }
+            if (addressRef.current && !addressRef.current.contains(e.target)) {
                 setSearchingAdressOpened(false);
             }
         }
+
         document.addEventListener("mousedown", handleClickOutside);
         return () => document.removeEventListener("mousedown", handleClickOutside);
     }, []);
+
 
     useEffect(() => {
         if (ownAttraction?.adres) {
@@ -412,6 +653,28 @@ export const OwnAttraction = ({ setModAct, modActIdx, dayIndex, closePanel, addA
             console.error("Geocode error:", err);
         }
     };
+    const handleSearchLocation = async () => {
+        console.log("test112", searchingLocationValue)
+        const query = searchingLocationValue.trim();
+        if (!query) {
+            setSearchingLocationResults([]);
+            return;
+        }
+        try {
+            const resp = await fetch(
+                `http://localhost:5006/searchPlaces?query=${encodeURIComponent(query)}`
+            );
+            if (!resp.ok) throw new Error("Błąd serwera");
+            const data = await resp.json();
+            console.log("TEST60", data)
+            setSearchingLocationResults(data);
+        } catch (err) {
+            console.error("Geocode error:", err);
+        }
+    };
+    useEffect(() => {
+        console.log("test17", searchingLocationValue)
+    }, [searchingLocationValue])
 
     function addActivityLocal() {
         if (!ownAttraction?.nazwa || ownAttraction?.nazwa == null) {
@@ -454,7 +717,7 @@ export const OwnAttraction = ({ setModAct, modActIdx, dayIndex, closePanel, addA
             addActivity(dayIndex, modActIdx, ownAttraction);
             closePanel();
         }
-        
+
 
     }
     function deleteAlert(idx) {
@@ -542,11 +805,100 @@ export const OwnAttraction = ({ setModAct, modActIdx, dayIndex, closePanel, addA
             </div>
 
             <OwnAttractionContent>
-                <OwnAttractionLeft>
+                <OwnAttractionRight>
                     <div className="ownAttrTitle">
                         <img src="../icons/fileSearch.svg" height="30px" />
                     </div>
-                </OwnAttractionLeft>
+                    <div className="paraInputAttr" ref={locationRef}>
+                        <div className="paraInputTitle">
+                            Wyszukaj aktywność na mapie
+                        </div>
+                        <input
+                            placeholder="Adres"
+                            className={searchingLocationOpened ? "opened" : ""}
+                            type="text"
+                            value={searchingLocationValue}
+                            onFocus={() => setSearchingLocationOpened(true)}
+                            onChange={(e) => setSearchingLocationValue(e.target.value)}
+
+                            onKeyDown={(e) => {
+                                if (e.key === "Enter") {
+                                    e.preventDefault();
+                                    handleSearchLocation();   // ← wysyłka zapytania po Enter
+                                }
+                            }}
+                        />
+                        <div className="searchButtonParaInputWrapper">
+                            <div className="searchButtonParaInput" onClick={() => handleSearchLocation()}>
+                                <img src="../icons/icon-search.svg" height={'20px'} />
+                            </div>
+                        </div>
+                        <div
+                            className={`paraInputAttrResults b ${searchingLocationOpened ? "open" : ""}`}
+                        >
+
+                            {!searchingLocationResults.length &&
+                                <div className="emptyResults">
+                                    <Loader />
+                                    <a>Wyszukaj adres...</a>
+                                </div>
+                            }
+
+                            {searchingLocationOpened && searchingLocationResults.map((res, idx) => (
+
+
+                                <AtrakcjaResultMid key={res.googleId}>
+                                    <div className="mapBox" style={{ pointerEvents: "none" }}>
+                                        <LeafletMap
+                                            lat={res?.lokalizacja?.lat || 52.5333}
+                                            lng={res?.lokalizacja?.lng || 16.9252}
+                                            zoom={11}
+                                        />
+                                    </div>
+                                    <div className="titleBox">
+                                        <img src="../icons/castle.svg" height="15px" />
+                                        {res.nazwa}
+                                    </div>
+                                    <div className="adresBox">
+                                        <img src="../icons/icon-adres.svg" height="15px" />
+                                        {res.adres}
+                                    </div>
+                                    <div className="ratingBox">
+                                        <StarRating rating={res.ocena} />
+                                        {res.ocena} <a>({res.liczbaOpinie})</a>
+                                    </div>
+                                    <div className="timeBox">
+                                        <img src="../icons/icon-time.svg" height="15px" />
+                                        {res?.czasZwiedzania || "60min"}
+                                    </div>
+                                    <div className="timeBox">
+                                        <img src="../icons/icon-ticket.svg" height="15px" />
+                                        {res?.cenaZwiedzania || "Bezpłatne"}
+                                    </div>
+                                    <div className="buttonsBox">
+                                        <div
+                                            className="operationButton a"
+
+                                        >
+                                            <img src="../icons/icon-plus.svg" height="20px" />
+                                        </div>
+                                        <div
+                                            className="operationButton b"
+                                        >
+                                            <img src="../icons/icon-serce.svg" height="20px" />
+                                        </div>
+                                        <div className="operationButton c">
+                                            <img src="../icons/icon-mark1.svg" height="20px" />
+                                        </div>
+                                    </div>
+                                </AtrakcjaResultMid>
+
+
+                            ))}
+                        </div>
+
+                    </div>
+                </OwnAttractionRight>
 
                 <OwnAttractionBorder />
 
@@ -567,7 +919,7 @@ export const OwnAttraction = ({ setModAct, modActIdx, dayIndex, closePanel, addA
                         />
                     </div>
 
-                    <div className="paraInputAttr" ref={containerRef}>
+                    <div className="paraInputAttr" ref={addressRef}>
                         <div className="paraInputTitle">
                             Adres (wyszukiwanie)
                         </div>
