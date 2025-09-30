@@ -573,7 +573,7 @@ function maxDoDrugiegoPrzecinka(str) {
     const parts = str.split(',');
     return parts.length > 2 ? parts.slice(0, 2).join(',') : str;
 }
-export const OwnAttraction = ({ setModAct, modActIdx, dayIndex, closePanel, addActivity }) => {
+export const OwnAttraction = ({ miejsceDocelowe="Poznan", setModAct, modActIdx, dayIndex, closePanel, addActivity, wybraneMiasto }) => {
     const [searchingAdressValue, setSearchingAdressValue] = useState("");
     const [searchingLocationValue, setSearchingLocationValue] = useState("");
     const [creatingNameValue, setCreatingNameValue] = useState("");
@@ -611,7 +611,6 @@ export const OwnAttraction = ({ setModAct, modActIdx, dayIndex, closePanel, addA
             setSearchingAdressOpened(false)
         }
 
-        console.log("TEST11", ownAttraction)
     }, [ownAttraction])
 
     useEffect(() => {
@@ -654,15 +653,15 @@ export const OwnAttraction = ({ setModAct, modActIdx, dayIndex, closePanel, addA
         }
     };
     const handleSearchLocation = async () => {
-        console.log("test112", searchingLocationValue)
         const query = searchingLocationValue.trim();
         if (!query) {
             setSearchingLocationResults([]);
             return;
         }
+        console.log("TEST20", encodeURIComponent(query + " " + miejsceDocelowe))
         try {
             const resp = await fetch(
-                `http://localhost:5006/searchPlaces?query=${encodeURIComponent(query)}`
+                `http://localhost:5006/searchPlaces?query=${encodeURIComponent(query + " " + miejsceDocelowe)}`
             );
             if (!resp.ok) throw new Error("Błąd serwera");
             const data = await resp.json();
@@ -672,9 +671,7 @@ export const OwnAttraction = ({ setModAct, modActIdx, dayIndex, closePanel, addA
             console.error("Geocode error:", err);
         }
     };
-    useEffect(() => {
-        console.log("test17", searchingLocationValue)
-    }, [searchingLocationValue])
+ 
 
     function addActivityLocal() {
         if (!ownAttraction?.nazwa || ownAttraction?.nazwa == null) {
@@ -730,9 +727,30 @@ export const OwnAttraction = ({ setModAct, modActIdx, dayIndex, closePanel, addA
         }
     }, [searchingAdressValue])
 
-    useEffect(() => {
-        console.log("TEST12", alerts)
-    }, [alerts])
+    
+    async function dodajAtrakcjeDoBazy(atrakcja) {
+        addActivity(dayIndex, atrakcja);
+        try {
+            const response = await fetch("http://localhost:5006/addAttraction", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify(atrakcja),
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                console.error("Błąd przy dodawaniu atrakcji:", data.error);
+                return;
+            }
+
+            console.log("Atrakcja dodana pomyślnie:", data.attraction);
+        } catch (err) {
+            console.error("Błąd sieci:", err);
+        }
+    }
     return (
         <OwnAttractionMainbox>
             <div className="alertsBox">
@@ -840,7 +858,7 @@ export const OwnAttraction = ({ setModAct, modActIdx, dayIndex, closePanel, addA
                             {!searchingLocationResults.length &&
                                 <div className="emptyResults">
                                     <Loader />
-                                    <a>Wyszukaj adres...</a>
+                                    <a>Wyszukaj aktywność</a>
                                 </div>
                             }
 
@@ -878,7 +896,7 @@ export const OwnAttraction = ({ setModAct, modActIdx, dayIndex, closePanel, addA
                                     <div className="buttonsBox">
                                         <div
                                             className="operationButton a"
-
+                                            onClick={() => dodajAtrakcjeDoBazy(res)}
                                         >
                                             <img src="../icons/icon-plus.svg" height="20px" />
                                         </div>

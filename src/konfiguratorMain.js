@@ -32,125 +32,184 @@ const KonfiguratorMainMainbox = styled.div`
     min-height: 1000px;
     display: flex;
     flex-direction: row;
-    aling-items: center;
+    aling-items: stretch;
     justify-content: flex-start;
     position: relative;
-
+    margin-top: 20px;
 `
-const KonfiguratorMainMainboxLeft = styled.div.withConfig({
-    shouldForwardProp: (prop) => prop !== "leftOpened"
-})`
+const KonfiguratorMainMainboxLeft = styled.div`
 
-  
-  width: ${props => (props.leftOpened ? "350px" : "46px")};
-
-  max-width: 95%;
-  height: 100%;
-    
-  box-shadow: ${props => (props.leftOpened ? "0px 0px 6px lightgray;" : "6px 6px 6px lightgray;")};
-  background-color: ${props => (props.leftOpened ? "#f6f6f6" : "")};
-  transition: width 0.3s ease-in-out;
-  display: flex;
-  flex-direction: row;
-  justify-content: flex-start;
-  align-items: flex-start;
-  overflow: hidden;
-
-  position: absolute;
-  top: 0;
-  left: 0;
-  padding-right: ${props => (props.leftOpened ? "10px" : "0")};
-    z-index:9998;
-  .leftBoxContent{
-        flex: 1;
-        min-height: 100px;
-        display: ${props => (props.leftOpened ? "flex" : "none")};
-        flex-direction: column;
+    width: 300px;
+    border-right: 1px solid lightgray;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    align-items: center;
+    overflow-y: auto;
+    @media screen and (max-width: 800px){
+        display: none;
+    }
+    .mainboxLeftTitle{
+        width: 90%;
+        display: flex;
         align-items: flex-start;
         justify-content: flex-start;
-        gap: 10px;
-        .leftBoxButtons{
+        padding: 10px 0;
+        font-size: 18px;
+        font-weight: 400;
+       
+    }  
+    .mainboxLeftInput{
+        width: 90%;
+        height: 35px;
+        background-color: #f6f6f6;
+        border-radius: 10px;
+        display: flex;
+        flex-direction: row;
+        align-items: stretch;
+        justify-content: flex-start;
+        padding-left: 10px;
+        input{
+            box-sizing: border-box;
+            flex: 1;
+            height: 100%;
+            border: none;
+            background-color: transparent;
+            outline: none;
+            padding-left: 10px;
+            color: #606060;
+            
+        }
+    }  
+    
+`;
+const AttractionResultMedium = styled.div`
+    width: 90%;
+    max-width: 300px;
+    min-height: 200px;
+    background-color: #fbfbfb;
+    border-radius: 15px;
+    border: 1px solid lightgray;
+    margin-top: 10px;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    justify-content: flex-start;
+    .attractionResultMediumTitleBox{
+        margin-top:  5px;
+        width: 100%;
+        min-height: 50px;
+        display: flex;
+        flex-direction: row;
+        align-items: stretch;
+        justify-content: flex-start;
+        .titleIconBox{
+            width: 50px;
             display: flex;
-            flex-direction: row;
-            margin-left: 20px;
-            border-radius: 5px;
-            gap: 10px;
+            align-items: center;
+            justify-content: center;
+        
+        }
+        .titleTextBox{
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            justify-content: center;
+            padding: 10px 0;
+            .attractionResultMediumTitle{
+                font-size: 16px;
+                width: 100%;
+                text-align: left;
+                font-family: Inter, system-ui, -apple-system, sans-serif;
+            }
+            .attractionResultMediumSubtitle{
+                font-size: 12px;
+                color: #606060;
+                font-weight: 300;
+                text-align: left;
+            }
         }
         
+    }
+    .attractionResultMediumDetails{
+        flex: 1;
+        width: 90%;
+        box-sizing: border-box;
+        margin: 10px auto;
+        display: flex;
+        flex-direction: column;
+        justify-content: flex-start;
+        align-items: stretch;
+        .attractionResultMediumDetailRow{
+            width: 100%;
+            height: 30px;
+            display: flex;
+            flex-direction: row;
+            align-items: center;
+            justify-content: space-between;
+            color: #505050;
+            font-size: 12px;
+            font-weight: 400;
+            .detailRowElement{
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                gap: 5px;
+                span{
+                    font-size: 11px;
+                }
+                &.b{
+                    border: 1px solid lightgray;   
+                    padding: 2px 4px;
+                    border-radius: 999px; 
+                    background-color: #f4f4f4;
+                    cursor: pointer;
+                    transition: 0.3s ease-in-out;
+                    a{
+                        text-decoration: none;
+                        color: inherit;
+                    }
+                    &:hover{
+                        background-color: #e0e0e0;
+                    }
+                }
+                &.c{
+                    margin-top: 10px;
+                    padding: 2px 6px;
+                    border-radius: 999px; 
+                    border: 1px solid #008d73ff;
+                    background-color: #cfffe4ff;
+                    color: black;
+                    font-weight: 400;
+                   
+                }
+            }
+        }
 
     }
-
-  .leftBoxResults{
-    width: 90%;
-    height: 100%;
-    margin-left: 20px;
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    justify-content: flex-start;
-    gap: 5px;
-  }
-  .leftBoxTitle{
-    height: 30px;
-    font-size: 20px;
-    font-weight: 300;
-    padding: 20px;
-    color: #606060;
-    padding-bottom: 5px;
-    border-bottom: 1px solid gray;
-    white-space: nowrap;       /* nie zawija tekstu */
-  overflow: hidden;          /* ukrywa nadmiarowy tekst */
-  text-overflow: ellipsis; 
-  margin-left: 20px;
-  }
-  .imgBox{
-    padding: 3px;
-    width: 40px;
-    height: 100%;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: flex-start;
-    margin-right: auto;
-    padding-top: 100px;
-    transition: 0.3s ease-in-out;
-    cursor: pointer;
-    border-radius: 4px;
-    gap: 10px;
-    flex-shrink: 0;
-    
-    .arrow{
-    transform: ${props => (props.leftOpened ? "rotate(0deg)" : "rotate(180deg)")};
-    transition: 0.3s ease-in-out;
-
-    }
-    .imgBoxTekst {
-
-        writing-mode: vertical-rl;   /* pionowy układ */
-        text-orientation: mixed;     /* pozwala literom się obracać */
-        transform: rotate(180deg);   /* odwraca kierunek (z góry–dół na dół–góra) */
-        width: 100%;
+    .attractionResultMediumAddBox{
+        height: 30px;
+        width: 90%;
+        background-color: #008d73ff;
+        margin: 10px auto;
+        box-sizing: border-box;
+        border-radius: 5px;
+        color: white;
         display: flex;
         align-items: center;
         justify-content: center;
         text-align: center;
-        font-size: 12px;
-        font-weight: 300;
-
-    }
-
-    &:hover{
-        background-color: #fafafa;
-        /*box-shadow: ${props => (props.leftOpened ? "0px 0px 6px lightgray;" : "0px 0px 6px lightgray;")};*/
+        font-size: 14px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: 0.3s ease-in-out;
+        &:hover{
+            background-color: #007a61ff;
+        }
     }
     
-  }
-
-  @media screen and (max-width: 800px){
-    display: none;
-  }
-`;
-
+`
 
 const KonfiguratorMainMainboxRight = styled.div`
     flex: 1;
@@ -158,6 +217,10 @@ const KonfiguratorMainMainboxRight = styled.div`
     display: flex;
     align-items: center;
     justify-content: center;
+    padding-right: 300px;
+    @media screen and (max-width: 1000px){
+        padding-right: 0;
+    }
 `
 
 export const KonfiguratorRadioButton = styled.div`
@@ -374,6 +437,8 @@ export const KonfiguratorMain = ({ dataPrzyjazduInit, dataWyjazduInit, standardH
     const [leftOpened, setLeftOpened] = useState(false)
     const [radioChosen, setRadioChosen] = useState(0)
 
+    const [attractionsSearching, setAttractionsSearching] = useState("");
+
     const [miejsceDoceloweSearching, setMiejsceDoceloweSearching] = useState("");
     const [miejsceDoceloweResults, setMiejsceDoceloweResults] = useState(testResults)
     const [miejsceDoceloweHovering, setMiejsceDoceloweHovering] = useState(false);
@@ -516,7 +581,7 @@ export const KonfiguratorMain = ({ dataPrzyjazduInit, dataWyjazduInit, standardH
     }
 
     useEffect(() => {
-        if(lastDaySwap == 1){
+        if (lastDaySwap == 1) {
             changeStartHour(activitiesSchedule.lentgh - 1, 480)
         }
         lastDaySwap > -1 && swapActivities(activitiesSchedule.length - 1, 1, lastDaySwap);
@@ -841,7 +906,7 @@ export const KonfiguratorMain = ({ dataPrzyjazduInit, dataWyjazduInit, standardH
         );
     }
     function swapActivities(dayIndex, act1, act2) {
-        if (act1 == 0 || act2 == 0 || act1 == activitiesSchedule[wybranyDzien].length -1 || act2 == activitiesSchedule[wybranyDzien].length -1) return;
+        if (act1 == 0 || act2 == 0 || act1 == activitiesSchedule[wybranyDzien].length - 1 || act2 == activitiesSchedule[wybranyDzien].length - 1) return;
         // utwórz kopię całego harmonogramu
         const tmpActivities = activitiesSchedule.map(day => [...day]);
 
@@ -869,7 +934,7 @@ export const KonfiguratorMain = ({ dataPrzyjazduInit, dataWyjazduInit, standardH
         );
     }
     function changeStartHour(dayIdx, startTime) {
-        if(startTime < 0)return;
+        if (startTime < 0) return;
         console.log("test121", startTime)
         dayIdx != activitiesSchedule.length - 1 && setStartHours(prev => {
             const tmpHours = [...prev]; // tworzymy kopię poprzedniego stanu
@@ -1158,54 +1223,77 @@ export const KonfiguratorMain = ({ dataPrzyjazduInit, dataWyjazduInit, standardH
             </KonfiguratorMainSettings>
 
             <KonfiguratorMainMainbox>
-                <KonfiguratorMainMainboxLeft leftOpened={leftOpened}>
-                    <div className="imgBox" onClick={() => setLeftOpened(!leftOpened)}>
-                        {leftOpened ? <img className="arrow" src="../icons/left-black.svg" height={'20px'} /> : <img className="arrow" src="../icons/left-black.svg" height={'20px'} />}
-                        <div className="imgBoxTekst">Szybkie dodawanie</div>
-                        <img src={"../icons/fast.svg"} width={'20px'} style={{ transform: 'rotate(270deg)' }} />
+                <KonfiguratorMainMainboxLeft>
+                    <div className="mainboxLeftTitle">
+                        Biblioteka atrakcji
+
                     </div>
-                    <div className="leftBoxContent">
-                        <div className="leftBoxTitle">
-                            Dodawanie aktywności
+                    <div className="mainboxLeftInput">
+                        <img src="../icons/search-gray.svg" width={'20px'} />
+                        <input type="text" placeholder="Wyszukaj atrakcje..." value={attractionsSearching} onChange={(e) => setAttractionsSearching(e.target.value)}/>
+                    </div>
+                    <>
+                    {
+                        atrakcje
+                            .filter(atrakcja => atrakcja.nazwa.toLowerCase().includes(attractionsSearching.toLowerCase()) || atrakcja.adres.toLowerCase().includes(attractionsSearching.toLowerCase()))
+                            .toSorted((a, b) => (b.liczbaOpinie || 0) - (a.liczbaOpinie || 0))
+                            .map((atrakcja, idx) => (
+                                <AttractionResultMedium key={atrakcja.googleId + "bok"}>
+                                    <div className="attractionResultMediumTitleBox">
+                                        <div className="titleIconBox">
+                                            <img src="../icons/color-castle.svg" width="20px" />
+                                        </div>
+                                        <div className="titleTextBox">
+                                            <div className="attractionResultMediumTitle">
+                                                {atrakcja.nazwa}
+                                            </div>
+                                            <div className="attractionResultMediumSubtitle">
+                                                {atrakcja.adres}
+                                            </div>
+                                        </div>
+                                    </div>
 
-                        </div>
-                        <div className="leftBoxButtons">
-                            <KonfiguratorRadioButton className={radioChosen == 0 ? "chosen" : ""} onClick={() => setRadioChosen(0)}>
-                                <img src={"../icons/castle.svg"} width={'30px'} />
-                            </KonfiguratorRadioButton>
-                            <KonfiguratorRadioButton className={radioChosen == 1 ? "chosen" : ""} onClick={() => setRadioChosen(1)}>
-                                <img src={"../icons/park.svg"} width={'30px'} />
-                            </KonfiguratorRadioButton >
-                            <KonfiguratorRadioButton className={radioChosen == 2 ? "chosen" : ""} onClick={() => setRadioChosen(2)}>
-                                <img src={"../icons/serce.svg"} width={'30px'} />
-                            </KonfiguratorRadioButton>
-                            <KonfiguratorRadioButton className={radioChosen == 3 ? "chosen" : ""} onClick={() => setRadioChosen(3)}>
-                                <img src={"../icons/gears-white.svg"} width={'30px'} />
-                            </KonfiguratorRadioButton>
+                                    <div className="attractionResultMediumDetails">
+                                        <div className="attractionResultMediumDetailRow">
+                                            <div className="detailRowElement">
+                                                <img src="../icons/icon-time.svg" width="20px" />{" "}
+                                                {atrakcja.czasZwiedzania || "1h 30min"}
+                                            </div>
+                                            <div className="detailRowElement">
+                                                <img src="../icons/icon-ticket.svg" width="20px" />{" "}
+                                                {atrakcja.cenaZwiedzania || "10zl/os"}
+                                            </div>
+                                        </div>
+                                        <div className="attractionResultMediumDetailRow">
+                                            <div className="detailRowElement">
+                                                <img src="../icons/icon-stars.svg" width="20px" /> {atrakcja.ocena}{" "}
+                                                <span>({atrakcja.liczbaOpinie})</span>
+                                            </div>
+                                            <div className="detailRowElement b">
+                                                <img src="../icons/link.svg" width="20px" />{" "}
+                                                <a href={atrakcja?.stronaInternetowa} target="_blank" rel="noreferrer">
+                                                    Witryna
+                                                </a>
+                                            </div>
+                                        </div>
+                                        <div className="attractionResultMediumDetailRow">
+                                            <div className="detailRowElement c">
+                                                <img src="../icons/success.svg" width="20px" /> Dostępne z przewodnikiem
+                                            </div>
+                                        </div>
+                                    </div>
 
-                        </div>
-                        <div className="leftBoxResults">
-                            {
-                                atrakcje.map((atrakcja, atrIdx) => (
-                                    <AttractionResultSmall
-                                        key={atrakcja.googleId || atrIdx}
-                                        attraction={{
-                                            nazwa: atrakcja.nazwa,
-                                            idGoogle: atrakcja.googleId,
-                                            adres: atrakcja.adres,
-                                            czasZwiedzania: null,
-                                            cenaZwiedzania: null,
-                                        }}
+                                    <div
+                                        className="attractionResultMediumAddBox"
                                         onClick={() => addActivity(wybranyDzien, atrakcja)}
-                                        wybranyDzien={wybranyDzien}
-                                    />
-                                ))
+                                    >
+                                        + Dodaj do dnia
+                                    </div>
+                                </AttractionResultMedium>
+                            ))
 
-                            }
-
-                        </div>
-
-                    </div>
+                    }
+                    </>
                 </KonfiguratorMainMainboxLeft>
 
                 {/*
@@ -1224,7 +1312,7 @@ export const KonfiguratorMain = ({ dataPrzyjazduInit, dataWyjazduInit, standardH
                     {activityPanelOpened &&
                         <AddAttractionWrapper>
                             <AddActivityPanelContainer>
-                                <AddActivityPanel key={`${modyfikacja}`} setModAct={setModyfikacja} dayIndex={wybranyDzien} closePanel={() => setActivityPanelOpened(false)} modActIdx={modyfikacja.flag ? modyfikacja.idx : null} addActivity={modyfikacja.flag ? changeActivity : addActivity} />
+                                <AddActivityPanel key={`${modyfikacja}`} setModAct={setModyfikacja} dayIndex={wybranyDzien} closePanel={() => setActivityPanelOpened(false)} miejsceDocelowe={miejsceDocelowe.nazwa} modActIdx={modyfikacja.flag ? modyfikacja.idx : null} addActivity={modyfikacja.flag ? changeActivity : addActivity} />
                             </AddActivityPanelContainer>
                         </AddAttractionWrapper>
                     }

@@ -369,7 +369,7 @@ const DataWyborMainbox = styled.div`
     input{
         width: 300px;
         height: 40px;
-        font-family: 'Roboto', sans-serif;
+        font-family: Inter, system-ui, -apple-system, sans-serif;
         font-weight: 300;
         padding: 0px 10px;
         border-radius: 15px;

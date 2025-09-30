@@ -352,7 +352,7 @@ const PanelBoxFilter = styled.div`
     
 `
 
-export const AddActivityPanel = ({ setModAct, modActIdx, dayIndex, closePanel, addActivity }) => {
+export const AddActivityPanel = ({ miejsceDocelowe, setModAct, modActIdx, dayIndex, closePanel, addActivity }) => {
 
     const [openedLocal, setOpenedLocal] = useState(false)
     const [atrakcje, setAtrakcje] = useState([])
@@ -670,7 +670,7 @@ export const AddActivityPanel = ({ setModAct, modActIdx, dayIndex, closePanel, a
                     ))}
                 </PanelBoxContent>
                 <PanelBoxContent hidden={radioChosen !== 3}>
-                    <OwnAttraction setModAct={setModAct} modActIdx={modActIdx} dayIndex={dayIndex} closePanel={closePanel} addActivity={addActivity} />
+                    <OwnAttraction miejsceDocelowe={miejsceDocelowe} setModAct={setModAct} modActIdx={modActIdx} dayIndex={dayIndex} closePanel={closePanel} addActivity={addActivity} />
                 </PanelBoxContent>
             </AddActivityPanelBox>
         </AddActivityPanelMainbox>

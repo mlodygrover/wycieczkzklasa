@@ -18,21 +18,36 @@ const KonfiguratorWyjazduCompMainbox = styled.div`
     @media screen and (max-width: 800px){
     width: 100%;
     }
+    .konifuguratorMainboxTitle{
+        font-size: 24px;
+        font-weight: 500;
+        font-family: Inter, system-ui, -apple-system, sans-serif;
+        width: 100%;
+        margin: 0 auto;
+        text-align: left;
+        padding-bottom: 10px;
+        border-bottom: 1px solid lightgray;
+        margin-bottom: 10px;
+        @media screen and (max-width: 800px){
+            padding-left: 5px;
+        }
+    }
     
    
 `
 const KonfiguratorNavBar = styled.div`
     height: 30px;
-    width: 90%;
+    width: 100%;
     display: flex;
     flex-direction: row;
     align-items: center;
     justify-content: flex-start;
-    padding-left: 30px;
+    border-radius: 999px;
     gap: 5px;
-    background-color: white;
+    background-color: #f6f6f6;
+    padding: 5px;
     @media screen and (max-width: 800px){
-        padding: 0;
+       
         a{
             display: none;
         }
@@ -44,12 +59,15 @@ const NavBarButton = styled.div`
     align-items: center;
     justify-content: center;
     font-size: 10px;
-    font-weight: 300;
+    font-weight: 500;
+    font-family: Inter, system-ui, -apple-system, sans-serif;
     flex: 1;
     max-width: 120px;
     height: 100%;
-    border-top: ${props => props.wybranyDzien == props.i ? "2px solid orange" : "2px solid lightgray"};
-    background-color: ${props => props.wybranyDzien == props.i ? "#fbfbfb" : "#white"};
+    border-radius: 999px;
+    transition: 0.3s ease-in-out;
+    color: ${props => props.wybranydzien == props.i ? "white" : "black"};
+    background-color: ${props => props.wybranydzien == props.i ? "#008d73ff" : "inherit"};
     margin-top: 1px;
     cursor: pointer;
 
@@ -62,7 +80,6 @@ const NavBarButton = styled.div`
 const KonfiguratorWyjazduBottom = styled.div`
     width: 100%;
     flex: 1;
-    background-color: #fbfbfb;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -133,9 +150,12 @@ export const KonfiguratorWyjazduComp = ({ changeStartHour, deleteActivity, start
 
     return (
         <KonfiguratorWyjazduCompMainbox>
+            <div className="konifuguratorMainboxTitle">
+                Plan dnia
+            </div>
             <KonfiguratorNavBar>
                 {Array.from({ length: liczbaDni }, (_, i) => (
-                    <NavBarButton key={i} onClick={() => setWybranyDzien(i)} i={i} wybranyDzien={wybranyDzien}>
+                    <NavBarButton key={i} onClick={() => setWybranyDzien(i)} i={i} wybranydzien={wybranyDzien}>
                         {/* tutaj ewentualna zawartość przycisku */}
                         <a>{liczbaDni < 14 ? "Dzień" : ""}</a> <span>{i + 1}</span>
                     </NavBarButton>
