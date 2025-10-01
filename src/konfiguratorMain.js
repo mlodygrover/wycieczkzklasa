@@ -268,7 +268,7 @@ const SettingsButton = styled.div`
     height: 50px;
     position: relative;
     cursor: pointer;
-    border-bottom: 2px solid #F49725;
+    border-bottom: 3px solid lightgray;
     transition: 0.3s ease-in-out;
     display: flex;
     align-items: center;
@@ -277,18 +277,16 @@ const SettingsButton = styled.div`
     padding: 2px 5px;
     font-weight: 300;
     gap: 2px;
-    padding-bottom: 7px;
-    &:hover{
-        padding-bottom: 5px;
-        border-bottom: 4px solid #e38614;
+    &:hover, &.chosen{
+        border-bottom: 3px solid #008d73ff;
     }
 
     @media screen and (max-width: 1100px){
         border-bottom: none;
-        border-left: 2px solid #F49725;
+        border-left: 2px solid lightgray;
         &:hover{
         border-bottom: none;
-        border-left: 4px solid #e38614;
+        border-left: 2px solid #008d73ff;
     }
         
     }
@@ -1119,7 +1117,7 @@ export const KonfiguratorMain = ({ dataPrzyjazduInit, dataWyjazduInit, standardH
                 <div className="iconEditBox" onClick={() => setSettingsOpened(!settingsOpened)}>
                     <img src="../icons/filter.svg" height={'60%'} />
                 </div>
-                <SettingsButton onClick={() => { setMiejsceDocelowePopupOpened(!miejsceDocelowePopupOpened); setOffOthers(0) }}>
+                <SettingsButton onClick={() => { setMiejsceDocelowePopupOpened(!miejsceDocelowePopupOpened); setOffOthers(0) }} className={miejsceDocelowePopupOpened ? "chosen" : ""}>
 
                     <img height="30px" width="30px" src="../icons/icon-rocket.svg" />
                     Miejsce początkowe:<span>{miejsceDocelowe ? miejsceDocelowe.nazwa : "..."} </span>
@@ -1170,7 +1168,7 @@ export const KonfiguratorMain = ({ dataPrzyjazduInit, dataWyjazduInit, standardH
                     </div>}
                 </SettingsButton>
 
-                <SettingsButton onClick={() => { setWyborDatyOpened(!wyborDatyOpened); setOffOthers(1) }}>
+                <SettingsButton className={wyborDatyOpened ? "chosen" : ""} onClick={() => { setWyborDatyOpened(!wyborDatyOpened); setOffOthers(1) }}>
 
                     <img height="30px" width="30px" src="../icons/calendar-svgrepo-com.svg" />
                     {formatDate(dataPrzyjazdu || "")} - {formatDate(dataWyjazdu || "")}
@@ -1179,7 +1177,7 @@ export const KonfiguratorMain = ({ dataPrzyjazduInit, dataWyjazduInit, standardH
                     </div>}
                 </SettingsButton>
 
-                <SettingsButton onClick={() => { setWyborGosciOpened(!wyborGosciOpened); setOffOthers(2) }}>
+                <SettingsButton className={wyborDatyOpened ? "chosen" : ""} onClick={() => { setWyborGosciOpened(!wyborGosciOpened); setOffOthers(2) }}>
 
                     <img height="30px" width="30px" src="../icons/users.svg" />
                     {liczbaUczestnikow} uczestników, {liczbaOpiekunów} opiekunów
@@ -1189,7 +1187,7 @@ export const KonfiguratorMain = ({ dataPrzyjazduInit, dataWyjazduInit, standardH
                     </div>}
 
                 </SettingsButton>
-                <SettingsButton onClick={() => { setWyborStandardHoteluOpened(!wyborStandardHoteluOpened); setOffOthers(3) }}>
+                <SettingsButton className={wyborStandardHoteluOpened ? "chosen" : ""} onClick={() => { setWyborStandardHoteluOpened(!wyborStandardHoteluOpened); setOffOthers(3) }}>
 
                     <img height="30px" width="30px" src="../icons/icon-hotel.svg" />
                     Standard hotelu : {standardHotelu || "..."}
@@ -1202,7 +1200,7 @@ export const KonfiguratorMain = ({ dataPrzyjazduInit, dataWyjazduInit, standardH
                         />
                     </div>}
                 </SettingsButton>
-                <SettingsButton onClick={() => { setWyborStandardTransportuOpened(!wyborStandardTransportuOpened); setOffOthers(4) }}>
+                <SettingsButton className={wyborStandardTransportuOpened ? "chosen" : ""} onClick={() => { setWyborStandardTransportuOpened(!wyborStandardTransportuOpened); setOffOthers(4) }}>
 
                     <img height="30px" width="30px" src="../icons/icon-transport.svg" />
                     Preferowany transport: {standardTransportu || "..."}
