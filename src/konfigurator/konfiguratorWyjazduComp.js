@@ -62,7 +62,6 @@ const NavBarButton = styled.div`
     font-weight: 500;
     font-family: Inter, system-ui, -apple-system, sans-serif;
     flex: 1;
-    max-width: 120px;
     height: 100%;
     border-radius: 999px;
     transition: 0.3s ease-in-out;

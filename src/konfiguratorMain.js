@@ -15,6 +15,7 @@ import { WyborUczestnikow } from "./konfigurator/wyborUczestnikow";
 import Radio1 from "./roots/radio1";
 import { KonfiguratorWyjazduComp, roznicaDni } from "./konfigurator/konfiguratorWyjazduComp";
 import { AddActivityPanel } from "./konfigurator/addActivityPanel";
+import RouteMap from "./routeMap";
 
 const testResults = [
     { nazwa: "Poznań", region: "Wielkopolska", kraj: "Polska" },
@@ -41,6 +42,10 @@ const KonfiguratorMainMainboxLeft = styled.div`
 
     width: 300px;
     border-right: 1px solid lightgray;
+    &.right{
+        border-right: none;
+        border-left: 1px solid lightgray;
+    }
     display: flex;
     flex-direction: column;
     justify-content: flex-start;
@@ -217,10 +222,7 @@ const KonfiguratorMainMainboxRight = styled.div`
     display: flex;
     align-items: center;
     justify-content: center;
-    padding-right: 300px;
-    @media screen and (max-width: 1000px){
-        padding-right: 0;
-    }
+    
 `
 
 export const KonfiguratorRadioButton = styled.div`
@@ -313,6 +315,7 @@ const KonfiguratorMainSettings = styled.div`
     width: 100%;
     min-height: 80px;
     background-color: #f6f6f6;
+    border-bottom: 1px solid lightgray;
     display: flex;
     flex-direction: row;
     align-items: center;
@@ -379,6 +382,40 @@ const AddActivityPanelContainer = styled.div`
   
 `;
 
+const SummaryInfoBox = styled.div`
+    background: linear-gradient(90deg, #008d73ff 0%, #22af95ff 100%);
+    width: 90%;
+    min-height: 100px;
+    border-radius: 15px;
+    margin-top: 10px;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    justify-content: flex-start;
+    color: white;
+    padding: 15px 5px;
+    box-sizing: border-box;
+    .summaryInfoBoxTitle{
+        margin: 0 auto;
+        margin-bottom: 5px;
+        font-size: 24px;
+        width: 90%;
+        text-align: left;
+        font-family: Inter, system-ui, -apple-system, sans-serif;
+        font-weight: 500;
+        display: flex;
+        align-items: center;
+        justify-content: flex-start;
+        gap: 10px;
+        &.b{
+            margin: 0 auto;
+            font-size: 14px;
+            font-weight: 400;
+            margin-bottom: 5px;
+        }
+    }
+
+`
 //inputpairb
 //inputpairb
 //inputpairb
@@ -577,7 +614,9 @@ export const KonfiguratorMain = ({ dataPrzyjazduInit, dataWyjazduInit, standardH
 
         return true;
     }
-
+    useEffect(() => {
+        console.log("TEST5", miejsceDocelowe, miejsceStartowe)
+    }, [miejsceDocelowe, miejsceStartowe])
     useEffect(() => {
         if (lastDaySwap == 1) {
             changeStartHour(activitiesSchedule.lentgh - 1, 480)
@@ -668,8 +707,8 @@ export const KonfiguratorMain = ({ dataPrzyjazduInit, dataWyjazduInit, standardH
                                 adres: "",
                                 czasZwiedzania: 0,
                                 lokalizacja: {
-                                    lat: 52,
-                                    lng: 16
+                                    lat: 52.40567859999999,
+                                    lng: 16.9312766
                                 }
                             },
                             ...tab[i]
@@ -681,7 +720,10 @@ export const KonfiguratorMain = ({ dataPrzyjazduInit, dataWyjazduInit, standardH
                                 nazwa: "Zameldowanie w miejscu noclegu",
                                 adres: "",
                                 czasZwiedzania: 30,
-                                lokalizacja: { lat: 52, lng: 16 }
+                                lokalizacja: {
+                                    lat: 52.40567859999999,
+                                    lng: 16.9312766
+                                }
                             },
                             ...tab[i],
 
@@ -697,8 +739,8 @@ export const KonfiguratorMain = ({ dataPrzyjazduInit, dataWyjazduInit, standardH
                                 adres: "",
                                 czasZwiedzania: 0,
                                 lokalizacja: {
-                                    lat: 52,
-                                    lng: 16
+                                    lat: 52.40567859999999,
+                                    lng: 16.9312766
                                 }
                             },
                             ...tab[i]
@@ -716,7 +758,10 @@ export const KonfiguratorMain = ({ dataPrzyjazduInit, dataWyjazduInit, standardH
                             nazwa: "Zameldowanie w miejscu noclegu",
                             adres: "",
                             czasZwiedzania: 30,
-                            lokalizacja: { lat: 52, lng: 16 }
+                            lokalizacja: {
+                                lat: miejsceDocelowe?.location?.lat || 52.40567859999999,
+                                lng: miejsceDocelowe?.location?.lng || 16.9312766
+                            }
                         },
                         ...tab[i].slice(1) // bez drugiego parametru = od indeksu 1 do końca
                     ];
@@ -748,7 +793,10 @@ export const KonfiguratorMain = ({ dataPrzyjazduInit, dataWyjazduInit, standardH
                                 nazwa: "Wymeldowanie z miejsca noclegu",
                                 adres: "",
                                 czasZwiedzania: 30,
-                                lokalizacja: { lat: 52, lng: 16 }
+                                lokalizacja: {
+                                    lat: miejsceDocelowe?.location?.lat || 52.40567859999999,
+                                    lng: miejsceDocelowe?.location?.lng || 16.9312766
+                                }
                             },
                             {
                                 idGoogle: "baseRouteFrom",
@@ -756,8 +804,8 @@ export const KonfiguratorMain = ({ dataPrzyjazduInit, dataWyjazduInit, standardH
                                 adres: "",
                                 czasZwiedzania: 0,
                                 lokalizacja: {
-                                    lat: 52,
-                                    lng: 16
+                                    lat: 52.40567859999999,
+                                    lng: 16.9312766
                                 }
                             }
 
@@ -774,8 +822,8 @@ export const KonfiguratorMain = ({ dataPrzyjazduInit, dataWyjazduInit, standardH
                                 adres: "",
                                 czasZwiedzania: 0,
                                 lokalizacja: {
-                                    lat: 52,
-                                    lng: 16
+                                    lat: 52.40567859999999,
+                                    lng: 16.9312766
                                 }
                             }
 
@@ -794,7 +842,10 @@ export const KonfiguratorMain = ({ dataPrzyjazduInit, dataWyjazduInit, standardH
                             nazwa: "Wymeldowanie z miejsca noclegu",
                             adres: "",
                             czasZwiedzania: 30,
-                            lokalizacja: { lat: 52, lng: 16 }
+                            lokalizacja: {
+                                lat: miejsceDocelowe?.location?.lat || 52.40567859999999,
+                                lng: miejsceDocelowe?.location?.lng || 16.9312766
+                            }
                         },
                         tab[i][tab[i].length] // bez drugiego parametru = od indeksu 1 do końca
                     ];
@@ -820,8 +871,8 @@ export const KonfiguratorMain = ({ dataPrzyjazduInit, dataWyjazduInit, standardH
                             adres: wybranyHotel.adres,
                             czasZwiedzania: 0,
                             lokalizacja: {
-                                lat: 52,
-                                lng: 16
+                                lat: miejsceDocelowe?.location?.lat || 52.40567859999999,
+                                lng: miejsceDocelowe?.location?.lng || 16.9312766
                             }
                         }
                     ];
@@ -843,8 +894,8 @@ export const KonfiguratorMain = ({ dataPrzyjazduInit, dataWyjazduInit, standardH
                             adres: wybranyHotel.adres,
                             czasZwiedzania: 0,
                             lokalizacja: {
-                                lat: 52,
-                                lng: 16
+                                lat: miejsceDocelowe?.location?.lat || 52.40567859999999,
+                                lng: miejsceDocelowe?.location?.lng || 16.9312766
                             }
                         },
                         ...tab[i],
@@ -933,7 +984,6 @@ export const KonfiguratorMain = ({ dataPrzyjazduInit, dataWyjazduInit, standardH
     }
     function changeStartHour(dayIdx, startTime) {
         if (startTime < 0) return;
-        console.log("test121", startTime)
         dayIdx != activitiesSchedule.length - 1 && setStartHours(prev => {
             const tmpHours = [...prev]; // tworzymy kopię poprzedniego stanu
             tmpHours[dayIdx] = startTime; // modyfikujemy kopię
@@ -1004,9 +1054,7 @@ export const KonfiguratorMain = ({ dataPrzyjazduInit, dataWyjazduInit, standardH
         return () => clearTimeout(handler);
     }, [dataWyjazdu, dataPrzyjazdu]);
 
-    useEffect(() => {
-        console.log("TEST10", startHours)
-    }, [startHours])
+
     useEffect(() => {
 
         setChosenTransportSchedule(prev => {
@@ -1108,6 +1156,8 @@ export const KonfiguratorMain = ({ dataPrzyjazduInit, dataWyjazduInit, standardH
             setWyborStandardTransportuOpened(false)
         }
     }
+
+    useEffect(() => { console.log("TEST2", activitiesSchedule, activitiesSchedule[wybranyDzien]) }, [activitiesSchedule])
     return (
         <>
             <TopKreatorSlider />
@@ -1228,69 +1278,69 @@ export const KonfiguratorMain = ({ dataPrzyjazduInit, dataWyjazduInit, standardH
                     </div>
                     <div className="mainboxLeftInput">
                         <img src="../icons/search-gray.svg" width={'20px'} />
-                        <input type="text" placeholder="Wyszukaj atrakcje..." value={attractionsSearching} onChange={(e) => setAttractionsSearching(e.target.value)}/>
+                        <input type="text" placeholder="Wyszukaj atrakcje..." value={attractionsSearching} onChange={(e) => setAttractionsSearching(e.target.value)} />
                     </div>
                     <>
-                    {
-                        atrakcje
-                            .filter(atrakcja => atrakcja.nazwa.toLowerCase().includes(attractionsSearching.toLowerCase()) || atrakcja.adres.toLowerCase().includes(attractionsSearching.toLowerCase()))
-                            .toSorted((a, b) => (b.liczbaOpinie || 0) - (a.liczbaOpinie || 0))
-                            .map((atrakcja, idx) => (
-                                <AttractionResultMedium key={atrakcja.googleId + "bok"}>
-                                    <div className="attractionResultMediumTitleBox">
-                                        <div className="titleIconBox">
-                                            <img src="../icons/color-castle.svg" width="20px" />
-                                        </div>
-                                        <div className="titleTextBox">
-                                            <div className="attractionResultMediumTitle">
-                                                {atrakcja.nazwa}
+                        {
+                            atrakcje
+                                .filter(atrakcja => atrakcja.nazwa.toLowerCase().includes(attractionsSearching.toLowerCase()) || atrakcja.adres.toLowerCase().includes(attractionsSearching.toLowerCase()))
+                                .toSorted((a, b) => (b.liczbaOpinie || 0) - (a.liczbaOpinie || 0))
+                                .map((atrakcja, idx) => (
+                                    <AttractionResultMedium key={atrakcja.googleId + "bok"}>
+                                        <div className="attractionResultMediumTitleBox">
+                                            <div className="titleIconBox">
+                                                <img src="../icons/color-castle.svg" width="20px" />
                                             </div>
-                                            <div className="attractionResultMediumSubtitle">
-                                                {atrakcja.adres}
+                                            <div className="titleTextBox">
+                                                <div className="attractionResultMediumTitle">
+                                                    {atrakcja.nazwa}
+                                                </div>
+                                                <div className="attractionResultMediumSubtitle">
+                                                    {atrakcja.adres}
+                                                </div>
                                             </div>
                                         </div>
-                                    </div>
 
-                                    <div className="attractionResultMediumDetails">
-                                        <div className="attractionResultMediumDetailRow">
-                                            <div className="detailRowElement">
-                                                <img src="../icons/icon-time.svg" width="20px" />{" "}
-                                                {atrakcja.czasZwiedzania || "1h 30min"}
+                                        <div className="attractionResultMediumDetails">
+                                            <div className="attractionResultMediumDetailRow">
+                                                <div className="detailRowElement">
+                                                    <img src="../icons/icon-time.svg" width="20px" />{" "}
+                                                    {atrakcja.czasZwiedzania || "1h 30min"}
+                                                </div>
+                                                <div className="detailRowElement">
+                                                    <img src="../icons/icon-ticket.svg" width="20px" />{" "}
+                                                    {atrakcja.cenaZwiedzania || "10zl/os"}
+                                                </div>
                                             </div>
-                                            <div className="detailRowElement">
-                                                <img src="../icons/icon-ticket.svg" width="20px" />{" "}
-                                                {atrakcja.cenaZwiedzania || "10zl/os"}
+                                            <div className="attractionResultMediumDetailRow">
+                                                <div className="detailRowElement">
+                                                    <img src="../icons/icon-stars.svg" width="20px" /> {atrakcja.ocena}{" "}
+                                                    <span>({atrakcja.liczbaOpinie})</span>
+                                                </div>
+                                                <div className="detailRowElement b">
+                                                    <img src="../icons/link.svg" width="20px" />{" "}
+                                                    <a href={atrakcja?.stronaInternetowa} target="_blank" rel="noreferrer">
+                                                        Witryna
+                                                    </a>
+                                                </div>
+                                            </div>
+                                            <div className="attractionResultMediumDetailRow">
+                                                <div className="detailRowElement c">
+                                                    <img src="../icons/success.svg" width="20px" /> Dostępne z przewodnikiem
+                                                </div>
                                             </div>
                                         </div>
-                                        <div className="attractionResultMediumDetailRow">
-                                            <div className="detailRowElement">
-                                                <img src="../icons/icon-stars.svg" width="20px" /> {atrakcja.ocena}{" "}
-                                                <span>({atrakcja.liczbaOpinie})</span>
-                                            </div>
-                                            <div className="detailRowElement b">
-                                                <img src="../icons/link.svg" width="20px" />{" "}
-                                                <a href={atrakcja?.stronaInternetowa} target="_blank" rel="noreferrer">
-                                                    Witryna
-                                                </a>
-                                            </div>
-                                        </div>
-                                        <div className="attractionResultMediumDetailRow">
-                                            <div className="detailRowElement c">
-                                                <img src="../icons/success.svg" width="20px" /> Dostępne z przewodnikiem
-                                            </div>
-                                        </div>
-                                    </div>
 
-                                    <div
-                                        className="attractionResultMediumAddBox"
-                                        onClick={() => addActivity(wybranyDzien, atrakcja)}
-                                    >
-                                        + Dodaj do dnia
-                                    </div>
-                                </AttractionResultMedium>
-                            ))
+                                        <div
+                                            className="attractionResultMediumAddBox"
+                                            onClick={() => addActivity(wybranyDzien, atrakcja)}
+                                        >
+                                            + Dodaj do dnia
+                                        </div>
+                                    </AttractionResultMedium>
+                                ))
 
-                    }
+                        }
                     </>
                 </KonfiguratorMainMainboxLeft>
 
@@ -1315,6 +1365,37 @@ export const KonfiguratorMain = ({ dataPrzyjazduInit, dataWyjazduInit, standardH
                         </AddAttractionWrapper>
                     }
                 </KonfiguratorMainMainboxRight>
+                <KonfiguratorMainMainboxLeft className="right">
+                    <div className="mainboxLeftTitle">
+                        Podsumowanie wyjazdu
+                    </div>
+                    <SummaryInfoBox>
+                        <div className="summaryInfoBoxTitle">
+                            <img src="../icons/hotel-white.svg" width="20px" />
+                            {standardHotelu != "Ośrodki kolonijne" ? "Hotel" : "Ośrodek kolonijny"}
+                        </div>
+                        <div className="summaryInfoBoxTitle b" >
+                            <img src="../icons/hotelName-white.svg" width="20px" />
+                            Nazwa: {wybranyHotel.nazwa}
+                        </div>
+                        <div className="summaryInfoBoxTitle b" >
+                            <img src="../icons/time-white.svg" width="20px" />
+                            Doba hotelowa: {wybranyHotel.checkIn} - {wybranyHotel.checkOut}
+                        </div>
+
+
+
+                    </SummaryInfoBox>
+                    <div className="mainboxLeftTitle" style={{ paddingTop: '10px', marginTop: '20px', borderTop: '1px solid #ccc' }}>
+                        Podsumowanie dnia
+                    </div>
+                    <div style={{ height: '270px', width: '90%', borderRadius: '15px', overflow: 'hidden', backgroundColor: '#f0f0f0', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <RouteMap
+                            schedule={activitiesSchedule[wybranyDzien]}
+                            key={JSON.stringify(activitiesSchedule[wybranyDzien])}
+                        />
+                    </div>
+                </KonfiguratorMainMainboxLeft>
 
             </KonfiguratorMainMainbox>
         </>

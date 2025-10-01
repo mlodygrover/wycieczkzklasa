@@ -490,7 +490,6 @@ export const AttractionResultFull = ({
 
     useEffect(() => {
         if (actIdx == 0) {
-            console.log("test17", localStartTime)
             // Debounce: aktualizujemy globalny stan dopiero po 300ms od ostatniej zmiany
             const handler = setTimeout(() => {
                 changeStartHour(dayIdx, localStartTime)
