@@ -52,9 +52,10 @@ const KonfiguratorNavBar = styled.div`
             display: none;
         }
     }
+
     
 `
-const NavBarButton = styled.div`
+const NavBarButton = styled.label`
     display: flex;
     align-items: center;
     justify-content: center;
@@ -64,18 +65,32 @@ const NavBarButton = styled.div`
     flex: 1;
     height: 100%;
     border-radius: 999px;
-    transition: 0.3s ease-in-out;
-    color: ${props => props.wybranydzien == props.i ? "white" : "black"};
-    background-color: ${props => props.wybranydzien == props.i ? "#008d73ff" : "inherit"};
+    transition: background-color 0.3s ease-in-out, color 0.3s ease-in-out;
+    color: black;
+    background-color: inherit;
     margin-top: 1px;
     cursor: pointer;
+    user-select: none;
 
-    span{
+    span {
         padding-left: 3px;
         font-weight: 400;
         font-size: 12px;
     }
-`
+
+    /* 🔹 Styl aktywnego radio (checked) */
+    input[type="radio"]:checked + & {
+        color: white;
+        background-color: #008d73ff;
+    }
+
+    @media screen and (max-width: 800px) {
+        a {
+            display: none;
+        }
+    }
+`;
+
 const KonfiguratorWyjazduBottom = styled.div`
     width: 100%;
     flex: 1;
@@ -147,6 +162,11 @@ export function minutesToTime(totalMinutes) {
 export const KonfiguratorWyjazduComp = ({ changeStartHour, deleteActivity, startModifyingAct, setActivityPanelOpened, addActivity, onAttractionTimeChange, swapActivities, onTransportChange, timeSchedule, chosenTransportSchedule, loading, atrakcje, routeSchedule, activitesSchedule, liczbaDni, wybranyDzien, setWybranyDzien }) => {
     //useEffect(() => { console.log("TEST3", activitesSchedule, routeSchedule, timeSchedule, chosenTransportSchedule) }, [activitesSchedule, routeSchedule, timeSchedule, chosenTransportSchedule])
 
+    const [localWybranyDzien, setLocalWybranyDzien] = useState(wybranyDzien);
+
+    useEffect(() => {
+        setWybranyDzien(localWybranyDzien);
+    }, [localWybranyDzien]);
     return (
         <KonfiguratorWyjazduCompMainbox>
             <div className="konifuguratorMainboxTitle">
@@ -154,13 +174,22 @@ export const KonfiguratorWyjazduComp = ({ changeStartHour, deleteActivity, start
             </div>
             <KonfiguratorNavBar>
                 {Array.from({ length: liczbaDni }, (_, i) => (
-                    <NavBarButton key={i} onClick={() => setWybranyDzien(i)} i={i} wybranydzien={wybranyDzien}>
-                        {/* tutaj ewentualna zawartość przycisku */}
-                        <a>{liczbaDni < 14 ? "Dzień" : ""}</a> <span>{i + 1}</span>
-                    </NavBarButton>
+                    <React.Fragment key={i}>
+                        <input
+                            type="radio"
+                            id={`day-${i}`}
+                            name="daySelector"
+                            value={i}
+                            checked={localWybranyDzien === i}
+                            onChange={() => setLocalWybranyDzien(i)}
+                            style={{ display: "none" }} // ukrywamy sam input, stylujemy tylko label
+                        />
+                        <NavBarButton htmlFor={`day-${i}`}>
+                            <a>{liczbaDni < 14 ? "Dzień" : ""}</a> <span>{i + 1}</span>
+                        </NavBarButton>
+                    </React.Fragment>
                 ))}
             </KonfiguratorNavBar>
-
             <KonfiguratorWyjazduBottom>
                 <KonfiguratorWyjazduOutbox>
 
@@ -197,8 +226,8 @@ export const KonfiguratorWyjazduComp = ({ changeStartHour, deleteActivity, start
                                                 deleteActivity={deleteActivity}
                                                 changeStartHour={changeStartHour}
                                                 key={`${changeStartHour}-${atrakcja.idGoogle}-${wybranyDzien}`}
-                                                
-                                            
+
+
                                             />
                                         </React.Fragment>
                                     ))}

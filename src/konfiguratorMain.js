@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, use } from "react"
+import { useEffect, useState, useCallback, use, useRef } from "react"
 import axios from "axios";
 import debounce from "lodash.debounce";
 import styled from "styled-components"
@@ -581,22 +581,20 @@ export const KonfiguratorMain = ({ dataPrzyjazduInit, dataWyjazduInit, standardH
                 }
 
                 const data = await response.json();
-                console.log("🚗 Wynik tras:", data);
+                //console.log("🚗 Wynik tras:", data);
             } catch (error) {
                 console.error("❌ Błąd podczas pobierania trasy:", error);
             }
         };
         fetchRouteData();
-        console.log("TEST3", miejsceDocelowe, miejsceStartowe)
+        //console.log("TEST3", miejsceDocelowe, miejsceStartowe)
     }, [miejsceDocelowe, miejsceStartowe]);
     //test test test
     //dane z serwera
 
     //atrakcje
-    const [atrakcje, setAtrakcje] = useState([])
-    useEffect(() => {
-        console.log("TEST42", atrakcje, miejsceDocelowe, miejsceStartowe)
-    }, [atrakcje, miejsceDocelowe, miejsceStartowe])
+    const [atrakcje, setAtrakcje] = useState([]);
+
     const fetchAttractions = useCallback(
         debounce(async (placeId, lat, lng) => {
             try {
@@ -659,7 +657,7 @@ export const KonfiguratorMain = ({ dataPrzyjazduInit, dataWyjazduInit, standardH
         for (let j = 0; j < activitiesSchedule[i].length; j++) {
             if (timeSchedule.length && Array.isArray(timeSchedule[i])) {
                 if (activitiesSchedule[i][j]?.idGoogle == "baseBookOut" && timeSchedule[i][j] > timeToMinutes(wybranyHotel.checkOut)) {
-                    console.log("TEST6", i, j, activitiesSchedule[i][j])
+                    //console.log("TEST6", i, j, activitiesSchedule[i][j])
                     toChange = j;
                 }
             }
@@ -684,70 +682,170 @@ export const KonfiguratorMain = ({ dataPrzyjazduInit, dataWyjazduInit, standardH
     }, [miejsceStartowe])
 
     useEffect(() => {
-        if (lastDaySwap == 1) {
-            changeStartHour(activitiesSchedule.lentgh - 1, 480)
+        if (lastDaySwap <= -1 || !activitiesSchedule?.length) return;
+
+        const handleSwap = async () => {
+            try {
+                if (lastDaySwap === 1) {
+                    changeStartHour(wybranyDzien, 480);
+                }
+
+                await swapActivities(wybranyDzien, 1, lastDaySwap);
+                setLastDaySwap(-1);
+            } catch (err) {
+                console.error("❌ Błąd przy automatycznej zamianie atrakcji:", err);
+            }
+        };
+
+        handleSwap();
+    }, [lastDaySwap]);
+
+
+    let isGenerating = false; // zmienna globalna w module (lub useRef w komponencie)
+    function roundFive(num) {
+        if (num <= 0) return 0;
+        return Math.ceil((num + 0.0001) / 5) * 5; // dodanie małej wartości, by np. 20 -> 25
+    }
+
+    async function generateRouteSchedule(activitiesScheduleLocal) {
+        if (activitiesSchedule.length != chosenTransportSchedule.length && activitiesSchedule != timeSchedule.length) {
+            return;
         }
-        lastDaySwap > -1 && swapActivities(activitiesSchedule.length - 1, 1, lastDaySwap);
+        if (isGenerating) {
+            //console.log("⏳ Pomijam wywołanie — generowanie już trwa lub niedawno się zakończyło");
+            return false;
+        }
 
-        setLastDaySwap(-1)
-    }, [lastDaySwap])
+        isGenerating = true;
+        setTimeout(() => (isGenerating = false), 1000); // ⏱️ odblokowanie po 1 sekundzie
 
-    function generateRouteSchedule(activitiesScheduleLocal) {
         if (!activitiesScheduleLocal) {
             activitiesScheduleLocal = activitiesSchedule;
-            //console.log("TEST4", activitiesScheduleLocal)
-
         }
-        ;
-        let tabRoutesTmp = Array.from({ length: liczbaDni }, () => []);
-        let tabTimeScheduleTmp = Array.from({ length: liczbaDni }, (_, i) => [startHours[i]]);
-        activitiesScheduleLocal.map((day, dayIdx) => {
-            day.slice(1).map((activity, actIdx) => {
-                const czasy = [45, 30, 15];
-                if (activitiesSchedule[dayIdx][actIdx]?.lokalizacja?.lat != activity?.lokalizacja?.lat && activitiesSchedule[dayIdx][actIdx]?.lokalizacja?.lng != activity?.lokalizacja?.lng) {
 
-                    tabRoutesTmp[dayIdx].push({ start: day[actIdx], end: day[actIdx + 1], czasy })
+        const tabRoutesTmp = Array.from({ length: liczbaDni }, () => []);
+        const tabTimeScheduleTmp = Array.from({ length: liczbaDni }, (_, i) => [startHours[i]]);
+
+        // 🔹 Pętla po dniach
+        for (let dayIdx = 0; dayIdx < activitiesScheduleLocal.length; dayIdx++) {
+            const day = activitiesScheduleLocal[dayIdx];
+
+            // 🔹 Pętla po aktywnościach
+            for (let actIdx = 0; actIdx < day.length - 1; actIdx++) {
+                const current = day[actIdx];
+                const next = day[actIdx + 1];
+
+                const sameLocation =
+                    current?.lokalizacja?.lat === next?.lokalizacja?.lat &&
+                    current?.lokalizacja?.lng === next?.lokalizacja?.lng;
+
+                if (sameLocation) {
+                    tabRoutesTmp[dayIdx].push({
+                        start: current,
+                        end: next,
+                        czasy: [0, 0, 0],
+                        transitRoute: null,
+                    });
+                    continue;
+                }
+
+                try {
+                    const res = await fetch(
+                        `http://localhost:5006/routeSummary?fromLat=${current.lokalizacja.lat}&fromLng=${current.lokalizacja.lng}&toLat=${next.lokalizacja.lat}&toLng=${next.lokalizacja.lng}`
+                    );
+
+                    const data = await res.json();
+
+                    if (!res.ok || !data) {
+                        console.warn("⚠️ Nie udało się pobrać trasy:", res.statusText);
+                        tabRoutesTmp[dayIdx].push({
+                            start: current,
+                            end: next,
+                            czasy: [0, 0, 0],
+                            transitRoute: null,
+                        });
+                        continue;
+                    }
+
+                    const walking = roundFive(data.walking?.durationMinutes || 0);
+                    const transit = roundFive(data.transit?.durationMinutes || 0);
+                    const driving = roundFive(data.driving?.durationMinutes || 0);
+                    const transitRoute = data.transit?.segments || null;
+
+                    tabRoutesTmp[dayIdx].push({
+                        start: current,
+                        end: next,
+                        czasy: [walking, transit, driving],
+                        transitRoute,
+                    });
+                } catch (err) {
+                    console.error("❌ Błąd pobierania trasy:", err);
+                    tabRoutesTmp[dayIdx].push({
+                        start: current,
+                        end: next,
+                        czasy: [0, 0, 0],
+                        transitRoute: null,
+                    });
+                }
+            }
+        }
+
+        // 🔹 Obliczanie czasu dla każdego dnia
+        for (let dayIdx = 0; dayIdx < activitiesScheduleLocal.length; dayIdx++) {
+            const day = activitiesScheduleLocal[dayIdx];
+
+            for (let actIdx = 0; actIdx < day.length - 1; actIdx++) {
+                const activity = day[actIdx + 1];
+                let transportCzas;
+                if (chosenTransportSchedule[dayIdx][actIdx] == 0 && tabRoutesTmp[dayIdx][actIdx]?.czasy[chosenTransportSchedule[dayIdx][actIdx]] < 180) {
+                    transportCzas = tabRoutesTmp[dayIdx][actIdx]?.czasy[chosenTransportSchedule[dayIdx][actIdx]];
+                }
+                else if (chosenTransportSchedule[dayIdx][actIdx] == 0 && tabRoutesTmp[dayIdx][actIdx]?.czasy[chosenTransportSchedule[dayIdx][actIdx]] >= 180) {
+                    const newChoice = standardTransportu === "Transport publiczny" ? 1 : 2;
+                    
+                    setChosenTransportSchedule(prev => {
+                        const updated = [...prev];
+                        updated[dayIdx][actIdx] = newChoice;
+                        return updated;
+                    });
+                    transportCzas = tabRoutesTmp[dayIdx][actIdx]?.czasy[newChoice];
+
                 }
                 else {
-                    tabRoutesTmp[dayIdx].push({ start: day[actIdx], end: day[actIdx + 1], czasy: [0, 0, 0] })
+                    transportCzas = tabRoutesTmp[dayIdx][actIdx]?.czasy[chosenTransportSchedule[dayIdx][actIdx]];
                 }
+                if (chosenTransportSchedule.length === activitiesSchedule.length) {
+                    if (activity.idGoogle === "baseBookIn") {
+                        const val = maximum(
+                            tabTimeScheduleTmp[dayIdx][actIdx] +
+                            activitiesSchedule[dayIdx][actIdx].czasZwiedzania +
+                            transportCzas,
 
 
-            })
-        })
-
-        activitiesScheduleLocal.map((day, dayIdx) => {
-            day.slice(1).map((activity, actIdx) => {
-                if (chosenTransportSchedule.length == activitiesSchedule.length) {
-                    if (activity.idGoogle == "baseBookIn") {
-                        const val = maximum(tabTimeScheduleTmp[dayIdx][actIdx] + activitiesSchedule[dayIdx][actIdx].czasZwiedzania + tabRoutesTmp[dayIdx][actIdx]?.czasy[chosenTransportSchedule[dayIdx][actIdx]], timeToMinutes(wybranyHotel.checkIn))
-                        tabTimeScheduleTmp[dayIdx].push(val)
-
-                    }
-                    else {
-                        tabTimeScheduleTmp[dayIdx].push(tabTimeScheduleTmp[dayIdx][actIdx] + activitiesSchedule[dayIdx][actIdx].czasZwiedzania + tabRoutesTmp[dayIdx][actIdx]?.czasy[chosenTransportSchedule[dayIdx][actIdx]])
-
+                            timeToMinutes(wybranyHotel.checkIn)
+                        );
+                        tabTimeScheduleTmp[dayIdx].push(val);
+                    } else {
+                        tabTimeScheduleTmp[dayIdx].push(
+                            tabTimeScheduleTmp[dayIdx][actIdx] +
+                            activitiesSchedule[dayIdx][actIdx].czasZwiedzania +
+                            transportCzas
+                        );
                     }
                 }
-
-
-            })
-        })
-
-
-
-        if (1 == 1) {
-            //console.log("TEST1", tabRoutesTmp, tabTimeScheduleTmp)
-            setRouteSchedule(tabRoutesTmp)
-            setTimeSchedule(tabTimeScheduleTmp)
-            return true;
-        }
-        else {
-            return false
+            }
         }
 
+        setRouteSchedule(tabRoutesTmp);
+        setTimeSchedule(tabTimeScheduleTmp);
 
+        console.log("✅ Nowe trasy:", tabRoutesTmp);
+        console.log("🕒 Harmonogram:", tabTimeScheduleTmp);
+
+        return true;
     }
+
+
     function verifyBaseActs(tab) {
         if (!tab.length || !miejsceDocelowe || !miejsceStartowe) return tab;
         for (let i = 0; i < tab.length; i++) {
@@ -1020,22 +1118,36 @@ export const KonfiguratorMain = ({ dataPrzyjazduInit, dataWyjazduInit, standardH
             )
         );
     }
-    function swapActivities(dayIndex, act1, act2) {
-        if (act1 == 0 || act2 == 0 || act1 == activitiesSchedule[wybranyDzien].length - 1 || act2 == activitiesSchedule[wybranyDzien].length - 1) return;
-        // utwórz kopię całego harmonogramu
+    async function swapActivities(dayIndex, act1, act2) {
+        // 🧩 Blokada — nie zamieniamy hotelu lub pustych elementów
+        if (
+            act1 === 0 ||
+            act2 === 0 ||
+            act1 === activitiesSchedule[wybranyDzien].length - 1 ||
+            act2 === activitiesSchedule[wybranyDzien].length - 1
+        ) {
+            return;
+        }
+
+        // 🔹 Utwórz kopię harmonogramu
         const tmpActivities = activitiesSchedule.map(day => [...day]);
 
-        // zamień miejscami atrakcje w wybranym dniu
+        // 🔹 Zamiana miejscami atrakcji w danym dniu
         const day = tmpActivities[dayIndex];
         [day[act1], day[act2]] = [day[act2], day[act1]];
 
-        // jeżeli chcesz warunkowo zapisać po weryfikacji
-        if (generateRouteSchedule(tmpActivities)) {
+        // 🔹 Wygeneruj ponownie harmonogram tras
+        const success = true;//await generateRouteSchedule(tmpActivities);
+
+        if (success) {
             setActivitiesSchedule(tmpActivities);
             return true;
+        } else {
+            console.warn("⚠️ Nie udało się zaktualizować tras po zamianie atrakcji");
+            return false;
         }
-        return false;
     }
+
     function changeActivity(dayIdx, idx, activity) {
 
         setActivitiesSchedule(prevSchedule =>
@@ -1070,21 +1182,20 @@ export const KonfiguratorMain = ({ dataPrzyjazduInit, dataWyjazduInit, standardH
         if (modyfikacja.flag) setActivityPanelOpened(true);
     }, [modyfikacja])
 
-    function changeActivityTime(dayIdx, actIdx, time) {
+    async function changeActivityTime(dayIdx, actIdx, time) {
+        // 🔹 Utwórz głęboką kopię harmonogramu i zaktualizuj wybrany czas
         const tmpActivities = activitiesSchedule.map((day, dIdx) =>
             day.map((activity, aIdx) =>
                 dIdx === dayIdx && aIdx === actIdx
-                    ? { ...activity, czasZwiedzania: time } // tworzysz kopię obiektu z nowym czasem
+                    ? { ...activity, czasZwiedzania: time }
                     : activity
             )
         );
+        setActivitiesSchedule(tmpActivities);
+        return true;
 
-        if (generateRouteSchedule(tmpActivities)) {
-            setActivitiesSchedule(tmpActivities);
-            return true;
-        }
-        return false;
     }
+
 
 
 
@@ -1109,7 +1220,7 @@ export const KonfiguratorMain = ({ dataPrzyjazduInit, dataWyjazduInit, standardH
                     return updated;
                 }
                 let updated = verifyBaseActs(prev);
-                console.log("TEST1", updated);
+                //console.log("TEST1", updated);
                 return updated; // bez zmian
             });
 
@@ -1177,10 +1288,41 @@ export const KonfiguratorMain = ({ dataPrzyjazduInit, dataWyjazduInit, standardH
     }
 
 
+    const prevValues = useRef({
+        chosenTransportSchedule,
+        startHours,
+        activitiesSchedule,
+    });
+
     useEffect(() => {
-        chosenTransportSchedule.length &&
-            generateRouteSchedule();
-    }, [chosenTransportSchedule, startHours]);
+        const prev = prevValues.current;
+        const changed =
+            JSON.stringify(prev.chosenTransportSchedule) !== JSON.stringify(chosenTransportSchedule) ||
+            JSON.stringify(prev.startHours) !== JSON.stringify(startHours) ||
+            JSON.stringify(prev.activitiesSchedule) !== JSON.stringify(activitiesSchedule);
+
+        if (!changed) {
+            return; // brak rzeczywistej zmiany — nic nie rób
+        }
+
+        // aktualizacja poprzednich wartości
+        prevValues.current = {
+            chosenTransportSchedule,
+            startHours,
+            activitiesSchedule,
+        };
+
+        const recalculate = async () => {
+            try {
+                await generateRouteSchedule();
+            } catch (err) {
+                console.error("❌ Błąd podczas generowania trasy:", err);
+            }
+        };
+
+        recalculate();
+    }, [chosenTransportSchedule, startHours, activitiesSchedule]);
+
 
 
     const submitMiejsceStartowe = (miejsceStartoweWybor) => {
@@ -1220,7 +1362,7 @@ export const KonfiguratorMain = ({ dataPrzyjazduInit, dataWyjazduInit, standardH
         }
     }
 
-    useEffect(() => { console.log("TEST2", activitiesSchedule, activitiesSchedule[wybranyDzien]) }, [activitiesSchedule])
+    //useEffect(() => { console.log("TEST2", activitiesSchedule, activitiesSchedule[wybranyDzien]) }, [activitiesSchedule])
     return (
         <>
             <TopKreatorSlider />
@@ -1453,7 +1595,7 @@ export const KonfiguratorMain = ({ dataPrzyjazduInit, dataWyjazduInit, standardH
 
                         <div className="summaryInfoBoxTitle">
                             <img src="../icons/hotel-white.svg" width="20px" />
-                            Przejazd do {miejsceDocelowe.nazwa}
+                            Przejazd do {miejsceDocelowe?.nazwa}
                         </div>
                         <div className="summaryInfoBoxTitle b" >
                             <img src="../icons/hotelName-white.svg" width="20px" />
@@ -1466,11 +1608,11 @@ export const KonfiguratorMain = ({ dataPrzyjazduInit, dataWyjazduInit, standardH
 
 
                     </SummaryInfoBox>
-                     <SummaryInfoBox className="b">
+                    <SummaryInfoBox className="b">
 
                         <div className="summaryInfoBoxTitle">
                             <img src="../icons/hotel-white.svg" width="20px" />
-                            Powrót do {miejsceStartowe.nazwa}
+                            Powrót do {miejsceStartowe?.nazwa}
                         </div>
                         <div className="summaryInfoBoxTitle b" >
                             <img src="../icons/hotelName-white.svg" width="20px" />
@@ -1486,11 +1628,11 @@ export const KonfiguratorMain = ({ dataPrzyjazduInit, dataWyjazduInit, standardH
                     <div className="mainboxLeftTitle" style={{ paddingTop: '10px', marginTop: '20px', borderTop: '1px solid #ccc' }}>
                         Podsumowanie dnia
                     </div>
-                    <div style={{ pointerEvents: "none" , height: '270px', width: '90%', borderRadius: '15px', overflow: 'hidden', backgroundColor: '#f0f0f0', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <div style={{ pointerEvents: "none", height: '270px', width: '90%', borderRadius: '15px', overflow: 'hidden', backgroundColor: '#f0f0f0', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                         <RouteMap
                             schedule={activitiesSchedule[wybranyDzien]}
                             key={JSON.stringify(activitiesSchedule[wybranyDzien])}
-                            
+
                         />
                     </div>
                 </KonfiguratorMainMainboxLeft>

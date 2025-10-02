@@ -5,7 +5,7 @@ import { MapaBox } from "../konfiguratorWyjazdu"
 import { da } from "date-fns/locale"
 import { timeToMinutes } from "../konfiguratorMain"
 import { minutesToTime } from "../konfigurator/konfiguratorWyjazduComp"
-
+import React from "react"
 const GooglePopupCardMainbox = styled.div`
     position: absolute;
     top: 0;
@@ -504,14 +504,24 @@ export const AttractionResultFull = ({
     }, [time])
 
     useEffect(() => {
-        // Debounce: aktualizujemy globalny stan dopiero po 300ms od ostatniej zmiany
-        const handler = setTimeout(() => {
-            onAttractionTimeChange(dayIdx, actIdx, localTime);
+        let isCancelled = false; // 👈 zabezpieczenie, gdy komponent się odmontuje
+        const handler = setTimeout(async () => {
+            try {
+                // czekamy na zakończenie async call tylko jeśli komponent nadal istnieje
+                if (!isCancelled && typeof onAttractionTimeChange === "function") {
+                    await onAttractionTimeChange(dayIdx, actIdx, localTime);
+                }
+            } catch (err) {
+                console.error("❌ Błąd przy aktualizacji czasu atrakcji:", err);
+            }
         }, 700);
 
-        // Czyszczenie poprzedniego timeoutu przy każdej zmianie localTime
-        return () => clearTimeout(handler);
+        return () => {
+            isCancelled = true; // 👈 zatrzymanie aktualizacji po unmount
+            clearTimeout(handler);
+        };
     }, [localTime]);
+
 
     return (
         <AttractionResultFullOutbox key={attraction.id || actIdx}>
@@ -521,7 +531,15 @@ export const AttractionResultFull = ({
                         <img
                             src={"../icons/icon-arrow.svg"}
                             height={'30px'}
-                            onClick={() => actIdx !== 0 && swapActivities(dayIdx, actIdx, actIdx - 1)}
+                            onClick={async () => {
+                                if (actIdx === 0) return;
+                                try {
+                                    await swapActivities(dayIdx, actIdx, actIdx - 1);
+                                } catch (err) {
+                                    console.error("❌ Błąd podczas zamiany atrakcji:", err);
+                                }
+                            }}
+
                         />
                     </div>
                     <div className={attraction.idGoogle !== "baseBookOut" && attraction.idGoogle !== "baseBookIn" ? "buttonFullNav swap" : "buttonFullNav off"} onClick={() => startModifyingAct(dayIdx, actIdx)}>
@@ -535,7 +553,15 @@ export const AttractionResultFull = ({
                             src={"../icons/icon-arrow.svg"}
                             height={'30px'}
                             style={{ transform: 'rotate(180deg)' }}
-                            onClick={() => actIdx !== lastIdx && swapActivities(dayIdx, actIdx + 1, actIdx)}
+                            onClick={async () => {
+                                if (actIdx !== lastIdx) {
+                                    try {
+                                        await swapActivities(dayIdx, actIdx + 1, actIdx);
+                                    } catch (err) {
+                                        console.error("❌ Błąd zamiany w dół:", err);
+                                    }
+                                }
+                            }}
                         />
                     </div>
                 </>
@@ -645,6 +671,7 @@ const RouteResultButton = styled.div`
     align-items: center;
     justify-content: center;
     font-size: 11px;
+    border-bottom: 2px solid transparent;
     border-bottom-right-radius: 0px;
 
         border-bottom-left-radius: 0px;
@@ -679,6 +706,32 @@ const RouteResultOutbox = styled.div`
         width: 100%;
     }
 `
+const RouteResultButtonLabel = styled.label`
+    height: 40px;
+    max-width: 50px;
+    border-radius: 5px;
+    cursor: pointer;
+    flex: 1;
+    text-wrap: nowrap;
+    transition: 0.3s ease-in-out;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    border-bottom: 2px solid transparent;
+    border-bottom-right-radius: 0px;
+    border-bottom-left-radius: 0px;
+
+    &:hover {
+        border-bottom: 2px solid orange;
+    }
+
+    input[type="radio"]:checked + & {
+        border-bottom: 2px solid orange;
+    }
+`;
+
 
 export const minutesToStringTime = (t) => {
     if (t <= 60) {
@@ -692,42 +745,51 @@ export const minutesToStringTime = (t) => {
     }
 }
 export const RouteResult = ({ routes, onTransportChange, actIdx, dayIdx, chosenTransport }) => {
-    const [localChosen, setLocalChosen] = useState(chosenTransport)
+    const [localChosen, setLocalChosen] = useState(chosenTransport);
 
-    function SetRoute(idx) {
-        setLocalChosen(idx)
-        onTransportChange(dayIdx, actIdx, idx)
+    const handleChange = (idx) => {
+        setLocalChosen(idx);
+        onTransportChange(dayIdx, actIdx, idx);
+    };
 
+    if (!routes?.czasy || !routes.czasy.some((c) => c > 0)) {
+        return <RouteResultOutbox />;
     }
+
+    const options = [
+        { idx: 0, icon: "../icons/pedestrian.svg", label: "Pieszo", visible: routes.czasy[0] < 180 },
+        { idx: 1, icon: "../icons/icon-public-trannsport.svg", label: "Komunikacja" },
+        { idx: 2, icon: "../icons/bus.svg", label: "Auto" },
+    ];
+
     return (
-        routes?.czasy[0] * routes?.czasy[1] * routes?.czasy[2] ? (
-            <RouteResultOutbox>
-                <div className="routeImgBox">
-                    <img src="../icons/route.svg" />
-                </div>
+        <RouteResultOutbox>
+            <div className="routeImgBox">
+                <img src="../icons/route.svg" />
+            </div>
 
-                <RouteResultMainbox>
-                    <RouteResultButton className={localChosen === 0 ? "checked" : ""} onClick={() => SetRoute(0)}>
-                        <img src={"../icons/pedestrian.svg"} height={'20px'} />
-                        {routes?.czasy.length > 1 ? minutesToStringTime(routes?.czasy[0]) : "..."}
-                    </RouteResultButton>
-
-                    <RouteResultButton className={localChosen === 1 ? "checked" : ""} onClick={() => SetRoute(1)}>
-                        <img src={"../icons/icon-public-trannsport.svg"} height={'20px'} />
-                        {routes?.czasy.length > 1 ? minutesToStringTime(routes?.czasy[1]) : "..."}
-                    </RouteResultButton>
-
-                    <RouteResultButton className={localChosen === 2 ? "checked" : ""} onClick={() => SetRoute(2)}>
-                        <img src={"../icons/bus.svg"} height={'20px'} />
-                        {routes?.czasy.length > 1 ? minutesToStringTime(routes?.czasy[2]) : "..."}
-                    </RouteResultButton>
-                </RouteResultMainbox>
-            </RouteResultOutbox>
-        )
-            :
-            <RouteResultOutbox>
-
-            </RouteResultOutbox>
-    )
-
-}
+            <RouteResultMainbox>
+                {options.map(
+                    (opt) =>
+                        (opt.visible ?? true) && (
+                            <React.Fragment key={opt.idx}>
+                                <input
+                                    type="radio"
+                                    id={`transport-${dayIdx}-${actIdx}-${opt.idx}`}
+                                    name={`transport-${dayIdx}-${actIdx}`}
+                                    value={opt.idx}
+                                    checked={localChosen === opt.idx}
+                                    onChange={() => handleChange(opt.idx)}
+                                    style={{ display: "none" }}
+                                />
+                                <RouteResultButtonLabel htmlFor={`transport-${dayIdx}-${actIdx}-${opt.idx}`}>
+                                    <img src={opt.icon} height={"20px"} />
+                                    {routes.czasy.length > opt.idx ? minutesToStringTime(routes.czasy[opt.idx]) : "..."}
+                                </RouteResultButtonLabel>
+                            </React.Fragment>
+                        )
+                )}
+            </RouteResultMainbox>
+        </RouteResultOutbox>
+    );
+};
