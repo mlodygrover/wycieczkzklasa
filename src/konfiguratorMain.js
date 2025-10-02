@@ -384,6 +384,7 @@ const AddActivityPanelContainer = styled.div`
 
 const SummaryInfoBox = styled.div`
     background: linear-gradient(90deg, #008d73ff 0%, #22af95ff 100%);
+    
     width: 90%;
     min-height: 100px;
     border-radius: 15px;
@@ -395,6 +396,7 @@ const SummaryInfoBox = styled.div`
     color: white;
     padding: 15px 5px;
     box-sizing: border-box;
+    
     .summaryInfoBoxTitle{
         margin: 0 auto;
         margin-bottom: 5px;
@@ -413,6 +415,16 @@ const SummaryInfoBox = styled.div`
             font-weight: 400;
             margin-bottom: 5px;
         }
+    }
+    &.b{
+        background: linear-gradient(90deg, rgba(184, 104, 0, 1) 0%, rgba(219, 187, 72, 1) 100%);
+        .summaryInfoBoxTitle{
+            font-size: 18px;
+            &.b{
+                font-size: 14px;
+            }
+        }
+
     }
 
 `
@@ -458,12 +470,24 @@ export const KonfiguratorMain = ({ dataPrzyjazduInit, dataWyjazduInit, standardH
     const [dataWyjazdu, setDataWyjazdu] = useState(dataWyjazduInit)
     const [standardHotelu, setStandardHotelu] = useState(standardHoteluInit)
     const [standardTransportu, setStandardTransportu] = useState(standardTransportuInit)
-    const [miejsceDocelowe, setMiejsceDocelowe] = useState(() => {
-        const saved = localStorage.getItem("miejsceDocelowe");
-        return saved ? JSON.parse(saved) : miejsceDoceloweInit; // zwracamy obiekt albo null
-    });
+    const [miejsceDocelowe, setMiejsceDocelowe] = useState(
 
-    const [miejsceStartowe, setMiejsceStartowe] = useState(miejsceStartoweInit || miejsceDocelowe)
+        () => {
+            const saved = localStorage.getItem("miejsceDocelowe");
+            return saved ? JSON.parse(saved) : miejsceDoceloweInit; // zwracamy obiekt albo null
+        }
+
+    );
+    const [miejsceStartowe, setMiejsceStartowe] = useState(
+
+        () => {
+            const saved = localStorage.getItem("miejsceStartowe");
+            return saved ? JSON.parse(saved) : miejsceStartoweInit; // zwracamy obiekt albo null
+        }
+
+    );
+
+
 
     const [liczbaUczestnikow, setLiczbaUczestnikow] = useState(0)
     const [liczbaOpiekunów, setLiczbaOpiekunów] = useState(0)
@@ -479,6 +503,11 @@ export const KonfiguratorMain = ({ dataPrzyjazduInit, dataWyjazduInit, standardH
     const [miejsceDoceloweHovering, setMiejsceDoceloweHovering] = useState(false);
     const [miejsceDocelowePopupOpened, setMiejsceDocelowePopupOpened] = useState(false)
 
+    const [miejsceStartoweSearching, setMiejsceStartoweSearching] = useState("");
+    const [miejsceStartoweResults, setMiejsceStartoweResults] = useState(testResults);
+    const [miejsceStartoweHovering, setMiejsceStartoweHovering] = useState(false);
+    const [miejsceStartowePopupOpened, setMiejsceStartowePopupOpened] = useState(false);
+
     const [wyborDatyOpened, setWyborDatyOpened] = useState(false)
 
     const [wyborGosciOpened, setWyborGosciOpened] = useState(false)
@@ -490,17 +519,17 @@ export const KonfiguratorMain = ({ dataPrzyjazduInit, dataWyjazduInit, standardH
     const [modyfikacja, setModyfikacja] = useState({ flag: false, dayIdx: null, idx: null })
 
     useEffect(() => {
-        if (!miejsceDoceloweSearching) return;
+        if (!miejsceStartoweSearching) return;
 
         // 1. od razu czyścimy poprzednie wyniki
-        setMiejsceDoceloweResults([]);
+        setMiejsceStartoweResults([]);
 
         // 2. ustawiamy timer
         const timeoutId = setTimeout(async () => {
             try {
                 const response = await fetch(
                     `http://localhost:5006/searchCity?query=${encodeURIComponent(
-                        miejsceDoceloweSearching
+                        miejsceStartoweSearching
                     )}`
                 );
                 const data = await response.json();
@@ -522,9 +551,9 @@ export const KonfiguratorMain = ({ dataPrzyjazduInit, dataWyjazduInit, standardH
                         })
                     );
 
-                    setMiejsceDoceloweResults(resultsWithPlaceId);
+                    setMiejsceStartoweResults(resultsWithPlaceId);
                 }
-                else { setMiejsceDoceloweResults([{ kraj: "brak" }]) }// <-- zapisanie wyników
+                else { setMiejsceStartoweResults([{ kraj: "brak" }]) }// <-- zapisanie wyników
 
             } catch (error) {
                 console.error("Błąd pobierania danych:", error);
@@ -533,12 +562,41 @@ export const KonfiguratorMain = ({ dataPrzyjazduInit, dataWyjazduInit, standardH
 
         // 3. czyszczenie timera przy zmianie inputa
         return () => clearTimeout(timeoutId);
-    }, [miejsceDoceloweSearching]);
+    }, [miejsceStartoweSearching]);
 
+    //test test test test
+    useEffect(() => {
+        const fetchRouteData = async () => {
+            try {
+                const fromLat = 50.06465009999999;
+                const fromLng = 19.9449799;
+                const toLat = 52.411542;
+                const toLng = 16.9487706;
+
+
+                const url = `http://localhost:5006/routeSummary?fromLat=${fromLat}&fromLng=${fromLng}&toLat=${toLat}&toLng=${toLng}`;
+                const response = await fetch(url);
+                if (!response.ok) {
+                    throw new Error(`HTTP error: ${response.status}`);
+                }
+
+                const data = await response.json();
+                console.log("🚗 Wynik tras:", data);
+            } catch (error) {
+                console.error("❌ Błąd podczas pobierania trasy:", error);
+            }
+        };
+        fetchRouteData();
+        console.log("TEST3", miejsceDocelowe, miejsceStartowe)
+    }, [miejsceDocelowe, miejsceStartowe]);
+    //test test test
     //dane z serwera
 
     //atrakcje
     const [atrakcje, setAtrakcje] = useState([])
+    useEffect(() => {
+        console.log("TEST42", atrakcje, miejsceDocelowe, miejsceStartowe)
+    }, [atrakcje, miejsceDocelowe, miejsceStartowe])
     const fetchAttractions = useCallback(
         debounce(async (placeId, lat, lng) => {
             try {
@@ -614,9 +672,17 @@ export const KonfiguratorMain = ({ dataPrzyjazduInit, dataWyjazduInit, standardH
 
         return true;
     }
+
+
+
     useEffect(() => {
-        console.log("TEST5", miejsceDocelowe, miejsceStartowe)
-    }, [miejsceDocelowe, miejsceStartowe])
+
+        miejsceDocelowe && localStorage.setItem("miejsceDocelowe", JSON.stringify(miejsceDocelowe))
+    }, [miejsceDocelowe])
+    useEffect(() => {
+        miejsceStartowe && localStorage.setItem("miejsceStartowe", JSON.stringify(miejsceStartowe))
+    }, [miejsceStartowe])
+
     useEffect(() => {
         if (lastDaySwap == 1) {
             changeStartHour(activitiesSchedule.lentgh - 1, 480)
@@ -683,7 +749,7 @@ export const KonfiguratorMain = ({ dataPrzyjazduInit, dataWyjazduInit, standardH
 
     }
     function verifyBaseActs(tab) {
-        if (!tab.length) return tab;
+        if (!tab.length || !miejsceDocelowe || !miejsceStartowe) return tab;
         for (let i = 0; i < tab.length; i++) {
 
             if (tab.length && i === 0) {
@@ -707,8 +773,8 @@ export const KonfiguratorMain = ({ dataPrzyjazduInit, dataWyjazduInit, standardH
                                 adres: "",
                                 czasZwiedzania: 0,
                                 lokalizacja: {
-                                    lat: 52.40567859999999,
-                                    lng: 16.9312766
+                                    lat: miejsceStartowe?.location?.lat || 52.40567859999999,
+                                    lng: miejsceStartowe?.location?.lng || 16.9312766
                                 }
                             },
                             ...tab[i]
@@ -721,8 +787,8 @@ export const KonfiguratorMain = ({ dataPrzyjazduInit, dataWyjazduInit, standardH
                                 adres: "",
                                 czasZwiedzania: 30,
                                 lokalizacja: {
-                                    lat: 52.40567859999999,
-                                    lng: 16.9312766
+                                    lat: miejsceDocelowe?.location?.lat || 52.40567859999999,
+                                    lng: miejsceDocelowe?.location?.lng || 16.9312766
                                 }
                             },
                             ...tab[i],
@@ -739,8 +805,8 @@ export const KonfiguratorMain = ({ dataPrzyjazduInit, dataWyjazduInit, standardH
                                 adres: "",
                                 czasZwiedzania: 0,
                                 lokalizacja: {
-                                    lat: 52.40567859999999,
-                                    lng: 16.9312766
+                                    lat: miejsceStartowe?.location?.lat || 52.40567859999999,
+                                    lng: miejsceStartowe?.location?.lng || 16.9312766
                                 }
                             },
                             ...tab[i]
@@ -804,8 +870,8 @@ export const KonfiguratorMain = ({ dataPrzyjazduInit, dataWyjazduInit, standardH
                                 adres: "",
                                 czasZwiedzania: 0,
                                 lokalizacja: {
-                                    lat: 52.40567859999999,
-                                    lng: 16.9312766
+                                    lat: miejsceStartowe?.location?.lat || 52.40567859999999,
+                                    lng: miejsceStartowe?.location?.lng || 16.9312766
                                 }
                             }
 
@@ -822,8 +888,8 @@ export const KonfiguratorMain = ({ dataPrzyjazduInit, dataWyjazduInit, standardH
                                 adres: "",
                                 czasZwiedzania: 0,
                                 lokalizacja: {
-                                    lat: 52.40567859999999,
-                                    lng: 16.9312766
+                                    lat: miejsceStartowe?.location?.lat || 52.40567859999999,
+                                    lng: miejsceStartowe?.location?.lng || 16.9312766
                                 }
                             }
 
@@ -1109,21 +1175,18 @@ export const KonfiguratorMain = ({ dataPrzyjazduInit, dataWyjazduInit, standardH
         });
 
     }
-    //temp
-    useEffect(() => {
-        setMiejsceStartowe(miejsceDocelowe)
-    }, [miejsceDocelowe])
-    //temp
+
 
     useEffect(() => {
         chosenTransportSchedule.length &&
             generateRouteSchedule();
     }, [chosenTransportSchedule, startHours]);
 
-    const submitMiejsceDocelowe = (miejsceDoceloweWybor) => {
-        setMiejsceDocelowe(miejsceDoceloweWybor);
-        setMiejsceDoceloweSearching("")
-        setMiejsceDoceloweResults([])
+
+    const submitMiejsceStartowe = (miejsceStartoweWybor) => {
+        setMiejsceStartowe(miejsceStartoweWybor);
+        setMiejsceStartoweSearching("")
+        setMiejsceStartoweResults([]);
 
     }
     function formatDate(dateInput) {
@@ -1141,7 +1204,7 @@ export const KonfiguratorMain = ({ dataPrzyjazduInit, dataWyjazduInit, standardH
 
     const setOffOthers = (s) => {
         if (s != 0) {
-            setMiejsceDocelowePopupOpened(false)
+            setMiejsceStartowePopupOpened(false)
         }
         if (s != 1) {
             setWyborDatyOpened(false)
@@ -1167,27 +1230,27 @@ export const KonfiguratorMain = ({ dataPrzyjazduInit, dataWyjazduInit, standardH
                 <div className="iconEditBox" onClick={() => setSettingsOpened(!settingsOpened)}>
                     <img src="../icons/filter.svg" height={'60%'} />
                 </div>
-                <SettingsButton onClick={() => { setMiejsceDocelowePopupOpened(!miejsceDocelowePopupOpened); setOffOthers(0) }} className={miejsceDocelowePopupOpened ? "chosen" : ""}>
+                <SettingsButton onClick={() => { setMiejsceStartowePopupOpened(!miejsceStartowePopupOpened); setOffOthers(0) }} className={miejsceStartowePopupOpened ? "chosen" : ""}>
 
                     <img height="30px" width="30px" src="../icons/icon-rocket.svg" />
-                    Miejsce początkowe:<span>{miejsceDocelowe ? miejsceDocelowe.nazwa : "..."} </span>
-                    {miejsceDocelowePopupOpened && <div className="settingsPopup" onClick={(e) => e.stopPropagation()} >
+                    Miejsce początkowe:<span>{miejsceStartowe ? miejsceStartowe.nazwa : "..."} </span>
+                    {miejsceStartowePopupOpened && <div className="settingsPopup" onClick={(e) => e.stopPropagation()} >
 
-                        <SearchBox value={miejsceDoceloweSearching} onChange={setMiejsceDoceloweSearching} results={miejsceDoceloweResults} searchAction={submitMiejsceDocelowe} disabled={miejsceDocelowe} />
-                        {miejsceDocelowe && <>
-                            <MapaBox key={`docelowe-${miejsceDocelowe.nazwa}`}>
-                                <LeafletMap lat={miejsceDocelowe?.location?.lat || 52.5333} lng={miejsceDocelowe?.location?.lng || 16.9252} zoom={9} />
+                        <SearchBox value={miejsceStartoweSearching} onChange={setMiejsceStartoweSearching} results={miejsceStartoweResults} searchAction={submitMiejsceStartowe} disabled={miejsceStartowe} />
+                        {miejsceStartowe && <>
+                            <MapaBox key={`startowe-${miejsceStartowe.nazwa}`}>
+                                <LeafletMap lat={miejsceStartowe?.location?.lat || 52.5333} lng={miejsceStartowe?.location?.lng || 16.9252} zoom={9} />
 
                             </MapaBox>
                             <MapaResultBox>
 
 
-                                <PopupResult onClick={() => setMiejsceDocelowe("")} onMouseEnter={() => setMiejsceDoceloweHovering(true)} onMouseLeave={() => setMiejsceDoceloweHovering(false)}>
+                                <PopupResult onClick={() => setMiejsceStartowe("")} onMouseEnter={() => setMiejsceStartoweHovering(true)} onMouseLeave={() => setMiejsceStartoweHovering(false)}>
                                     <div className="popupResultTitle">
-                                        {miejsceDocelowe.nazwa}
+                                        {miejsceStartowe.nazwa}
                                     </div>
                                     <div className="popupResultSubtitle">
-                                        {miejsceDocelowe.wojewodztwo}, {miejsceDocelowe.kraj}
+                                        {miejsceStartowe.wojewodztwo}, {miejsceStartowe.kraj}
                                     </div>
                                     <img
                                         src={"../icons/swap.svg"}
@@ -1200,13 +1263,13 @@ export const KonfiguratorMain = ({ dataPrzyjazduInit, dataWyjazduInit, standardH
                                         }}
                                     />
                                 </PopupResult>
-                                <div className={miejsceDoceloweHovering ? "changeInfo hovered" : "changeInfo"}>
+                                <div className={miejsceStartoweHovering ? "changeInfo hovered" : "changeInfo"}>
                                     kliknij aby zmienić lokalizację
                                 </div>
                             </MapaResultBox>
 
                         </>}
-                        {!miejsceDocelowe &&
+                        {!miejsceStartowe &&
                             <MapaBox>
                                 <div className="brakMapy">
                                     Wyszukaj lokalizacje w polu wyszukiwania
@@ -1386,13 +1449,48 @@ export const KonfiguratorMain = ({ dataPrzyjazduInit, dataWyjazduInit, standardH
 
 
                     </SummaryInfoBox>
+                    <SummaryInfoBox className="b">
+
+                        <div className="summaryInfoBoxTitle">
+                            <img src="../icons/hotel-white.svg" width="20px" />
+                            Przejazd do {miejsceDocelowe.nazwa}
+                        </div>
+                        <div className="summaryInfoBoxTitle b" >
+                            <img src="../icons/hotelName-white.svg" width="20px" />
+                            Nazwa: {wybranyHotel.nazwa}
+                        </div>
+                        <div className="summaryInfoBoxTitle b" >
+                            <img src="../icons/time-white.svg" width="20px" />
+                            Doba hotelowa: {wybranyHotel.checkIn} - {wybranyHotel.checkOut}
+                        </div>
+
+
+                    </SummaryInfoBox>
+                     <SummaryInfoBox className="b">
+
+                        <div className="summaryInfoBoxTitle">
+                            <img src="../icons/hotel-white.svg" width="20px" />
+                            Powrót do {miejsceStartowe.nazwa}
+                        </div>
+                        <div className="summaryInfoBoxTitle b" >
+                            <img src="../icons/hotelName-white.svg" width="20px" />
+                            Nazwa: {wybranyHotel.nazwa}
+                        </div>
+                        <div className="summaryInfoBoxTitle b" >
+                            <img src="../icons/time-white.svg" width="20px" />
+                            Doba hotelowa: {wybranyHotel.checkIn} - {wybranyHotel.checkOut}
+                        </div>
+
+
+                    </SummaryInfoBox>
                     <div className="mainboxLeftTitle" style={{ paddingTop: '10px', marginTop: '20px', borderTop: '1px solid #ccc' }}>
                         Podsumowanie dnia
                     </div>
-                    <div style={{ height: '270px', width: '90%', borderRadius: '15px', overflow: 'hidden', backgroundColor: '#f0f0f0', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <div style={{ pointerEvents: "none" , height: '270px', width: '90%', borderRadius: '15px', overflow: 'hidden', backgroundColor: '#f0f0f0', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                         <RouteMap
                             schedule={activitiesSchedule[wybranyDzien]}
                             key={JSON.stringify(activitiesSchedule[wybranyDzien])}
+                            
                         />
                     </div>
                 </KonfiguratorMainMainboxLeft>
