@@ -16,6 +16,7 @@ import Radio1 from "./roots/radio1";
 import { KonfiguratorWyjazduComp, roznicaDni } from "./konfigurator/konfiguratorWyjazduComp";
 import { AddActivityPanel } from "./konfigurator/addActivityPanel";
 import RouteMap from "./routeMap";
+import { parseJSON } from "date-fns";
 
 const testResults = [
     { nazwa: "Poznań", region: "Wielkopolska", kraj: "Polska" },
@@ -25,8 +26,8 @@ const testResults = [
 
 
 ]
-
-
+const namesTransportTab = ["Transport zbiorowy", "Wynajęty autokar", "Własny"]
+const namesHotelsTab = ["Ośrodki kolonijne", "Hotele 2/3 gwiazdkowe", "Hotele premium", "Własny"]
 const KonfiguratorMainMainbox = styled.div`
 
     width: 100%;
@@ -275,11 +276,15 @@ const SettingsButton = styled.div`
     display: flex;
     align-items: center;
     justify-content: center;
+    text-align: left;
     font-size: 12px;
     padding: 2px 5px;
     font-weight: 300;
     gap: 2px;
-    &:hover, &.chosen{
+    &.chosen{
+        border-bottom: 3px solid #008d73ff;
+    }
+    &:hover{
         border-bottom: 3px solid #008d73ff;
     }
 
@@ -466,10 +471,47 @@ export function timeToMinutes(timeString) {
 export const KonfiguratorMain = ({ dataPrzyjazduInit, dataWyjazduInit, standardHoteluInit, standardTransportuInit, miejsceDoceloweInit, miejsceStartoweInit }) => {
 
     //dane poczatkowe
-    const [dataPrzyjazdu, setDataPrzyjazdu] = useState(dataPrzyjazduInit)
-    const [dataWyjazdu, setDataWyjazdu] = useState(dataWyjazduInit)
-    const [standardHotelu, setStandardHotelu] = useState(standardHoteluInit)
-    const [standardTransportu, setStandardTransportu] = useState(standardTransportuInit)
+    const [dataPrzyjazdu, setDataPrzyjazdu] = useState(() => {
+        if (dataPrzyjazduInit) return new Date(dataPrzyjazduInit);
+        const saved = localStorage.getItem("dataPrzyjazdu");
+        return saved ? new Date(saved) : new Date();
+    });
+
+    const [dataWyjazdu, setDataWyjazdu] = useState(() => {
+        if (dataWyjazduInit) return new Date(dataWyjazduInit);
+        const saved = localStorage.getItem("dataWyjazdu");
+        return saved ? new Date(saved) : new Date();
+    });
+
+    const [standardHotelu, setStandardHotelu] = useState(
+        standardHoteluInit ?? Number(localStorage.getItem("standardHotelu")) ?? 0
+    );
+
+    const [standardTransportu, setStandardTransportu] = useState(
+        standardTransportuInit ?? Number(localStorage.getItem("standardTransportu")) ?? 0
+    );
+
+    // --- efekty zapisu do localStorage ---
+
+    useEffect(() => {
+        localStorage.setItem("standardTransportu", standardTransportu);
+    }, [standardTransportu]);
+
+    useEffect(() => {
+        localStorage.setItem("standardHotelu", standardHotelu);
+    }, [standardHotelu]);
+
+    useEffect(() => {
+        if (dataWyjazdu instanceof Date && !isNaN(dataWyjazdu)) {
+            localStorage.setItem("dataWyjazdu", dataWyjazdu.toISOString());
+        }
+    }, [dataWyjazdu]);
+
+    useEffect(() => {
+        if (dataPrzyjazdu instanceof Date && !isNaN(dataPrzyjazdu)) {
+            localStorage.setItem("dataPrzyjazdu", dataPrzyjazdu.toISOString());
+        }
+    }, [dataPrzyjazdu]);
     const [miejsceDocelowe, setMiejsceDocelowe] = useState(
 
         () => {
@@ -581,13 +623,12 @@ export const KonfiguratorMain = ({ dataPrzyjazduInit, dataWyjazduInit, standardH
                 }
 
                 const data = await response.json();
-                //console.log("🚗 Wynik tras:", data);
+
             } catch (error) {
                 console.error("❌ Błąd podczas pobierania trasy:", error);
             }
         };
         fetchRouteData();
-        //console.log("TEST3", miejsceDocelowe, miejsceStartowe)
     }, [miejsceDocelowe, miejsceStartowe]);
     //test test test
     //dane z serwera
@@ -657,7 +698,7 @@ export const KonfiguratorMain = ({ dataPrzyjazduInit, dataWyjazduInit, standardH
         for (let j = 0; j < activitiesSchedule[i].length; j++) {
             if (timeSchedule.length && Array.isArray(timeSchedule[i])) {
                 if (activitiesSchedule[i][j]?.idGoogle == "baseBookOut" && timeSchedule[i][j] > timeToMinutes(wybranyHotel.checkOut)) {
-                    //console.log("TEST6", i, j, activitiesSchedule[i][j])
+
                     toChange = j;
                 }
             }
@@ -701,7 +742,6 @@ export const KonfiguratorMain = ({ dataPrzyjazduInit, dataWyjazduInit, standardH
     }, [lastDaySwap]);
 
 
-    let isGenerating = false; // zmienna globalna w module (lub useRef w komponencie)
     function roundFive(num) {
         if (num <= 0) return 0;
         return Math.ceil((num + 0.0001) / 5) * 5; // dodanie małej wartości, by np. 20 -> 25
@@ -711,13 +751,8 @@ export const KonfiguratorMain = ({ dataPrzyjazduInit, dataWyjazduInit, standardH
         if (activitiesSchedule.length != chosenTransportSchedule.length && activitiesSchedule != timeSchedule.length) {
             return;
         }
-        if (isGenerating) {
-            //console.log("⏳ Pomijam wywołanie — generowanie już trwa lub niedawno się zakończyło");
-            return false;
-        }
 
-        isGenerating = true;
-        setTimeout(() => (isGenerating = false), 1000); // ⏱️ odblokowanie po 1 sekundzie
+        // ⏱️ odblokowanie po 1 sekundzie
 
         if (!activitiesScheduleLocal) {
             activitiesScheduleLocal = activitiesSchedule;
@@ -802,7 +837,7 @@ export const KonfiguratorMain = ({ dataPrzyjazduInit, dataWyjazduInit, standardH
                 }
                 else if (chosenTransportSchedule[dayIdx][actIdx] == 0 && tabRoutesTmp[dayIdx][actIdx]?.czasy[chosenTransportSchedule[dayIdx][actIdx]] >= 180) {
                     const newChoice = standardTransportu === "Transport publiczny" ? 1 : 2;
-                    
+
                     setChosenTransportSchedule(prev => {
                         const updated = [...prev];
                         updated[dayIdx][actIdx] = newChoice;
@@ -839,8 +874,8 @@ export const KonfiguratorMain = ({ dataPrzyjazduInit, dataWyjazduInit, standardH
         setRouteSchedule(tabRoutesTmp);
         setTimeSchedule(tabTimeScheduleTmp);
 
-        console.log("✅ Nowe trasy:", tabRoutesTmp);
-        console.log("🕒 Harmonogram:", tabTimeScheduleTmp);
+        //console.log("✅ Nowe trasy:", tabRoutesTmp);
+        //console.log("🕒 Harmonogram:", tabTimeScheduleTmp);
 
         return true;
     }
@@ -866,20 +901,6 @@ export const KonfiguratorMain = ({ dataPrzyjazduInit, dataWyjazduInit, standardH
 
                         tab[i] = [
                             {
-                                idGoogle: "baseRouteTo",
-                                nazwa: "Wyjazd do miejsca docelowego",
-                                adres: "",
-                                czasZwiedzania: 0,
-                                lokalizacja: {
-                                    lat: miejsceStartowe?.location?.lat || 52.40567859999999,
-                                    lng: miejsceStartowe?.location?.lng || 16.9312766
-                                }
-                            },
-                            ...tab[i]
-                        ];
-
-                        tab[i] = [
-                            {
                                 idGoogle: "baseBookIn",
                                 nazwa: "Zameldowanie w miejscu noclegu",
                                 adres: "",
@@ -893,9 +914,24 @@ export const KonfiguratorMain = ({ dataPrzyjazduInit, dataWyjazduInit, standardH
 
 
                         ];
+
+                        tab[i] = [
+                            {
+                                idGoogle: "baseRouteTo",
+                                nazwa: "Wyjazd do miejsca docelowego",
+                                adres: "",
+                                czasZwiedzania: 0,
+                                lokalizacja: {
+                                    lat: miejsceStartowe?.location?.lat || 52.40567859999999,
+                                    lng: miejsceStartowe?.location?.lng || 16.9312766
+                                }
+                            },
+                            ...tab[i]
+                        ];
+
+
                     }
                     else if (tab.length) {
-
                         tab[i] = [
                             {
                                 idGoogle: "baseRouteTo",
@@ -1069,6 +1105,13 @@ export const KonfiguratorMain = ({ dataPrzyjazduInit, dataWyjazduInit, standardH
 
 
         }
+        if (tab && tab.length > 1) {
+            for (let i = 0; i < tab.length; i++) {
+                if (tab[i][0].idGoogle != "baseRouteTO") {
+                }
+            }
+
+        }
         return tab;
 
     }
@@ -1220,7 +1263,6 @@ export const KonfiguratorMain = ({ dataPrzyjazduInit, dataWyjazduInit, standardH
                     return updated;
                 }
                 let updated = verifyBaseActs(prev);
-                //console.log("TEST1", updated);
                 return updated; // bez zmian
             });
 
@@ -1259,7 +1301,7 @@ export const KonfiguratorMain = ({ dataPrzyjazduInit, dataWyjazduInit, standardH
 
                 if (diff > 0) {
                     // dodaj brakujące elementy (np. zera)
-                    return [...dayTransports, ...Array(diff).fill(0)];
+                    return [...dayTransports, ...Array(diff).fill(standardTransportu == 0 ? 1 : 2)];
                 } else if (diff < 0) {
                     // usuń nadmiar
                     return dayTransports.slice(0, targetLen);
@@ -1293,6 +1335,7 @@ export const KonfiguratorMain = ({ dataPrzyjazduInit, dataWyjazduInit, standardH
         startHours,
         activitiesSchedule,
     });
+
 
     useEffect(() => {
         const prev = prevValues.current;
@@ -1343,7 +1386,10 @@ export const KonfiguratorMain = ({ dataPrzyjazduInit, dataWyjazduInit, standardH
 
         return `${day}/${month}/${year}`;
     }
-
+    //temp temp temp
+    useEffect(() => {
+    }, [wyborGosciOpened])
+    //temp temp temp
     const setOffOthers = (s) => {
         if (s != 0) {
             setMiejsceStartowePopupOpened(false)
@@ -1362,13 +1408,31 @@ export const KonfiguratorMain = ({ dataPrzyjazduInit, dataWyjazduInit, standardH
         }
     }
 
+    useEffect(() => {
+        function handleClickOutside(event) {
+            if (settingsRef.current && !settingsRef.current.contains(event.target)) {
+                // Kliknięto poza całym KonfiguratorMainSettings → zamknij wszystkie popupy
+                setSettingsOpened(false);
+                setMiejsceStartowePopupOpened(false);
+                setWyborDatyOpened(false);
+                setWyborGosciOpened(false);
+                setWyborStandardHoteluOpened(false);
+                setWyborStandardTransportuOpened(false);
+            }
+        }
+
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => document.removeEventListener("mousedown", handleClickOutside);
+    }, []);
+    const settingsRef = useRef(null);
+
     //useEffect(() => { console.log("TEST2", activitiesSchedule, activitiesSchedule[wybranyDzien]) }, [activitiesSchedule])
     return (
         <>
             <TopKreatorSlider />
 
 
-            <KonfiguratorMainSettings className={settingsOpened ? "opened" : "closed"}>
+            <KonfiguratorMainSettings ref={settingsRef} className={settingsOpened ? "opened" : "closed"}>
                 <div className="iconEditBox" onClick={() => setSettingsOpened(!settingsOpened)}>
                     <img src="../icons/filter.svg" height={'60%'} />
                 </div>
@@ -1432,7 +1496,7 @@ export const KonfiguratorMain = ({ dataPrzyjazduInit, dataWyjazduInit, standardH
                     </div>}
                 </SettingsButton>
 
-                <SettingsButton className={wyborDatyOpened ? "chosen" : ""} onClick={() => { setWyborGosciOpened(!wyborGosciOpened); setOffOthers(2) }}>
+                <SettingsButton className={wyborGosciOpened ? "chosen" : ""} onClick={() => { setWyborGosciOpened(!wyborGosciOpened); setOffOthers(2) }}>
 
                     <img height="30px" width="30px" src="../icons/users.svg" />
                     {liczbaUczestnikow} uczestników, {liczbaOpiekunów} opiekunów
@@ -1442,31 +1506,35 @@ export const KonfiguratorMain = ({ dataPrzyjazduInit, dataWyjazduInit, standardH
                     </div>}
 
                 </SettingsButton>
+
                 <SettingsButton className={wyborStandardHoteluOpened ? "chosen" : ""} onClick={() => { setWyborStandardHoteluOpened(!wyborStandardHoteluOpened); setOffOthers(3) }}>
 
                     <img height="30px" width="30px" src="../icons/icon-hotel.svg" />
-                    Standard hotelu : {standardHotelu || "..."}
+                    Standard hotelu : {standardHotelu || standardHotelu == 0 ? namesHotelsTab[standardHotelu] : "..."}
                     {wyborStandardHoteluOpened && <div className="settingsPopup" onClick={(e) => e.stopPropagation()} >
                         Standard hotelu
                         <Radio1
                             setWybor={setStandardHotelu}
                             value={standardHotelu}
                             name="hotel-standard"
+                            key={standardHotelu}
                         />
                     </div>}
                 </SettingsButton>
+
                 <SettingsButton className={wyborStandardTransportuOpened ? "chosen" : ""} onClick={() => { setWyborStandardTransportuOpened(!wyborStandardTransportuOpened); setOffOthers(4) }}>
 
                     <img height="30px" width="30px" src="../icons/icon-transport.svg" />
-                    Preferowany transport: {standardTransportu || "..."}
+                    Preferowany transport: {standardTransportu || standardTransportu == 0 ? namesTransportTab[standardTransportu] : "..."}
                     {wyborStandardTransportuOpened && <div className="settingsPopup" onClick={(e) => e.stopPropagation()} >
                         Forma transportu
                         <Radio1
                             options={[
-                                { icon: "../icons/icon-private-bus.svg", label: "Wynajęty autokar" },
-                                { icon: "../icons/icon-public-trannsport.svg", label: "Transport publiczny" },
-                                { icon: "../icons/icon-own-transport.svg", label: "Własny" }
+                                { value: 1, icon: "../icons/icon-private-bus.svg", label: "Wynajęty autokar" },
+                                { value: 0, icon: "../icons/icon-public-trannsport.svg", label: "Transport publiczny" },
+                                { value: 2, icon: "../icons/icon-own-transport.svg", label: "Własny" }
                             ]}
+
                             setWybor={setStandardTransportu}
                             value={standardTransportu}
                             name="transport-form"
@@ -1577,16 +1645,22 @@ export const KonfiguratorMain = ({ dataPrzyjazduInit, dataWyjazduInit, standardH
                     <SummaryInfoBox>
                         <div className="summaryInfoBoxTitle">
                             <img src="../icons/hotel-white.svg" width="20px" />
-                            {standardHotelu != "Ośrodki kolonijne" ? "Hotel" : "Ośrodek kolonijny"}
+                            {standardHotelu != 0 && standardHotelu != 3 ? "Hotel" : "Nocleg"}
                         </div>
-                        <div className="summaryInfoBoxTitle b" >
-                            <img src="../icons/hotelName-white.svg" width="20px" />
-                            Nazwa: {wybranyHotel.nazwa}
-                        </div>
-                        <div className="summaryInfoBoxTitle b" >
-                            <img src="../icons/time-white.svg" width="20px" />
-                            Doba hotelowa: {wybranyHotel.checkIn} - {wybranyHotel.checkOut}
-                        </div>
+                        {standardHotelu != 3 &&
+                            <>
+                                <div className="summaryInfoBoxTitle b" >
+                                    <img src="../icons/hotelName-white.svg" width="20px" />
+                                    Nazwa: {wybranyHotel.nazwa}
+                                </div>
+                                <div className="summaryInfoBoxTitle b" >
+                                    <img src="../icons/time-white.svg" width="20px" />
+                                    Doba hotelowa: {wybranyHotel.checkIn} - {wybranyHotel.checkOut}
+                                </div>
+                            </>
+
+                        }
+
 
 
 

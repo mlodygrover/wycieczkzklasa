@@ -1,40 +1,44 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import styled from 'styled-components';
 const Radio1 = ({
-    options = [
-        { icon: "../icons/osrodek.svg", label: "Ośrodki kolonijne" },
-        { icon: "../icons/icon-hotel.svg", label: "Hotele 2/3 gwiazdkowe" },
-        { icon: "../icons/hotel-building-svgrepo-com.svg", label: "Hotele premium" },
-        { icon: "../icons/icon-own-transport.svg", label: "Własne / brak" }
-    ],
-    setWybor,
-    value,   // <-- dodane
-    name = "radio-group"
+  options = [
+    { value: 0, icon: "../icons/osrodek.svg", label: "Ośrodki kolonijne" },
+    { value: 1, icon: "../icons/icon-hotel.svg", label: "Hotele 2/3 gwiazdkowe" },
+    { value: 2, icon: "../icons/hotel-building-svgrepo-com.svg", label: "Hotele premium" },
+    { value: 3, icon: "../icons/icon-own-transport.svg", label: "Własne / brak" }
+  ],
+  setWybor,
+  value,   // <-- dodane
+  name = "radio-group"
 }) => {
-    return (
-        <StyledWrapper>
-            <div className="radio-inputs">
-                {options.map((option, optionIdx) => (
-                    <label key={optionIdx}>
-                        <input
-                            className="radio-input"
-                            type="radio"
-                            name={name}
-                            value={option.label}
-                            checked={value === option.label}   // <-- sterowanie zaznaczeniem
-                            onChange={() => setWybor(option.label)}
-                        />
-                        <span className="radio-tile">
-                            <span className="radio-icon">
-                                <img src={option.icon} height="30px" width="30px" />
-                            </span>
-                            <span className="radio-label">{option.label}</span>
-                        </span>
-                    </label>
-                ))}
-            </div>
-        </StyledWrapper>
-    );
+  useEffect(()=>{
+    console.log("TEST19", value)
+  }, [ value])
+  return (
+
+    <StyledWrapper>
+      <div className="radio-inputs">
+        {options.map((option, optionIdx) => (
+          <label key={optionIdx}>
+            <input
+              className="radio-input"
+              type="radio"
+              name={name}
+              value={option.value}
+              checked={value === option.value}
+              onChange={() => setWybor(option.value)}
+            />
+            <span className="radio-tile">
+              <span className="radio-icon">
+                <img src={option.icon} height="30px" width="30px" />
+              </span>
+              <span className="radio-label">{option.label}</span>
+            </span>
+          </label>
+        ))}
+      </div>
+    </StyledWrapper>
+  );
 };
 
 
@@ -55,20 +59,20 @@ const StyledWrapper = styled.div`
   }
 
   .radio-input:checked + .radio-tile {
-    border-color: #F49725;
+    border-color: #008d73ff;
     box-shadow: 0 5px 10px rgba(0, 0, 0, 0.1);
-    color: #F49725;
+    color: #008d73ff;
   }
 
   .radio-input:checked + .radio-tile:before {
     transform: scale(1);
     opacity: 1;
-    background-color: #F49725;
-    border-color: #F49725;
+    background-color: #008d73ff;
+    border-color: #008d73ff;
   }
 
   .radio-input:checked + .radio-tile .radio-icon svg {
-    fill: #F49725;
+    fill: #008d73ff;
   }
 
   .radio-input:checked + .radio-tile .radio-label {
@@ -76,8 +80,8 @@ const StyledWrapper = styled.div`
   }
 
   .radio-input:focus + .radio-tile {
-    border-color: #F49725;
-    box-shadow: 0 5px 10px rgba(0, 0, 0, 0.1), 0 0 0 4px #f4972533;
+    border-color: #008d73ff;
+    box-shadow: 0 5px 10px rgba(0, 0, 0, 0.1), 0 0 0 4px #5cf42533;
   }
 
   .radio-input:focus + .radio-tile:before {
@@ -107,8 +111,8 @@ const StyledWrapper = styled.div`
     display: block;
     width: 0.75rem;
     height: 0.75rem;
-    border: 2px solid #F49725;
-    background-color: #F49725;
+    border: 2px solid #008d73ff;
+    background-color: #008d73ff;
     border-radius: 50%;
     top: 0.25rem;
     left: 0.25rem;
@@ -118,7 +122,7 @@ const StyledWrapper = styled.div`
   }
 
   .radio-tile:hover {
-    border-color: #F49725;
+    border-color: #008d73ff;
   }
 
   .radio-tile:hover:before {

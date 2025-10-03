@@ -163,10 +163,15 @@ export const KonfiguratorWyjazduComp = ({ changeStartHour, deleteActivity, start
     //useEffect(() => { console.log("TEST3", activitesSchedule, routeSchedule, timeSchedule, chosenTransportSchedule) }, [activitesSchedule, routeSchedule, timeSchedule, chosenTransportSchedule])
 
     const [localWybranyDzien, setLocalWybranyDzien] = useState(wybranyDzien);
-
+    const [scheduleLoading, setScheduleLoading] = useState(false);
     useEffect(() => {
+        if(activitesSchedule.length <= localWybranyDzien){
+            setScheduleLoading(true);
+            return;
+        };
+        setScheduleLoading(false);
         setWybranyDzien(localWybranyDzien);
-    }, [localWybranyDzien]);
+    }, [localWybranyDzien, activitesSchedule]);
     return (
         <KonfiguratorWyjazduCompMainbox>
             <div className="konifuguratorMainboxTitle">
@@ -195,7 +200,7 @@ export const KonfiguratorWyjazduComp = ({ changeStartHour, deleteActivity, start
 
 
                     {
-                        !loading && timeSchedule.length ? (
+                        !loading && !scheduleLoading && timeSchedule.length ? (
                             <>
                                 {activitesSchedule.length > 0 &&
                                     activitesSchedule[wybranyDzien].map((atrakcja, idx) => (
