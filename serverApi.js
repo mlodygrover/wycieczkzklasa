@@ -5,15 +5,14 @@ const fetch = (...args) => import('node-fetch').then(({ default: fetch }) => fet
 const axios = require("axios");
 const cors = require("cors"); // <--- import
 const { default: mongoose } = require("mongoose");
+require("dotenv").config();
 const PQueue = require("p-queue").default;
-const { router: scrapePriceRouter } = require("./scrapePrice");
-const { PagePromise } = require("openai/pagination.js");
 const OpenAI = require("openai");
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY || "" });
-
+console.log(process.env.OPENAI_API_KEY)
 const fs = require("fs");
 const cheerio = require("cheerio");
-require("dotenv").config();
+
 
 const app = express();
 const PORT = 5006;

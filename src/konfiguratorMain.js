@@ -17,6 +17,7 @@ import { KonfiguratorWyjazduComp, roznicaDni } from "./konfigurator/konfigurator
 import { AddActivityPanel } from "./konfigurator/addActivityPanel";
 import RouteMap from "./routeMap";
 import { parseJSON } from "date-fns";
+import AttractionResultMediumComponent from "./attractionResultMediumComp";
 
 const testResults = [
     { nazwa: "Poznań", region: "Wielkopolska", kraj: "Polska" },
@@ -1397,7 +1398,7 @@ export const KonfiguratorMain = ({ dataPrzyjazduInit, dataWyjazduInit, standardH
                 const data = await response.json();
                 console.log("✅ Odpowiedź z backendu:", data);
             } catch (err) {
-                console.error("❌ Błąd:", err);
+                console.error(err);
             }
         };
 
@@ -1574,58 +1575,8 @@ export const KonfiguratorMain = ({ dataPrzyjazduInit, dataWyjazduInit, standardH
                                 .filter(atrakcja => atrakcja.nazwa.toLowerCase().includes(attractionsSearching.toLowerCase()) || atrakcja.adres.toLowerCase().includes(attractionsSearching.toLowerCase()))
                                 .toSorted((a, b) => (b.liczbaOpinie || 0) - (a.liczbaOpinie || 0))
                                 .map((atrakcja, idx) => (
-                                    <AttractionResultMedium key={atrakcja.googleId + "bok"}>
-                                        <div className="attractionResultMediumTitleBox">
-                                            <div className="titleIconBox">
-                                                <img src="../icons/color-castle.svg" width="20px" />
-                                            </div>
-                                            <div className="titleTextBox">
-                                                <div className="attractionResultMediumTitle">
-                                                    {atrakcja.nazwa}
-                                                </div>
-                                                <div className="attractionResultMediumSubtitle">
-                                                    {atrakcja.adres}
-                                                </div>
-                                            </div>
-                                        </div>
+                                    <AttractionResultMediumComponent key={`${atrakcja.idGoogle}${idx}`} atrakcja={atrakcja} wybranyDzien={wybranyDzien} addActivity={addActivity} />
 
-                                        <div className="attractionResultMediumDetails">
-                                            <div className="attractionResultMediumDetailRow">
-                                                <div className="detailRowElement">
-                                                    <img src="../icons/icon-time.svg" width="20px" />{" "}
-                                                    {atrakcja.czasZwiedzania || "1h 30min"}
-                                                </div>
-                                                <div className="detailRowElement">
-                                                    <img src="../icons/icon-ticket.svg" width="20px" />{" "}
-                                                    {atrakcja.cenaZwiedzania || "10zl/os"}
-                                                </div>
-                                            </div>
-                                            <div className="attractionResultMediumDetailRow">
-                                                <div className="detailRowElement">
-                                                    <img src="../icons/icon-stars.svg" width="20px" /> {atrakcja.ocena}{" "}
-                                                    <span>({atrakcja.liczbaOpinie})</span>
-                                                </div>
-                                                <div className="detailRowElement b">
-                                                    <img src="../icons/link.svg" width="20px" />{" "}
-                                                    <a href={atrakcja?.stronaInternetowa} target="_blank" rel="noreferrer">
-                                                        Witryna
-                                                    </a>
-                                                </div>
-                                            </div>
-                                            <div className="attractionResultMediumDetailRow">
-                                                <div className="detailRowElement c">
-                                                    <img src="../icons/success.svg" width="20px" /> Dostępne z przewodnikiem
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        <div
-                                            className="attractionResultMediumAddBox"
-                                            onClick={() => addActivity(wybranyDzien, atrakcja)}
-                                        >
-                                            + Dodaj do dnia
-                                        </div>
-                                    </AttractionResultMedium>
                                 ))
 
                         }
