@@ -1387,8 +1387,23 @@ export const KonfiguratorMain = ({ dataPrzyjazduInit, dataWyjazduInit, standardH
         return `${day}/${month}/${year}`;
     }
     //temp temp temp
+    const link1 = "https://www.kopalnia.pl/turysta-indywidualny/informacje-praktyczne/ceny-biletow-i-godziny-zwiedzania?br=01&utm_source=google&utm_medium=cpc&utm_campaign=%5B01%20Brand%5D%20Search%20PL%20-%20Sprzeda%C5%BC&utm_id=10165639374&gad_source=1&gad_campaignid=10165639374&gbraid=0AAAAADxnRXk2OvRdN_0_Sn5VH9nq-xZy2&gclid=Cj0KCQjw0Y3HBhCxARIsAN7931UFxnC-kbfYTN_DjJSkDjoJyBJesZxVvSIyG67pYUeZ-6TvI6WWdFoaAqhhEALw_wcB";
+    const link2 = "https://www.kopalnia.pl/?br=01&utm_source=google&utm_medium=cpc&utm_campaign=%5B01%20Brand%5D%20Search%20PL%20-%20Sprzeda%C5%BC&utm_id=10165639374&gad_source=1&gad_campaignid=10165639374&gbraid=0AAAAADxnRXk2OvRdN_0_Sn5VH9nq-xZy2&gclid=Cj0KCQjw0Y3HBhCxARIsAN7931UFxnC-kbfYTN_DjJSkDjoJyBJesZxVvSIyG67pYUeZ-6TvI6WWdFoaAqhhEALw_wcB";
+
     useEffect(() => {
-    }, [wyborGosciOpened])
+        const fetchOffer = async () => {
+            try {
+                const response = await fetch(`http://localhost:5006/place-offer?links=${encodeURIComponent(link1)},${encodeURIComponent(link2)}`);
+                const data = await response.json();
+                console.log("✅ Odpowiedź z backendu:", data);
+            } catch (err) {
+                console.error("❌ Błąd:", err);
+            }
+        };
+
+        fetchOffer();
+    }, []);
+
     //temp temp temp
     const setOffOthers = (s) => {
         if (s != 0) {
