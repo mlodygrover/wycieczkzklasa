@@ -157,14 +157,37 @@ const AttractionSchema = new mongoose.Schema({
     adres: String,
     ocena: Number,
     liczbaOpinie: Number,
+
     lokalizacja: {
         lat: Number,
         lng: Number,
     },
+
     typy: [String],
     ikona: String,
     stronaInternetowa: String,
     photos: [String],
+
+    // 🔹 Nowe pole: warianty oferty (analiza z AI)
+    warianty: [
+        {
+            nazwaWariantu: { type: String, default: "Zwiedzanie" }, // np. "Trasa A"
+            czasZwiedzania: { type: Number, default: null },        // w minutach
+            cenaZwiedzania: { type: Number, default: null },        // bilet normalny
+            cenaUlgowa: { type: Number, default: null },            // bilet ulgowy
+            interval: { type: String, enum: ["jednorazowo", "za godzinę", "404"], default: "404" },
+            godzinyOtwarcia: {
+                type: [
+                    {
+                        type: [String], // np. ["09:00", "17:00"] lub null
+                        default: null,
+                    },
+                ],
+
+                default: [null, null, null, null, null, null, null],
+            },
+        },
+    ],
 });
 
 const Attraction = mongoose.model("Attraction", AttractionSchema);
@@ -760,20 +783,34 @@ function stripHTMLTags(text) {
     if (!text || typeof text !== "string") return "";
 
     const fontTags = ["strong", "b", "i", "em", "u"];
+    const tableTags = ["table", "tr", "td", "th", "thead", "tbody"];
+
+    // Wyrażenie regularne do wykrywania wszystkich tagów HTML
     const regex = /<\/?([a-zA-Z0-9]+)(\s[^>]*)?>/g;
 
     return text.replace(regex, (match, tagName) => {
         const lower = tagName.toLowerCase();
 
-        // jeśli to znacznik czcionkowy — usuń całkowicie
+        // 🔸 1. Jeśli znacznik czcionkowy — usuń go całkowicie
         if (fontTags.includes(lower)) {
             return "";
         }
 
-        // wszystkie inne znaczniki zastąp znakiem końca linii
+        // 🔸 2. Jeśli znacznik tabeli — zachowaj nazwę tagu, ale usuń atrybuty
+        if (tableTags.includes(lower)) {
+            // sprawdzamy czy to znacznik zamykający
+            if (match.startsWith("</")) {
+                return `</${lower}>`;
+            } else {
+                return `<${lower}>`;
+            }
+        }
+
+        // 🔸 3. Wszystkie inne znaczniki zastępuj znakiem nowej linii
         return "\n";
     });
 }
+
 
 function cleanWhitespacePreserveLines(text) {
     if (!text || typeof text !== "string") return "";
@@ -941,53 +978,119 @@ async function extractMenuLinks(url) {
     }
 }
 async function extractDomainLinks(url) {
-  try {
-    console.log("🌍 Pobieram stronę i analizuję wszystkie linki:", url);
+    try {
+        console.log("🌍 Pobieram stronę i analizuję wszystkie linki:", url);
 
-    const { data: html } = await axios.get(url, {
-      headers: { "User-Agent": "Mozilla/5.0 (Node.js DomainLinkExtractor/1.0)" },
-      timeout: 20000,
-    });
+        const { data: html } = await axios.get(url, {
+            headers: { "User-Agent": "Mozilla/5.0 (Node.js DomainLinkExtractor/1.0)" },
+            timeout: 20000,
+        });
 
-    const $ = cheerio.load(html);
-    const origin = new URL(url).origin;
+        const $ = cheerio.load(html);
+        const origin = new URL(url).origin;
 
-    const links = [];
+        const links = [];
 
-    $("a[href]").each((_, el) => {
-      const href = $(el).attr("href");
-      const text = $(el).text().trim();
+        $("a[href]").each((_, el) => {
+            const href = $(el).attr("href");
+            const text = $(el).text().trim();
 
-      if (!href) return;
-      if (href.match(/^(#|tel:|mailto:|javascript:)/i)) return; // pomiń niepotrzebne
-      const abs = href.startsWith("http") ? href : new URL(href, origin).href;
+            if (!href) return;
+            if (href.match(/^(#|tel:|mailto:|javascript:)/i)) return; // pomiń niepotrzebne
+            const abs = href.startsWith("http") ? href : new URL(href, origin).href;
 
-      // tylko linki z tej samej domeny
-      if (abs.startsWith(origin)) {
-        links.push({ text, href: abs });
-      }
-    });
+            // tylko linki z tej samej domeny
+            if (abs.startsWith(origin)) {
+                links.push({ text, href: abs });
+            }
+        });
 
-    // 🔁 Usuń duplikaty
-    const uniqueLinks = [
-      ...new Map(links.map((l) => [l.href, l])).values(),
-    ];
+        // 🔁 Usuń duplikaty
+        const uniqueLinks = [
+            ...new Map(links.map((l) => [l.href, l])).values(),
+        ];
 
-    console.log(`✅ Znaleziono ${uniqueLinks.length} linków w domenie.`);
-    return uniqueLinks;
-  } catch (err) {
-    console.error("❌ Błąd w extractDomainLinks:", err.message);
-    return [];
-  }
+        console.log(`✅ Znaleziono ${uniqueLinks.length} linków w domenie.`);
+        return uniqueLinks;
+    } catch (err) {
+        console.error("❌ Błąd w extractDomainLinks:", err.message);
+        return [];
+    }
 }
 
+
+async function crawlDomainLinks(
+    startUrl,
+    maxDepth = 2,
+    excludeKeywords = ["aktualn", "blog", "news", "kontakt", "polityka", "regulamin", "kariera"]
+) {
+    const origin = new URL(startUrl).origin;
+    const visited = new Set();
+    const collected = new Map(); // href → { href, text }
+
+    async function crawl(url, depth) {
+        if (depth > maxDepth) return;
+        if (visited.has(url)) return;
+
+        visited.add(url);
+        console.log(`🌐 [${depth}/${maxDepth}] Analizuję: ${url}`);
+
+        try {
+            const { data: html } = await axios.get(url, {
+                headers: { "User-Agent": "Mozilla/5.0 (Node.js Crawler/1.0)" },
+                timeout: 15000,
+            });
+
+            const $ = cheerio.load(html);
+
+            $("a[href]").each((_, el) => {
+                const href = $(el).attr("href");
+                if (!href) return;
+
+                // Ignoruj anchor, tel, mailto, JS
+                if (href.match(/^(#|tel:|mailto:|javascript:)/i)) return;
+
+                const absUrl = href.startsWith("http")
+                    ? href
+                    : new URL(href, origin).href;
+
+                // Tylko z tej samej domeny
+                if (!absUrl.startsWith(origin)) return;
+
+                // Pomijaj nieistotne linki
+                if (excludeKeywords.some((kw) => absUrl.toLowerCase().includes(kw))) return;
+
+                // Zapisz unikalny link
+                if (!collected.has(absUrl)) {
+                    collected.set(absUrl, { href: absUrl, text: $(el).text().trim() });
+                }
+            });
+
+            // Rekurencyjnie przejdź do podlinkowanych stron (z tego poziomu)
+            const nextLinks = Array.from(collected.keys()).filter(
+                (link) => !visited.has(link)
+            );
+
+            for (const link of nextLinks) {
+                await crawl(link, depth + 1);
+            }
+        } catch (err) {
+            console.warn(`⚠️ Błąd przy ${url}: ${err.message}`);
+        }
+    }
+
+    await crawl(startUrl, 1);
+
+    console.log(`✅ Zebrano ${collected.size} unikalnych linków (do głębokości ${maxDepth}).`);
+    return Array.from(collected.values());
+}
 
 async function analyzeAttractionLinks(url) {
     try {
         console.log("🌐 Analiza atrakcji:", url);
 
         // 1️⃣ Pobierz linki z menu
-        const menuLinks = await extractDomainLinks(url);
+        const menuLinks = await crawlDomainLinks(url);
         if (!Array.isArray(menuLinks) || menuLinks.length === 0) {
             console.log("⚠️ Brak linków w menu – zakończono.");
             return [];
@@ -1002,7 +1105,8 @@ async function analyzeAttractionLinks(url) {
         const systemPrompt = `
             Jesteś ekspertem od stron atrakcji turystycznych.
             Dostałeś listę linków z menu danej witryny.
-            Twoim zadaniem jest wskazanie, który link prowadzi do cennika zawierajacego ceny biletow i ewentualnie warianty oferty. Priorytetem jest cena biletow, w przypadku niepewnosci mozesz zwroci wiecej niz jeden link.
+            Twoim zadaniem jest wskazanie, który link prowadzi do cennika zawierajacego ceny biletow i ewentualnie warianty oferty, dla pojedynczej osoby indywidualnej bez zadnych znizek. Priorytetem jest cena biletow, w przypadku niepewnosci mozesz zwroci wiecej niz jeden link.
+            Najlepiej gdybys zwrocil tylko jeden link w ktorym bedzie oferta podstawowa (bez grupowych, szkolnych itp).
             Zwróć TYLKO tablicę linków w formacie JSON:
             {
             "relevantLinks": ["https://..."]
@@ -1037,10 +1141,106 @@ async function analyzeAttractionLinks(url) {
     }
 }
 
+async function analyzeOfferFromText(pageText, index = 0) {
+    const prompt = `
+Z podanego tekstu strony internetowej wyczytaj następujące dane:
+- warianty oferty (np. trasa A, trasa B, lub "zwiedzanie" jeśli tylko jeden wariant)
+- dla każdego wariantu:
+  • cena biletu normalnego bez zniżek
+  • cena biletu ulgowego dla ucznia
+  • interwał płatności (np. za godzinę, jednorazowo)
+  • czas zwiedzania atrakcji (w minutach)
+  • godziny otwarcia atrakcji (tablica 7 elementów: pon–niedz)
 
+Zwróć **jedynie wynik w czystym JSON**, bez komentarzy, opisu ani dodatkowego tekstu.
+
+Struktura JSON:
+[
+  {
+    "nazwaWariantu": "Zwiedzanie" lub np. "Trasa A",
+    "czasZwiedzania": liczba lub null,
+    "cenaZwiedzania": liczba lub null,
+    "cenaUlgowa": liczba lub null,
+    "interval": "jednorazowo" | "za godzinę" | "404",
+    "godzinyOtwarcia": [
+      ["09:00","17:00"], ["09:00","17:00"], ["09:00","17:00"], ["09:00","17:00"], ["09:00","17:00"], ["10:00","15:00"], null
+    ]
+  }
+]
+
+Nie zwracaj ofert grupowych jako osobnych wariantów.
+Odpowiedź ma być **czystym JSON**, bez Markdowna ani komentarzy.
+`;
+
+    try {
+        const response = await openai.chat.completions.create({
+            model: "gpt-5-mini",
+            messages: [
+                { role: "system", content: "Jesteś asystentem analizującym oferty turystyczne i cenniki ze stron internetowych." },
+                { role: "user", content: prompt },
+                { role: "user", content: `Treść strony #${index}:\n${pageText.slice(0, 16000)}` },
+            ],
+        });
+
+        const content = response.choices[0].message.content.trim();
+
+        try {
+            const parsed = JSON.parse(content);
+            return { index, data: parsed };
+        } catch (e) {
+            console.warn(`⚠️ Nie udało się sparsować JSON dla strony #${index}`);
+            return { index, data: null, raw: content };
+        }
+    } catch (err) {
+        console.error(`❌ Błąd analizy strony #${index}:`, err.message);
+        return { index, data: null };
+    }
+}
+
+/**
+ * Analizuje tablicę oczyszczonych stron (ciągów HTML) i zwraca tablicę struktur ofert.
+ */
+async function analyzeOffersFromCleanedPages(cleaned) {
+    console.log(`🔍 Analizuję ${cleaned.length} stron...`);
+
+    const results = [];
+    for (let i = 0; i < cleaned.length; i++) {
+        const pageText = cleaned[i];
+        const result = await analyzeOfferFromText(pageText, i);
+        results.push(result);
+    }
+
+    console.log("✅ Analiza zakończona.");
+    return results;
+}
 /**
  * 🌍 Endpoint: /place-offer?link=https://palmiarnia.poznan.pl/
  */
+
+function flattenArrayPreserveSingles(arr) {
+    if (!Array.isArray(arr)) return [arr]; // jeśli nie tablica — zamień na jednoelementową tablicę
+
+    const result = [];
+
+    for (const item of arr) {
+        if (Array.isArray(item)) {
+            // 🔹 jeśli element jest tablicą — połącz go z wynikiem
+            result.push(...flattenArrayPreserveSingles(item));
+        } else {
+            // 🔹 jeśli element NIE jest tablicą — po prostu dodaj
+            result.push(item);
+        }
+    }
+
+    return result;
+}
+
+const offerQueue = new PQueue({
+    intervalCap: 10,      // maksymalnie 10 zadań
+    interval: 1000,       // w oknie 1 sekundy
+    carryoverConcurrencyCount: true,
+});
+
 app.get("/place-offer", async (req, res) => {
     const { links } = req.query;
 
@@ -1048,54 +1248,117 @@ app.get("/place-offer", async (req, res) => {
         return res.status(400).json({ error: "Brak parametru ?links= (np. ?links=https://a.pl,https://b.pl)" });
     }
 
+    // Każde wywołanie endpointu trafia do kolejki
+    offerQueue.add(async () => {
+        console.log("➡️ Przyjęto zadanie w kolejce /place-offer");
 
+        const urls = links.split(",").map(u => u.trim()).filter(Boolean);
+        console.log("➡️ Wywołano endpoint place-offer dla linków:", urls);
 
-    const urls = links.split(",").map(u => u.trim()).filter(Boolean);
-    console.log("➡️ Wywołano endpoint place-offer dla linków:", urls);
+        let deleteSecond = false;
+        let innerLinks = await analyzeAttractionLinks(urls[0]);
+        console.log("➡️ Znalezione linki w menu:", innerLinks);
 
-    let innerLinks = await analyzeAttractionLinks(urls[0]);
-    console.log("➡️ Znalezione linki w menu:", innerLinks);
-    if(innerLinks.length == 1){
-        innerLinks.push(urls[0]);
-
-    }
-
-
-    const results = [];
-    for (const url of innerLinks) {
-        const html = await returnRenderedWebPage(url);
-        if (html) {
-            results.push(html);
-            //console.log("WYNIK", html)
+        if (innerLinks.length === 1) {
+            innerLinks.push(urls[0]);
+            deleteSecond = true;
         }
-    }
-    if (results.length === 0) {
-        return res.status(500).json({ error: "Nie udało się pobrać żadnej strony." });
-    }
 
-    // usuń wspólne nagłówki/stopki
+        const results = [];
+        for (const url of innerLinks) {
+            const html = await returnRenderedWebPage(url);
+            if (html) results.push(html);
+        }
 
-    let cleaned;
-    if (results.length === 1) {
-        cleaned = results
-    }
-    else {
-        cleaned = removeCommonEdges(results);
-    }
+        if (results.length === 0) {
+            return res.status(500).json({ error: "Nie udało się pobrać żadnej strony." });
+        }
 
-    // zapisz każdy wynik do osobnego pliku
-    cleaned.forEach((content, idx) => {
-        const filename = `test${idx + 1}.html`;
-        fs.writeFileSync(filename, content, "utf8");
-        console.log(`💾 Zapisano ${filename} (${content.length} znaków)`);
-    });
+        // usuń wspólne nagłówki/stopki
+        let cleaned = results.length === 1 ? results : removeCommonEdges(results);
+        if (cleaned.length === 2 && deleteSecond) {
+            cleaned = [cleaned[0]];
+        }
 
-    res.json({
-        success: true,
-        processed: cleaned.length,
-        savedFiles: cleaned.map((_, i) => `test${i + 1}.html`),
+        const wyniki = await analyzeOffersFromCleanedPages(cleaned);
+
+        console.log(JSON.stringify(wyniki, null, 2));
+
+        // zapisz wyniki do plików
+        cleaned.forEach((content, idx) => {
+            const filename = `test${idx + 1}.html`;
+            fs.writeFileSync(filename, content, "utf8");
+            console.log(`💾 Zapisano ${filename} (${content.length} znaków)`);
+        });
+
+        res.json({
+            success: true,
+            warianty: wyniki,
+        });
+    }).catch(err => {
+        console.error("❌ Błąd w kolejce offerQueue:", err);
+        res.status(500).json({ error: "Błąd podczas przetwarzania żądania w kolejce." });
     });
 });
+
+app.get("/update-offer", async (req, res) => {
+    const { googleId, link } = req.query;
+
+    if (!googleId || !link) {
+        return res.status(400).json({ error: "Brak wymaganych parametrów ?googleId= oraz ?link=" });
+    }
+
+    offerQueue.add(async () => {
+        try {
+            console.log(`🔍 Aktualizuję ofertę dla atrakcji ${googleId} z linku: ${link}`);
+
+            // 🔹 1. Sprawdź, czy atrakcja istnieje
+            const attraction = await Attraction.findOne({ googleId });
+            if (!attraction) {
+                return res.status(404).json({ error: `Nie znaleziono atrakcji o googleId: ${googleId}` });
+            }
+
+            // 🔹 2. Wywołaj /place-offer
+            const response = await axios.get("http://localhost:5006/place-offer", {
+                params: { links: link },
+                timeout: 120000,
+            });
+
+            const { warianty } = response.data;
+            if (!warianty || warianty.length === 0) {
+                return res.status(500).json({ error: "Brak wariantów oferty z /place-offer" });
+            }
+
+            // 🔹 3. Spłaszcz i zapisz
+            const flattenedVariants = warianty.flatMap(w => w.data || w);
+            attraction.warianty = flattenedVariants;
+            await attraction.save();
+
+            console.log(`✅ Zaktualizowano ofertę dla "${attraction.nazwa}" (${googleId})`);
+
+            // ✅ Jedna odpowiedź na koniec
+            return res.json({
+                success: true,
+                googleId,
+                warianty: flattenedVariants,
+            });
+
+        } catch (err) {
+            console.error("❌ Błąd w /update-offer:", err.message);
+            if (!res.headersSent) {
+                return res.status(500).json({ error: err.message });
+            }
+        }
+    }).catch(err => {
+        console.error("❌ Błąd w kolejce offerQueue:", err);
+        if (!res.headersSent) {
+            return res.status(500).json({ error: "Błąd podczas przetwarzania żądania w kolejce." });
+        }
+    });
+});
+
+
+
 
 // 3️⃣ Endpoint główny
 app.get("/routeSummary", async (req, res) => {

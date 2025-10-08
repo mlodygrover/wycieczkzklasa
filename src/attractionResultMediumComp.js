@@ -1,6 +1,7 @@
-import React, { useEffect, useState } from "react";
+import React, { use, useEffect, useRef, useState } from "react";
 import { useMapEvent } from "react-leaflet";
 import styled from "styled-components";
+import { minutesToStringTime } from "./roots/attractionResults";
 
 const AttractionResultMedium = styled.div`
     width: 90%;
@@ -97,10 +98,9 @@ const AttractionResultMedium = styled.div`
                 &.c{
                     margin-top: 10px;
                     padding: 2px 6px;
-                    border-radius: 999px; 
-                    border: 1px solid #008d73ff;
+                    border-radius: 5px; 
                     background-color: #cfffe4ff;
-                    color: black;
+                    color: #006553ff;
                     font-weight: 400;
                    
                 }
@@ -130,61 +130,63 @@ const AttractionResultMedium = styled.div`
         }
     }
     .wariantButton{
-        height: 20px;
+        height: 30px;
         width: 90%;
-        background-color: #f6f6f6;
+        background-color: #222f7dff;
         margin: 3px auto;
         border-radius: 5px;
-        color: #606060;
+        color: #eeefffff;
         display: flex;
         align-items: center;
         justify-content: center;
         text-align: center;
-        font-size: 14px;
-        font-weight: 500;
+        font-size: 12px;
         cursor: pointer;
-        transition: background-color 0.3s ease-in-out;
-        box-sizing: border-box;
-        border: 1px solid #d0d0d0;
         position: relative;
-        font-weight: 400;
+        font-weight: 500;
         gap: 4px;
+        font-family: Inter, system-ui, -apple-system, sans-serif;
+        transition: background-color 0.3s ease;
         &.opened{
-            border-bottom: 0;
             border-bottom-left-radius: 0;
             border-bottom-right-radius: 0;
-            box-shadow: 2px 2px 2px lightgray;
+            box-shadow: 2px 2px 2px #222f7dff;
             &:hover{
-                background-color: #f6f6f6;
+                background-color: #222f7dff;
             }
         }
 
         .wariantsResults {
             position: absolute;
-            width: calc(100% + 2px);
-            left: -1px;
+            width: calc(100%);
             top: 100%;
             background-color: red;
-            box-sizing: border-box;
             height: 0px;
-            background-color: #f6f6f6;
-            transition: background-color 0.3s ease;
-            transition: height 0.3s ease;
+            background-color: #222f7dff;
             overflow: hidden;
             
-            box-shadow: 2px 2px 2px lightgray;
-
+            box-shadow: 2px 1px 2px #222f7dff;
+            transition: 0.3s ease;
             &.opened{
-                border: 1px solid #d0d0d0;
-                border-top: 0;
-                height: 100px;
+                min-height: 100px;
+                height: fit-content;
                 border-bottom-left-radius: 5px;
                 border-bottom-right-radius: 5px;
             }
         }
-
+        .wariantResult{
+            height: 25px;
+            width: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: 0.3s ease-in-out;
+            &:hover{
+            background-color: #444f8eff;    
+            }
+        }
         &:hover{
-            background-color: #eaeaea;
+            background-color: #333f8eff;
         }
     }
 `
@@ -197,9 +199,48 @@ const AttractionResultMediumComponent = ({
 
 
     const [wariantsOpened, setWariantsOpened] = useState(false)
+    const wariantButtonRef = useRef(null);
+
+    // ✅ Zamknij dropdown po kliknięciu poza przyciskiem/obszarem wariantów
     useEffect(() => {
-        console.log("test1", wariantsOpened)
-    }, [wariantsOpened])
+        function handleClickOutside(event) {
+            if (
+                wariantButtonRef.current &&
+                !wariantButtonRef.current.contains(event.target)
+            ) {
+                setWariantsOpened(false);
+            }
+        }
+
+        if (wariantsOpened) {
+            document.addEventListener("mousedown", handleClickOutside);
+        } else {
+            document.removeEventListener("mousedown", handleClickOutside);
+        }
+
+        return () => {
+            document.removeEventListener("mousedown", handleClickOutside);
+        };
+    }, [wariantsOpened]);
+
+    useEffect(() => {
+        if (atrakcja.warianty.length > 0) {
+            atrakcja.czasZwiedzania = atrakcja.warianty[0].czasZwiedzania || 60;
+            atrakcja.cenaZwiedzania = atrakcja.warianty[0].cenaZwiedzania || 10;
+        }
+        else {
+            atrakcja.czasZwiedzania = 60;
+            atrakcja.cenaZwiedzania = 0;
+        }
+        atrakcja.nazwa == "Termy Maltańskie" && console.log(atrakcja);
+
+    }, [atrakcja])
+    function setWariant(idx) {
+        atrakcja.czasZwiedzania = atrakcja.warianty[idx].czasZwiedzania || 60;
+        atrakcja.cenaZwiedzania = atrakcja.warianty[idx].cenaZwiedzania || 10;
+        atrakcja.chosenWariant = atrakcja.warianty[idx].nazwaWariantu;
+
+    }
     return (
         <AttractionResultMedium key={atrakcja.googleId + "bok"}>
             <div className="attractionResultMediumTitleBox">
@@ -216,11 +257,11 @@ const AttractionResultMediumComponent = ({
                 <div className="attractionResultMediumDetailRow">
                     <div className="detailRowElement">
                         <img src="../icons/icon-time.svg" width="20px" alt="Czas zwiedzania" />{" "}
-                        {atrakcja.czasZwiedzania || "1h 30min"}
+                        {minutesToStringTime(atrakcja.czasZwiedzania) || "1h 30min"}
                     </div>
                     <div className="detailRowElement">
                         <img src="../icons/icon-ticket.svg" width="20px" alt="Cena" />{" "}
-                        {atrakcja.cenaZwiedzania || "10 zł/os"}
+                        {atrakcja.cenaZwiedzania == 0 ? "Bezpłatne" : atrakcja.cenaZwiedzania ? atrakcja.cenaZwiedzania + "zł /osoba" : ""}
                     </div>
                 </div>
 
@@ -243,13 +284,19 @@ const AttractionResultMediumComponent = ({
                     </div>
                 </div>
             </div>
+            {atrakcja.warianty.length > 0 &&
+                <div className={wariantsOpened ? "wariantButton opened" : "wariantButton"} onClick={() => setWariantsOpened(!wariantsOpened)} ref={wariantButtonRef}>
+                    <img src="../icons/filterViolet.svg" height={'15px'}></img>{atrakcja.chosenWariant && !wariantsOpened ? atrakcja.chosenWariant : "Wybierz wariant"}
+                    <div className={wariantsOpened ? "wariantsResults opened" : "wariantsResults"}>
+                        {atrakcja.warianty.map((wariant, idx) => (
+                            <div className="wariantResult" key={atrakcja.googleId + "wariant" + idx} onClick={() => { setWariant(idx); setWariantsOpened(false); }}>
+                                {wariant.nazwaWariantu}
+                            </div>
 
-            <div className={wariantsOpened ? "wariantButton opened" : "wariantButton" }onClick={() => setWariantsOpened(!wariantsOpened)}>
-                <img src="../icons/filter.svg" height={'15px'}></img>Wybierz wariant
-                <div className={wariantsOpened ? "wariantsResults opened" : "wariantsResults"}>
-                    abcd
+                        ))}
+                    </div>
                 </div>
-            </div>
+            }
 
             <div
                 className="attractionResultMediumAddBox"
