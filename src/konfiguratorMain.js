@@ -430,6 +430,34 @@ const SummaryInfoBox = styled.div`
                 font-size: 14px;
             }
         }
+        .routeSummaryRow{
+            box-sizing: border-box;
+            padding: 10px;
+            border-radius: 10px;
+           
+            width: 90%;
+            display: flex;
+            flex-direction: row;
+            align-items: center;
+            justify-content: flex-start;
+            background-color: #00000011;
+            margin: 2px auto;
+            gap: 5px;
+            text-align: left;
+            .routeSummaryRowContent{
+                flex: 1;
+                display: flex;
+                flex-direction: column;
+                align-items: flex-start;
+                justify-content: center;
+                font-size: 12px;
+                a{
+                    text-align: left;
+                font-weight: 600;
+                }
+                
+            }
+        }
 
     }
 
@@ -631,6 +659,8 @@ export const KonfiguratorMain = ({ dataPrzyjazduInit, dataWyjazduInit, standardH
         };
         fetchRouteData();
     }, [miejsceDocelowe, miejsceStartowe]);
+
+
     //test test test
     //dane z serwera
 
@@ -880,7 +910,6 @@ export const KonfiguratorMain = ({ dataPrzyjazduInit, dataWyjazduInit, standardH
 
         return true;
     }
-
 
     function verifyBaseActs(tab) {
         if (!tab.length || !miejsceDocelowe || !miejsceStartowe) return tab;
@@ -1340,10 +1369,13 @@ export const KonfiguratorMain = ({ dataPrzyjazduInit, dataWyjazduInit, standardH
 
     useEffect(() => {
         const prev = prevValues.current;
+        if (!miejsceDocelowe || !miejsceStartowe) return;
         const changed =
             JSON.stringify(prev.chosenTransportSchedule) !== JSON.stringify(chosenTransportSchedule) ||
             JSON.stringify(prev.startHours) !== JSON.stringify(startHours) ||
-            JSON.stringify(prev.activitiesSchedule) !== JSON.stringify(activitiesSchedule);
+            JSON.stringify(prev.activitiesSchedule) !== JSON.stringify(activitiesSchedule) ||
+            JSON.stringify(prev.miejsceStartowe) !== JSON.stringify(miejsceStartowe) ||
+            JSON.stringify(prev.miejsceDocelowe) !== JSON.stringify(miejsceDocelowe);
 
         if (!changed) {
             return; // brak rzeczywistej zmiany — nic nie rób
@@ -1354,6 +1386,8 @@ export const KonfiguratorMain = ({ dataPrzyjazduInit, dataWyjazduInit, standardH
             chosenTransportSchedule,
             startHours,
             activitiesSchedule,
+            miejsceStartowe,
+            miejsceDocelowe,
         };
 
         const recalculate = async () => {
@@ -1365,7 +1399,15 @@ export const KonfiguratorMain = ({ dataPrzyjazduInit, dataWyjazduInit, standardH
         };
 
         recalculate();
-    }, [chosenTransportSchedule, startHours, activitiesSchedule]);
+    },
+        [
+            chosenTransportSchedule,
+            startHours,
+            activitiesSchedule,
+            miejsceStartowe,
+            miejsceDocelowe,
+        ]);
+
 
 
 
@@ -1468,6 +1510,30 @@ export const KonfiguratorMain = ({ dataPrzyjazduInit, dataWyjazduInit, standardH
     const settingsRef = useRef(null);
 
     //useEffect(() => { console.log("TEST2", activitiesSchedule, activitiesSchedule[wybranyDzien]) }, [activitiesSchedule])
+
+    const [routeToPrint, setRouteToPrint] = useState([]);
+    const [routeFromPrint, setRouteFromPrint] = useState([])
+    useEffect(() => {
+        if (!routeSchedule || !routeSchedule.length) return;
+        const routeToPlan = routeSchedule[0][0]?.transitRoute || [];
+        const routeFromPlan = routeSchedule[routeSchedule.length - 1][routeSchedule[routeSchedule.length - 1].length - 1]?.transitRoute || [];
+        let tmpRouteToPrint = [];
+        let tmpRouteFromPrint = [];
+        for (let i = 0; i < routeToPlan.length; i++) {
+            if (routeToPlan[i].vehicleType != 'WALK' && routeToPlan[i].vehicleType != 'TRAM' && routeToPlan[i].durationMinutes > 30) {
+                tmpRouteToPrint.push({ line: routeToPlan[i].line, time: routeToPlan[i].durationMinutes, depart: routeToPlan[i].departureStop, arrival: routeToPlan[i].arrivalStop, type: routeToPlan[i].vehicleType })
+            }
+        }
+        for (let i = 0; i < routeFromPlan.length; i++) {
+            if (routeFromPlan[i].vehicleType != 'WALK' && routeFromPlan[i].vehicleType != 'TRAM' && routeFromPlan[i].durationMinutes > 30) {
+                tmpRouteFromPrint.push({ line: routeFromPlan[i].line, time: routeFromPlan[i].durationMinutes, depart: routeFromPlan[i].departureStop, arrival: routeFromPlan[i].arrivalStop, type: routeFromPlan[i].vehicleType })
+            }
+        }
+        setRouteToPrint(tmpRouteToPrint)
+        setRouteFromPrint(tmpRouteFromPrint);
+
+    }, [routeSchedule])
+
     return (
         <>
             <TopKreatorSlider />
@@ -1662,14 +1728,22 @@ export const KonfiguratorMain = ({ dataPrzyjazduInit, dataWyjazduInit, standardH
                             <img src="../icons/hotel-white.svg" width="20px" />
                             Przejazd do {miejsceDocelowe?.nazwa}
                         </div>
-                        <div className="summaryInfoBoxTitle b" >
-                            <img src="../icons/hotelName-white.svg" width="20px" />
-                            Nazwa: {wybranyHotel.nazwa}
-                        </div>
-                        <div className="summaryInfoBoxTitle b" >
-                            <img src="../icons/time-white.svg" width="20px" />
-                            Doba hotelowa: {wybranyHotel.checkIn} - {wybranyHotel.checkOut}
-                        </div>
+                        {routeToPrint && routeToPrint.length > 0 ?
+                            <>
+
+                                {
+                                    routeToPrint.map((rt, rtIdx) => (
+                                        <div className="routeSummaryRow" key={`${rt.line}_${rtIdx}`}>
+                                            <img src="../icons/train-white.svg" height={'20px'} />
+                                            <div className="routeSummaryRowContent">{rt.line}, {minutesToStringTime(rt.time)}<a>{rt.depart} - {rt.arrival}</a></div>
+                                        </div>
+                                    ))
+                                }
+
+                            </>
+                            :
+                            "To nie będzie ciężki przejazd"
+                        }
 
 
                     </SummaryInfoBox>
@@ -1679,14 +1753,22 @@ export const KonfiguratorMain = ({ dataPrzyjazduInit, dataWyjazduInit, standardH
                             <img src="../icons/hotel-white.svg" width="20px" />
                             Powrót do {miejsceStartowe?.nazwa}
                         </div>
-                        <div className="summaryInfoBoxTitle b" >
-                            <img src="../icons/hotelName-white.svg" width="20px" />
-                            Nazwa: {wybranyHotel.nazwa}
-                        </div>
-                        <div className="summaryInfoBoxTitle b" >
-                            <img src="../icons/time-white.svg" width="20px" />
-                            Doba hotelowa: {wybranyHotel.checkIn} - {wybranyHotel.checkOut}
-                        </div>
+                        {routeFromPrint && routeFromPrint.length > 0 ?
+                            <>
+
+                                {
+                                    routeFromPrint.map((rt, rtIdx) => (
+                                        <div className="routeSummaryRow" key={`${rt.line}_${rtIdx}`}>
+                                            <img src="../icons/train-white.svg" height={'20px'} />
+                                            <div className="routeSummaryRowContent">{rt.line}, {minutesToStringTime(rt.time)}<a>{rt.depart} - {rt.arrival}</a></div>
+                                        </div>
+                                    ))
+                                }
+
+                            </>
+                            :
+                            "To nie będzie ciężki przejazd"
+                        }
 
 
                     </SummaryInfoBox>

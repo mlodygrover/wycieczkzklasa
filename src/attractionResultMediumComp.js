@@ -232,7 +232,7 @@ const AttractionResultMediumComponent = ({
             atrakcja.czasZwiedzania = 60;
             atrakcja.cenaZwiedzania = 0;
         }
-        atrakcja.nazwa == "Termy Maltańskie" && console.log(atrakcja);
+        
 
     }, [atrakcja])
     function setWariant(idx) {

@@ -260,7 +260,7 @@ export const KonfiguratorWyjazduComp = ({ changeStartHour, deleteActivity, start
                                         <Droppable droppableId="activities-list">
                                             {(provided) => (
                                                 <DroppableBox ref={provided.innerRef} {...provided.droppableProps}>
-                                                    {activitesSchedule.length > 0 &&
+                                                    {activitesSchedule.length == liczbaDni &&
                                                         activitesSchedule[wybranyDzien].map((atrakcja, idx) => {
                                                             const routeAbove =
                                                                 idx > 0 ? (

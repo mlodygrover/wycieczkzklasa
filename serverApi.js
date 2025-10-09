@@ -1,6 +1,7 @@
 
 const express = require("express");
-const fetch = (...args) => import('node-fetch').then(({ default: fetch }) => fetch(...args));
+const fetch = require("node-fetch");
+
 
 const axios = require("axios");
 const cors = require("cors"); // <--- import
@@ -122,6 +123,7 @@ app.get("/getPlaceId", async (req, res) => {
 
         // Jeśli brak w bazie – pobieramy z Google Geocoding API
         const address = `${miasto}, ${wojewodztwo}, ${kraj}`;
+        console.log("TEST1,", address)
         const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(address)}&key=${process.env.GOOGLE_API_KEY}`;
 
         const response = await fetch(url);
