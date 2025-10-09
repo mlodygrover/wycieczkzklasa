@@ -5,6 +5,41 @@ import Loader from "../roots/loader";
 import { AttractionResultFull, RouteResult } from "../roots/attractionResults";
 import React from "react";
 import { AddActivityPanel } from "./addActivityPanel";
+import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
+
+const DroppableBox = styled.div`
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end; 
+  gap: 10px;
+`;
+
+const DraggableWrap = styled.div`
+  width: 90%;            /* tak jak AttractionResultFullMainbox */
+  max-width: 1000px;     /* tak jak wcześniej */
+  margin: 0 auto;
+  gap: 10px;
+`;
+const ScrollableListContainer = styled.div`
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 100px;
+  scroll-behavior: smooth;
+
+  /* Upewnij się, że karty nie przyklejają się do krawędzi */
+  &::-webkit-scrollbar {
+    width: 8px;
+  }
+  &::-webkit-scrollbar-thumb {
+    background-color: #ccc;
+    border-radius: 10px;
+  }
+`;
+
+
 const KonfiguratorWyjazduCompMainbox = styled.div`
     width: 95%;
     min-height: 1000px;
@@ -165,7 +200,7 @@ export const KonfiguratorWyjazduComp = ({ changeStartHour, deleteActivity, start
     const [localWybranyDzien, setLocalWybranyDzien] = useState(wybranyDzien);
     const [scheduleLoading, setScheduleLoading] = useState(false);
     useEffect(() => {
-        if(activitesSchedule.length <= localWybranyDzien){
+        if (activitesSchedule.length <= localWybranyDzien) {
             setScheduleLoading(true);
             return;
         };
@@ -202,41 +237,107 @@ export const KonfiguratorWyjazduComp = ({ changeStartHour, deleteActivity, start
                     {
                         !loading && !scheduleLoading && timeSchedule.length ? (
                             <>
-                                {activitesSchedule.length > 0 &&
-                                    activitesSchedule[wybranyDzien].map((atrakcja, idx) => (
-                                        <React.Fragment key={atrakcja.idGoogle || idx}>
-                                            {idx !== 0 && (
-                                                <RouteResult
-                                                    routes={routeSchedule[wybranyDzien][idx - 1]}
-                                                    onTransportChange={onTransportChange}
-                                                    dayIdx={wybranyDzien}
-                                                    actIdx={idx - 1}
-                                                    chosenTransport={
-                                                        chosenTransportSchedule[wybranyDzien].length >= idx
-                                                            ? chosenTransportSchedule[wybranyDzien][idx - 1]
-                                                            : -1
-                                                    }
-                                                />
+                                <DragDropContext
+                                    onDragEnd={(result) => {
+                                        if (!result.destination) return;
+
+                                        const sourceIndex = result.source.index;
+                                        const destIndex = result.destination.index;
+                                        const lastIdx = activitesSchedule[wybranyDzien].length - 1;
+
+                                        // 🔒 Odrzuć przesunięcie na początek lub koniec
+                                        if (destIndex === 0 || destIndex === lastIdx) return;
+
+                                        // 🔒 Odrzuć przesunięcie samej pierwszej/ostatniej aktywności
+                                        if (sourceIndex === 0 || sourceIndex === lastIdx) return;
+
+                                        if (sourceIndex !== destIndex) {
+                                            swapActivities(wybranyDzien, sourceIndex, destIndex);
+                                        }
+                                    }}
+                                >
+                                    <ScrollableListContainer>
+                                        <Droppable droppableId="activities-list">
+                                            {(provided) => (
+                                                <DroppableBox ref={provided.innerRef} {...provided.droppableProps}>
+                                                    {activitesSchedule.length > 0 &&
+                                                        activitesSchedule[wybranyDzien].map((atrakcja, idx) => {
+                                                            const routeAbove =
+                                                                idx > 0 ? (
+                                                                    <RouteResult
+                                                                        key={`route-${idx}`}
+                                                                        routes={routeSchedule[wybranyDzien][idx - 1]}
+                                                                        onTransportChange={onTransportChange}
+                                                                        dayIdx={wybranyDzien}
+                                                                        actIdx={idx - 1}
+                                                                        chosenTransport={
+                                                                            chosenTransportSchedule[wybranyDzien].length >= idx
+                                                                                ? chosenTransportSchedule[wybranyDzien][idx - 1]
+                                                                                : -1
+                                                                        }
+                                                                    />
+                                                                ) : null;
+
+                                                            const lastIdx = activitesSchedule[wybranyDzien].length - 1;
+
+                                                            return (
+                                                                <React.Fragment key={atrakcja.idGoogle || idx}>
+                                                                    {routeAbove}
+
+                                                                    <Draggable
+                                                                        key={atrakcja.idGoogle || String(idx)}
+                                                                        draggableId={atrakcja.idGoogle || String(idx)}
+                                                                        index={idx}
+                                                                        isDragDisabled={idx === 0 || idx === lastIdx} // 🔒 nie da się chwycić 1. ani ostatniej
+                                                                    >
+                                                                        {(provided, snapshot) => (
+                                                                            <DraggableWrap
+                                                                                ref={provided.innerRef}
+                                                                                {...provided.draggableProps}
+                                                                                {...provided.dragHandleProps}
+                                                                                style={{
+                                                                                    display: "flex",
+                                                                                    flexDirection: "column",
+                                                                                    justifyContent: "flex-start",
+                                                                                    alignItems: "flex-end",
+                                                                                    width: "100%",
+                                                                                    maxWidth: "1000px",
+                                                                                    margin: "0 auto",
+                                                                                    transition: snapshot.isDragging
+                                                                                        ? "transform 0.2s ease, box-shadow 0.2s ease"
+                                                                                        : "box-shadow 0.2s ease",
+                                                                                    borderRadius: "10px",
+                                                                                    ...provided.draggableProps.style,
+                                                                                }}
+                                                                            >
+                                                                                <AttractionResultFull
+                                                                                    onAttractionTimeChange={onAttractionTimeChange}
+                                                                                    lastIdx={activitesSchedule[wybranyDzien].length - 1}
+                                                                                    dayIdx={wybranyDzien}
+                                                                                    actIdx={idx}
+                                                                                    swapActivities={swapActivities}
+                                                                                    attraction={atrakcja}
+                                                                                    time={minutesToTime(timeSchedule[wybranyDzien][idx])}
+                                                                                    startModifyingAct={startModifyingAct}
+                                                                                    deleteActivity={deleteActivity}
+                                                                                    changeStartHour={changeStartHour}
+                                                                                />
+                                                                            </DraggableWrap>
+                                                                        )}
+                                                                    </Draggable>
+                                                                </React.Fragment>
+                                                            );
+                                                        })}
+                                                    {provided.placeholder}
+                                                </DroppableBox>
                                             )}
-
-                                            <AttractionResultFull
-                                                onAttractionTimeChange={onAttractionTimeChange}
-                                                lastIdx={activitesSchedule[wybranyDzien].length - 1}
-                                                dayIdx={wybranyDzien}
-                                                actIdx={idx}
-                                                swapActivities={swapActivities}
-                                                attraction={atrakcja}
-                                                time={minutesToTime(timeSchedule[wybranyDzien][idx])}
-                                                startModifyingAct={startModifyingAct}
-                                                deleteActivity={deleteActivity}
-                                                changeStartHour={changeStartHour}
-                                                key={`${changeStartHour}-${atrakcja.idGoogle}-${wybranyDzien}`}
+                                        </Droppable>
+                                    </ScrollableListContainer>
+                                </DragDropContext>
 
 
-                                            />
-                                        </React.Fragment>
-                                    ))}
                                 <AddAttractionButton click={() => setActivityPanelOpened(true)} />
+
                             </>
                         ) : (
                             <div style={{ margin: "10px auto" }}>
@@ -251,37 +352,37 @@ export const KonfiguratorWyjazduComp = ({ changeStartHour, deleteActivity, start
 
             </KonfiguratorWyjazduBottom>
 
-        </KonfiguratorWyjazduCompMainbox>
+        </KonfiguratorWyjazduCompMainbox >
 
     )
 
 }
 
 const AddAttractionButtonMainbox = styled.div`
-    height: 150px;
-    width: 90%;
-    max-width: 1000px;
-    background-color: #f0f0f0;
-    border-radius: 10px;
-    margin-top: 20px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    transition: 0.3s ease-in-out;
-    color: #606060;
-    border: 1px solid lightgray;
-    box-shadow: 2px 2px 2px lightgray;
-    &:hover{
-        background-color: #e8e8e8;
-        box-shadow: 0px 0px 2px lightgray;
+                height: 150px;
+                width: calc(100% - 50px);
+                max-width: 1000px;
+                background-color: #f0f0f0;
+                border-radius: 10px;
+                margin-top: 20px;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                cursor: pointer;
+                transition: 0.3s ease-in-out;
+                color: #606060;
+                border: 1px solid lightgray;
+                box-shadow: 2px 2px 2px lightgray;
+                &:hover{
+                    background - color: #e8e8e8;
+                box-shadow: 0px 0px 2px lightgray;
     }
-    @media screen and (max-width: 800px)
-    {
-    width: 100%;
+                @media screen and (max-width: 800px)
+                {
+                    width: 100%;
     }
-`
+                `
 const AddAttractionButton = ({ click }) => {
     return (
         <AddAttractionButtonMainbox onClick={() => click()}>

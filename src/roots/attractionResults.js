@@ -229,7 +229,8 @@ export const AttractionResultSmall = ({ icon = "../icons/castle.svg", attraction
 }
 
 const AttractionResultFullMainbox = styled.div`
-    width: 90%;
+    width: calc(100% - 50px);
+    
     height: 150px;
     display: flex;
     flex-direction: row;
@@ -364,7 +365,6 @@ const AttractionResultFullMainbox = styled.div`
     @media screen and (max-width: 600px)
     {
         flex-direction: column;
-        width: 100%;
         height: 300px;
         .photoPart
         {   height: 60%;
@@ -388,20 +388,19 @@ const AttractionResultFullOutbox = styled.div`
     align-items: stretch;
     justify-content: flex-end;
     width: 100%;
-    max-width: 1000px;
+    
     gap: 10px;
 
 
 `
 const AttractionResultFullNav = styled.div`
-    width: 50px;
-    max-width: calc(10%-10px);
+    
+    flex: 1;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
     gap: 5px;
-
     .buttonFullNav{
         flex: 1;
         max-width: 40px;
@@ -656,6 +655,7 @@ const RouteResultMainbox = styled.div`
     margin-left: -40px;
     
     
+    
 `
 const RouteResultButton = styled.div`
     height: 40px;
@@ -681,7 +681,7 @@ const RouteResultButton = styled.div`
 
 `
 const RouteResultOutbox = styled.div`
-    width: 90%;
+    width: calc(100% - 50px);
     max-width: 1000px;
     height: 50px;
     background-color: #f6f6f6;
@@ -702,9 +702,7 @@ const RouteResultOutbox = styled.div`
         width: 100%;}
     
     }
-    @media screen and (max-width: 600px){
-        width: 100%;
-    }
+   
 `
 const RouteResultButtonLabel = styled.label`
     height: 40px;

@@ -224,7 +224,7 @@ const AttractionResultMediumComponent = ({
     }, [wariantsOpened]);
 
     useEffect(() => {
-        if (atrakcja.warianty.length > 0) {
+        if (atrakcja?.warianty && atrakcja.warianty.length > 0) {
             atrakcja.czasZwiedzania = atrakcja.warianty[0].czasZwiedzania || 60;
             atrakcja.cenaZwiedzania = atrakcja.warianty[0].cenaZwiedzania || 10;
         }
@@ -284,7 +284,7 @@ const AttractionResultMediumComponent = ({
                     </div>
                 </div>
             </div>
-            {atrakcja.warianty.length > 0 &&
+            {atrakcja?.warianty && atrakcja.warianty.length > 0 &&
                 <div className={wariantsOpened ? "wariantButton opened" : "wariantButton"} onClick={() => setWariantsOpened(!wariantsOpened)} ref={wariantButtonRef}>
                     <img src="../icons/filterViolet.svg" height={'15px'}></img>{atrakcja.chosenWariant && !wariantsOpened ? atrakcja.chosenWariant : "Wybierz wariant"}
                     <div className={wariantsOpened ? "wariantsResults opened" : "wariantsResults"}>
