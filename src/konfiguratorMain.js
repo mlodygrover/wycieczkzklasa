@@ -76,6 +76,7 @@ const KonfiguratorMainMainboxLeft = styled.div`
         align-items: stretch;
         justify-content: flex-start;
         padding-left: 10px;
+        box-sizing: border-box;
         input{
             box-sizing: border-box;
             flex: 1;
@@ -88,7 +89,26 @@ const KonfiguratorMainMainboxLeft = styled.div`
             
         }
     }  
-    
+    .mainboxLeftFilterButtons{
+        width: 90%;
+        height: 35px;
+        display: flex;
+        flex-direction: row;
+        align-items: stretch;
+        justify-content: flex-start;
+        margin: 3px auto;
+        gap: 10px;
+        background-color: red;
+        .mainboxLeftFilterButton{
+            flex: 1;
+            background-color: #f6f6f6;
+            border-radius: 10px;
+            display: flex;
+            flex-direction: row;
+            align-items: center;
+            justify-content: flex-start;
+        }
+    }
 `;
 const AttractionResultMedium = styled.div`
     width: 90%;
@@ -1430,6 +1450,12 @@ export const KonfiguratorMain = ({ dataPrzyjazduInit, dataWyjazduInit, standardH
         return `${day}/${month}/${year}`;
     }
     //temp temp temp
+    useEffect(() => {
+        console.log("TEST1", atrakcje)
+        for (let i = 0; i < atrakcje.length; i++) {
+            if (atrakcje[i].nazwa == "Enea Stadion") console.log("TEST2", atrakcje[i]);
+        }
+    }, [atrakcje])
     /*
     const link1 = "https://termymaltanskie.com.pl/";
 
@@ -1533,6 +1559,8 @@ export const KonfiguratorMain = ({ dataPrzyjazduInit, dataWyjazduInit, standardH
         setRouteFromPrint(tmpRouteFromPrint);
 
     }, [routeSchedule])
+
+
 
     return (
         <>
@@ -1655,6 +1683,14 @@ export const KonfiguratorMain = ({ dataPrzyjazduInit, dataWyjazduInit, standardH
                     <div className="mainboxLeftTitle">
                         Biblioteka atrakcji
 
+                    </div>
+                    <div className="mainboxLeftFilterButtons">
+                        <div className="mainboxLeftFilterButton">
+
+                        </div>
+                        <div className="mainboxLeftFilterButton">
+
+                        </div>
                     </div>
                     <div className="mainboxLeftInput">
                         <img src="../icons/search-gray.svg" width={'20px'} />
