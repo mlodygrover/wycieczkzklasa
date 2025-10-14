@@ -132,27 +132,28 @@ const AttractionResultMedium = styled.div`
     .wariantButton{
         height: 30px;
         width: 90%;
-        background-color: #222f7dff;
+        background-color: #f0f0f0ff;
+        /*background: linear-gradient(90deg, rgba(184, 104, 0, 1) 0%, rgba(219, 187, 72, 1) 100%);*/
         margin: 3px auto;
         border-radius: 5px;
-        color: #eeefffff;
         display: flex;
         align-items: center;
         justify-content: center;
         text-align: center;
-        font-size: 12px;
+        color: #606060;
+        font-size: 13px;
+        font-weight: 400;
         cursor: pointer;
         position: relative;
-        font-weight: 500;
         gap: 4px;
         font-family: Inter, system-ui, -apple-system, sans-serif;
         transition: background-color 0.3s ease;
         &.opened{
             border-bottom-left-radius: 0;
             border-bottom-right-radius: 0;
-            box-shadow: 2px 2px 2px #222f7dff;
+            box-shadow: 2px 2px 2px lightgray;
             &:hover{
-                background-color: #222f7dff;
+                background-color: #eaeaea;
             }
         }
 
@@ -162,11 +163,11 @@ const AttractionResultMedium = styled.div`
             top: 100%;
             background-color: red;
             height: 0px;
-            background-color: #222f7dff;
+            background-color: #eaeaea;
             overflow: hidden;
-            
-            box-shadow: 2px 1px 2px #222f7dff;
+            box-shadow: 2px 2px 2px lightgray;
             transition: 0.3s ease;
+            margin-top: -1px;
             &.opened{
                 min-height: 100px;
                 height: fit-content;
@@ -181,12 +182,13 @@ const AttractionResultMedium = styled.div`
             align-items: center;
             justify-content: center;
             transition: 0.3s ease-in-out;
+           
             &:hover{
-            background-color: #444f8eff;    
+            background-color: #d5d5d5ff;    
             }
         }
         &:hover{
-            background-color: #333f8eff;
+            background-color: #d5d5d5ff;
         }
     }
 `
@@ -257,7 +259,7 @@ const AttractionResultMediumComponent = ({
                 <div className="attractionResultMediumDetailRow">
                     <div className="detailRowElement">
                         <img src="../icons/icon-time.svg" width="20px" alt="Czas zwiedzania" />{" "}
-                        {minutesToStringTime(atrakcja.czasZwiedzania) || "1h 30min"}
+                        {atrakcja?.czasZwiedzania && minutesToStringTime(atrakcja.czasZwiedzania) || "1h 30min"}
                     </div>
                     <div className="detailRowElement">
                         <img src="../icons/icon-ticket.svg" width="20px" alt="Cena" />{" "}
@@ -270,12 +272,14 @@ const AttractionResultMediumComponent = ({
                         <img src="../icons/icon-stars.svg" width="20px" alt="Ocena" /> {atrakcja.ocena}{" "}
                         <span>({atrakcja.liczbaOpinie})</span>
                     </div>
+                    {atrakcja.stronaInternetowa &&
                     <div className="detailRowElement b">
                         <img src="../icons/link.svg" width="20px" alt="Link" />{" "}
                         <a href={atrakcja?.stronaInternetowa} target="_blank" rel="noreferrer">
                             Witryna
                         </a>
                     </div>
+                    }
                 </div>
 
                 <div className="attractionResultMediumDetailRow">
@@ -284,7 +288,7 @@ const AttractionResultMediumComponent = ({
                     </div>
                 </div>
             </div>
-            {atrakcja?.warianty && atrakcja.warianty.length > 0 &&
+            {atrakcja?.warianty && atrakcja.warianty.length > 1 &&
                 <div className={wariantsOpened ? "wariantButton opened" : "wariantButton"} onClick={() => setWariantsOpened(!wariantsOpened)} ref={wariantButtonRef}>
                     <img src="../icons/filterViolet.svg" height={'15px'}></img>{atrakcja.chosenWariant && !wariantsOpened ? atrakcja.chosenWariant : "Wybierz wariant"}
                     <div className={wariantsOpened ? "wariantsResults opened" : "wariantsResults"}>

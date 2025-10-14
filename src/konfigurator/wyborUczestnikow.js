@@ -14,7 +14,7 @@ const WyborUczestnikowMainbox = styled.div`
         flex-direction: row;
         align-items: center;
         justify-content: space-around;
-        border-left: 4px solid orange;
+        border-left: 4px solid #008d73ff;
         font-weight: 300;
 
         .numberButton{
@@ -24,9 +24,9 @@ const WyborUczestnikowMainbox = styled.div`
             align-items: center;
             justify-content: center;
             font-weight: 500;
-
+            border-bottom: 3px solid transparent;
             &:hover{
-                border-bottom: 3px solid orange;
+                border-bottom: 3px solid #008d73ff;
                 background-color: #f4f4f4;
                 
             }   
@@ -44,7 +44,7 @@ const WyborUczestnikowMainbox = styled.div`
         }
         @media screen and (max-width: 800px){
             font-size: 12px;
-            border-left: 2px solid orange;
+            border-left: 2px solid #008d73ff;
             padding-left: 3px;
             .numberCounter{
                 font-size: 14px;

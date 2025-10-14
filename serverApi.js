@@ -257,104 +257,114 @@ app.post("/addAttraction", async (req, res) => {
     }
 });
 app.get("/getAttractions", async (req, res) => {
-
     const { placeId, lat, lng } = req.query;
-    const parentPlaceId = placeId
+    const parentPlaceId = placeId;
+
     if (!placeId || !lat || !lng) {
         return res.status(400).json({ error: "Podaj placeId, lat i lng w query params." });
     }
 
     try {
-        // 1. Sprawdzenie w bazie
+        // 1️⃣ Sprawdzenie w bazie
         const attractionsFromDb = await Attraction.find({ parentPlaceId });
-
         if (attractionsFromDb.length >= 50) {
+            console.log("ZWRACAM Z DB")
             return res.json(attractionsFromDb);
         }
-
-        // 2. Jeśli mniej niż 50, kafelkujemy teren, aby pobrać więcej wyników
-        const R = 0.18; // ~20 km w stopniach (przybliżenie)
+        console.log("KAFELKUJE")
+        // 2️⃣ Przygotowanie kafelków
+        const R = 0.18; // ~20 km w stopniach
         const centerLat = parseFloat(lat);
         const centerLng = parseFloat(lng);
 
-        // Generujemy 4 kafelki wokół centrum
         const offsets = [
             { latOffset: 0, lngOffset: 0 },
             { latOffset: R, lngOffset: 0 },
             { latOffset: 0, lngOffset: R },
-            { latOffset: R, lngOffset: R }
+            { latOffset: R, lngOffset: R },
         ];
 
         const allGoogleAttractions = [];
+        const types = ["tourist_attraction", "museum"]; // 🔹 typy do wyszukania
 
         for (const offset of offsets) {
             const tileLat = centerLat + offset.latOffset;
             const tileLng = centerLng + offset.lngOffset;
 
-            let nextPageToken = null;
-            let page = 0;
+            // 🔁 dla każdego typu wyszukujemy osobno
+            for (const type of types) {
+                let nextPageToken = null;
+                let page = 0;
 
-            do {
-                let url;
-                if (nextPageToken) {
-                    url = `https://maps.googleapis.com/maps/api/place/nearbysearch/json?pagetoken=${nextPageToken}&language=pl&key=${process.env.GOOGLE_API_KEY}`;
-                } else {
-                    url = `https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${tileLat},${tileLng}&radius=10000&type=tourist_attraction&language=pl&key=${process.env.GOOGLE_API_KEY}`;
-                }
-
-                const response = await axios.get(url);
-                const data = response.data;
-
-                if (data.status !== "OK" && data.status !== "ZERO_RESULTS") break;
-
-                for (const place of data.results) {
-                    if (!allGoogleAttractions.some(a => a.googleId === place.place_id)) {
-                        const website = await getPlaceDetails(place.place_id); // <- pobranie strony
-                        allGoogleAttractions.push({
-                            placeId,
-                            googleId: place.place_id,
-                            nazwa: place.name,
-                            adres: place.vicinity || "",
-                            ocena: place.rating || null,
-                            liczbaOpinie: place.user_ratings_total || 0,
-                            lokalizacja: place.geometry.location,
-                            typy: place.types || [],
-                            ikona: place.icon || null,
-                            photos: place.photos ? place.photos.map(p => p.photo_reference) : [],
-                            stronaInternetowa: website
-                        });
+                do {
+                    let url;
+                    if (nextPageToken) {
+                        url = `https://maps.googleapis.com/maps/api/place/nearbysearch/json?pagetoken=${nextPageToken}&language=pl&key=${process.env.GOOGLE_API_KEY}`;
+                    } else {
+                        url = `https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${tileLat},${tileLng}&radius=10000&type=${type}&language=pl&key=${process.env.GOOGLE_API_KEY}`;
                     }
-                }
 
+                    const response = await axios.get(url);
+                    const data = response.data;
 
-                nextPageToken = data.next_page_token || null;
-                page++;
+                    if (data.status !== "OK" && data.status !== "ZERO_RESULTS") break;
 
-                if (nextPageToken) {
-                    // Google wymaga ~2s opóźnienia zanim next_page_token zacznie działać
-                    await new Promise(resolve => setTimeout(resolve, 2000));
-                }
-            } while (nextPageToken && page < 3);
+                    // 🔹 Filtrowanie wyników — pomijamy hotele i galerie handlowe
+                    const filteredResults = (data.results || []).filter(place => {
+                        const types = place.types || [];
+                        return !types.includes("shopping_mall") && !types.includes("lodging") && !types.includes("store") && !types.includes("furniture_store") && !types.includes("home_goods_store");
+                    });
 
+                    for (const place of filteredResults) {
+
+                        // 🔹 unikalność po place_id
+                        if (!allGoogleAttractions.some(a => a.googleId === place.place_id)) {
+                            const website = await getPlaceDetails(place.place_id); // <- pobranie strony
+                            allGoogleAttractions.push({
+                                placeId,
+                                googleId: place.place_id,
+                                nazwa: place.name,
+                                adres: place.vicinity || "",
+                                ocena: place.rating || null,
+                                liczbaOpinie: place.user_ratings_total || 0,
+                                lokalizacja: place.geometry.location,
+                                typy: place.types || [],
+                                ikona: place.icon || null,
+                                photos: place.photos ? place.photos.map(p => p.photo_reference) : [],
+                                stronaInternetowa: website,
+                            });
+                        }
+                    }
+
+                    nextPageToken = data.next_page_token || null;
+                    page++;
+
+                    if (nextPageToken) {
+                        // Google wymaga ~2s opóźnienia zanim next_page_token zacznie działać
+                        await new Promise(resolve => setTimeout(resolve, 2000));
+                    }
+                } while (nextPageToken && page < 3);
+            }
         }
 
-        // 3. Zapis do bazy tylko nowych atrakcji
+        // 3️⃣ Zapis do bazy tylko nowych atrakcji
         const newAttractions = [];
         for (const attr of allGoogleAttractions) {
             const exists = await Attraction.findOne({ googleId: attr.googleId });
             if (!exists) {
-
                 const newAttr = new Attraction({ ...attr, parentPlaceId: placeId });
                 await newAttr.save();
                 newAttractions.push(newAttr);
             }
         }
 
-        // 4. Zwracamy wszystkie atrakcje unikalne (z bazy i nowe z API)
+        // 4️⃣ Połączenie wyników
         const allAttractions = [
             ...attractionsFromDb.map(a => a.toObject()),
-            ...newAttractions.map(a => a.toObject())
+            ...newAttractions.map(a => a.toObject()),
         ];
+
+        // 🔹 Sortowanie po liczbie opinii (najpopularniejsze na górze)
         allAttractions.sort((a, b) => (b.liczbaOpinie || 0) - (a.liczbaOpinie || 0));
 
         res.json(allAttractions);
@@ -363,6 +373,7 @@ app.get("/getAttractions", async (req, res) => {
         res.status(500).json({ error: "Błąd serwera." });
     }
 });
+
 
 
 
@@ -1323,7 +1334,7 @@ app.get("/update-offer", async (req, res) => {
             // 🔹 2. Wywołaj /place-offer
             const response = await axios.get("http://localhost:5006/place-offer", {
                 params: { links: link },
-                timeout: 120000,
+                timeout: 1200000,
             });
 
             const { warianty } = response.data;
@@ -1527,6 +1538,246 @@ app.post("/scrape-offer", async (req, res) => {
     }
 });
 */
+
+// ===================== 🔹 FUNKCJE POMOCNICZE 🔹 =====================
+
+// Obliczanie dystansu w kilometrach (Haversine)
+function calculateDistance(lat1, lon1, lat2, lon2) {
+    const R = 6371; // promień Ziemi w km
+    const toRad = deg => (deg * Math.PI) / 180;
+
+    const dLat = toRad(lat2 - lat1);
+    const dLon = toRad(lon2 - lon1);
+
+    const a =
+        Math.sin(dLat / 2) ** 2 +
+        Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) *
+        Math.sin(dLon / 2) ** 2;
+
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+    return +(R * c).toFixed(2); // wynik w km
+}
+
+// Obliczanie punktacji hotelu
+function calculateHotelScore(hotel, centerLat, centerLng) {
+    if (!hotel?.property?.latitude || !hotel?.property?.longitude) return null;
+
+    const hotelLat = parseFloat(hotel.property.latitude);
+    const hotelLng = parseFloat(hotel.property.longitude);
+    const price = hotel.property?.priceBreakdown?.grossPrice?.value || 0;
+
+    const distance = calculateDistance(centerLat, centerLng, hotelLat, hotelLng);
+
+    // wzór: cena - (distance ^ 1.5) * 500
+    const score = -price - Math.pow(distance, 1.5) * 500;
+    return parseFloat(score.toFixed(2));
+}
+// ===================== 🔹 FUNKCJA getHotels 🔹 =====================
+async function getHotels({
+    dest_id = "-523642",
+    arrival_date = "2025-11-19",
+    departure_date = "2025-11-22",
+    adults = 2,
+    room_qty = 1,
+    sort_by = "price",
+    stars = "class::2,class::3",
+    property_types = "property_type::204",
+    apartsAllowed = "false",
+    max_pages = 5
+} = {}) {
+    const url = "https://booking-com15.p.rapidapi.com/api/v1/hotels/searchHotels";
+    const headers = {
+        "x-rapidapi-host": "booking-com15.p.rapidapi.com",
+        "x-rapidapi-key":
+            process.env.RAPIDAPI_KEY ||
+            "5678365077msh7ef633b67e5a401p1ffa1fjsnd1d3fbe26a25",
+    };
+
+    const allHotels = [];
+
+    try {
+        for (let page = 1; page <= max_pages; page++) {
+            const params = {
+                dest_id,
+                search_type: "city",
+                arrival_date,
+                departure_date,
+                adults,
+                room_qty,
+                page_number: page,
+                sort_by,
+                categories_filter: `${stars},${property_types}`,
+                units: "metric",
+                temperature_unit: "c",
+                languagecode: "en-us",
+                currency_code: "PLN",
+                location: "US",
+            };
+
+            console.log(`🌍 Pobieram stronę ${page} z Booking.com API...`);
+            const response = await axios.get(url, { params, headers, timeout: 20000 });
+
+            const hotels = response.data.data?.hotels || [];
+            console.log(`✅ Otrzymano ${hotels.length} hoteli z strony ${page}`);
+
+            if (hotels.length === 0) break;
+
+            // Dodaj unikalne
+            for (const hotel of hotels) {
+                if (!allHotels.some(h => h.property?.id === hotel.property?.id)) {
+                    allHotels.push(hotel);
+                }
+            }
+
+            // 🔹 krótka pauza, by nie przekroczyć limitów API
+            await new Promise(resolve => setTimeout(resolve, 1000));
+        }
+
+        console.log(`🏨 Zebrano ${allHotels.length} obiektów.`);
+
+        // 🔹 Filtracja, jeśli aparthotele niedozwolone
+        let filteredHotels = allHotels;
+        if (apartsAllowed === "false" || apartsAllowed === false) {
+            filteredHotels = allHotels.filter(
+                h => h.property?.accuratePropertyClass && h.property.accuratePropertyClass > 0
+            );
+            console.log(`🚫 Odfiltrowano ${allHotels.length - filteredHotels.length} obiektów bez klasy gwiazdkowej.`);
+        }
+
+        console.log(`✅ Zwracam ${filteredHotels.length} hoteli po filtracji.`);
+        return filteredHotels;
+    } catch (error) {
+        console.error("❌ Błąd w getHotels:", error.response?.data || error.message);
+        throw new Error("Błąd przy pobieraniu danych z Booking.com");
+    }
+}
+// ===================== 🔹 ENDPOINT findHotel 🔹 =====================
+
+app.get("/findHotel", async (req, res) => {
+    const {
+        city,
+        centerLat,
+        centerLng,
+        arrival_date,
+        departure_date,
+        sort_by = "price",
+        stars = "class::3,class::4,class::5",
+        property_types = "property_type::204",
+        apartsAllowed = "false",
+        max_pages = 3,
+        uczestnicy = 20,
+        opiekunowie = 2,
+        pokojeOpiekunowie = 2
+    } = req.query;
+
+    if (!city || !centerLat || !centerLng) {
+        return res.status(400).json({
+            error: "Brak wymaganych parametrów: ?city=, ?centerLat=, ?centerLng="
+        });
+    }
+    console.log("PARAMETRY: ",  city,
+        centerLat,
+        centerLng,
+        arrival_date,
+        departure_date,
+        sort_by ,
+        stars ,
+        property_types,
+        uczestnicy,
+        opiekunowie,
+        pokojeOpiekunowie )
+    try {
+        console.log(`🏙️ Szukam hoteli w mieście: ${city}`);
+
+        // 1️⃣ Pobranie dest_id
+        const destResponse = await axios.get(
+            "https://booking-com15.p.rapidapi.com/api/v1/hotels/searchDestination",
+            {
+                params: { query: city },
+                headers: {
+                    "x-rapidapi-host": "booking-com15.p.rapidapi.com",
+                    "x-rapidapi-key":
+                        process.env.RAPIDAPI_KEY ||
+                        "5678365077msh7ef633b67e5a401p1ffa1fjsnd1d3fbe26a25",
+                },
+                timeout: 10000,
+            }
+        );
+
+        const destinations = destResponse.data.data || [];
+        if (!destinations.length) {
+            return res.status(404).json({ error: `Nie znaleziono lokalizacji: ${city}` });
+        }
+
+        const dest_id = destinations[0].dest_id;
+        console.log(`✅ dest_id dla ${city}: ${dest_id}`);
+
+        // 2️⃣ Pobierz osobno hotele dla uczniów i opiekunów
+        console.log("👨‍🏫 Pobieram hotele dla opiekunów...");
+        const hotelsOpiekunowie = await getHotels({
+            dest_id,
+            arrival_date,
+            departure_date,
+            adults: opiekunowie,
+            room_qty: pokojeOpiekunowie,
+            sort_by,
+            stars,
+            property_types,
+            apartsAllowed,
+            max_pages
+        });
+
+        console.log("👩‍🎓 Pobieram hotele dla uczestników...");
+        const hotelsUczestnicy = await getHotels({
+            dest_id,
+            arrival_date,
+            departure_date,
+            adults: uczestnicy,
+            room_qty: 1, // zakładamy pokoje 2-osobowe
+            sort_by,
+            stars,
+            property_types,
+            apartsAllowed,
+            max_pages
+        });
+
+        console.log(
+            `📊 Wyniki: ${hotelsOpiekunowie.length} hoteli (opiekunowie), ${hotelsUczestnicy.length} (uczestnicy)`
+        );
+
+        // 3️⃣ Znajdź wspólne hotele (dostępne dla obu grup)
+        const wspolneHotele = hotelsOpiekunowie.filter(hotel =>
+            hotelsUczestnicy.some(u => u.property?.id === hotel.property?.id)
+        );
+
+        console.log(`✅ ${wspolneHotele.length} hoteli dostępnych dla całej grupy.`);
+
+        // 4️⃣ Oblicz scoring dla każdego hotelu
+        const scoredHotels = wspolneHotele.map(h => ({
+            ...h,
+            score: calculateHotelScore(h, parseFloat(centerLat), parseFloat(centerLng))
+        }));
+
+        const sortedHotels = scoredHotels
+            .filter(h => h.score !== null)
+            .sort((a, b) => b.score - a.score);
+
+        res.json({
+            success: true,
+            total: sortedHotels.length,
+            city,
+            uczestnicy,
+            opiekunowie,
+            pokojeOpiekunowie,
+            hotels: sortedHotels
+        });
+
+    } catch (error) {
+        console.error("❌ Błąd w /findHotel:", error.response?.data || error.message);
+        res.status(500).json({ error: "Błąd podczas wyszukiwania hoteli." });
+    }
+});
 
 
 

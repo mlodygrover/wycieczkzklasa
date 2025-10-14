@@ -1,4 +1,4 @@
-import { act, use, useEffect, useState } from "react"
+import { act, use, useEffect, useState, useRef } from "react"
 import styled from "styled-components"
 import LeafletMap from "./googleMapViewer"
 import { MapaBox } from "../konfiguratorWyjazdu"
@@ -366,6 +366,7 @@ const AttractionResultFullMainbox = styled.div`
     {
         flex-direction: column;
         height: 300px;
+        width: 100%;
         .photoPart
         {   height: 60%;
             width: 100%;
@@ -441,6 +442,8 @@ const AttractionResultFullNav = styled.div`
         }
         
     }
+        @media screen and (max-width: 800px){
+        display: none;}
 
 
 `
@@ -482,6 +485,7 @@ export const AttractionResultFull = ({
     attraction,
     startModifyingAct,
     deleteActivity,
+    checkOut = 720
 }) => {
     const [localTime, setLocalTime] = useState(attraction.czasZwiedzania === null ? 55 : attraction.czasZwiedzania);
     const [localStartTime, setLocalStartTime] = useState(timeToMinutes(time || "08:00"))
@@ -502,11 +506,20 @@ export const AttractionResultFull = ({
         setLocalStartTime(timeToMinutes(time))
     }, [time])
 
+    const prevLocalTime = useRef(localTime);
+
     useEffect(() => {
-        let isCancelled = false; // 👈 zabezpieczenie, gdy komponent się odmontuje
+        
+        // jeśli wartość się nie zmieniła — zakończ efekt
+        if (prevLocalTime.current === localTime) {
+            return;
+        }
+
+        prevLocalTime.current = localTime; // aktualizujemy poprzednią wartość
+
+        let isCancelled = false;
         const handler = setTimeout(async () => {
             try {
-                // czekamy na zakończenie async call tylko jeśli komponent nadal istnieje
                 if (!isCancelled && typeof onAttractionTimeChange === "function") {
                     await onAttractionTimeChange(dayIdx, actIdx, localTime);
                 }
@@ -516,10 +529,13 @@ export const AttractionResultFull = ({
         }, 700);
 
         return () => {
-            isCancelled = true; // 👈 zatrzymanie aktualizacji po unmount
+            isCancelled = true;
             clearTimeout(handler);
         };
     }, [localTime]);
+
+
+
 
 
     return (
@@ -617,7 +633,7 @@ export const AttractionResultFull = ({
                         <img src="../icons/icon-time.svg" height={'20px'} />
                         {actIdx == 0 && <IncreaseButton onClick={() => setLocalStartTime((localStartTime - 10) % 1440)}><img src="../icons/minus-white.svg" height={'15px'} /></IncreaseButton>}
                         {minutesToTime(localStartTime) || "00"}
-                        {actIdx == 0 && <IncreaseButton onClick={() => setLocalStartTime((localStartTime + 10) % 1440)}><img src="../icons/plus-white.svg" height={'15px'} /></IncreaseButton>}
+                        {actIdx == 0 && <IncreaseButton onClick={() => setLocalStartTime( localStartTime + 10 < checkOut ? (localStartTime + 10) % 1440 : localStartTime ) } > <img src="../icons/plus-white.svg" height="15px" alt="Zwiększ" /> </IncreaseButton>}
 
                         {attraction?.czasZwiedzania != 0 &&
                             <>
@@ -684,9 +700,9 @@ const RouteResultOutbox = styled.div`
     width: calc(100% - 50px);
     max-width: 1000px;
     height: 50px;
-    background-color: #f6f6f6;
+    background-color: #fafafa;
     border-radius: 10px;
-    border: 1px solid #e0e0e0;
+    border: 1px solid #eaeaea;
     display: flex;
     flex-direction: row;
     align-items: center;
@@ -702,7 +718,9 @@ const RouteResultOutbox = styled.div`
         width: 100%;}
     
     }
-   
+    @media screen and (max-width: 800px){
+        width: 100%;
+    }
 `
 const RouteResultButtonLabel = styled.label`
     height: 40px;
@@ -722,11 +740,11 @@ const RouteResultButtonLabel = styled.label`
     border-bottom-left-radius: 0px;
 
     &:hover {
-        border-bottom: 2px solid orange;
+        border-bottom: 2px solid #008d73ff;
     }
 
     input[type="radio"]:checked + & {
-        border-bottom: 2px solid orange;
+        border-bottom: 2px solid #008d73ff;
     }
 `;
 

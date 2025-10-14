@@ -12,11 +12,11 @@ const baseActivities = [
 const AddActivityPanelMainbox = styled.div.withConfig({
     shouldForwardProp: (prop) => prop !== 'opened' // nie wysyłaj opened do DOM
 })`
+    font-family: Inter;
     width: ${props => !props.opened ? "1200px" : "100%"};
     min-height: ${props => !props.opened ? "300px" : "100vh"};
     max-width: ${props => !props.opened ? "70%" : "100%"};
     transition: 0.2s ease-in-out;
-    background-color: red;
     margin: auto;
     border-radius: ${props => !props.opened ? "20px" : "0"};
     overflow: hidden;
@@ -85,7 +85,7 @@ const AddActivityPanelTitle = styled.div`
     justify-content: flex-start;
     text-align: flex-start;
     font-size: 26px;
-    font-weight: 300;
+    font-weight: 400;
     color: #404040;
     margin: 0px auto;
     border-bottom: 1px solid gray;
@@ -208,10 +208,13 @@ export const AtrakcjaResultMid = styled.div`
         border-radius: 8px;
         cursor: pointer;
         transition: 0.3s ease-in-out;
+        color: white;
+        font-weight: 500;
         &.a{
-            background-color: #e3e7ff;
+            background-color: #008d73ff;
+
             &:hover{
-                background-color: #d2d6ee;
+                background-color: #006b51ee;
             }
         }
         &.b{
@@ -328,7 +331,7 @@ const PanelBoxFilter = styled.div`
         border: none;
         padding-left: 10px;
         font-size: 16px;
-        font-weight: 300;
+        font-weight: 400;
         font-family: inherit;
         box-sizing: border-box;
         background-color: inherit;
@@ -338,7 +341,7 @@ const PanelBoxFilter = styled.div`
         width: 40px;
         height: 30px;
         margin: auto 10px;
-        background-color: #f49725;
+        background-color: #008d73ff;
         border-radius: 10px;
         display: flex;
         align-items: center;
@@ -346,7 +349,7 @@ const PanelBoxFilter = styled.div`
         cursor: pointer;
         transition: 0.3s ease-in-out;
         &:hover{
-            background-color: #e38614;
+            background-color: #006b51dd;
         }
     }
     
@@ -420,16 +423,16 @@ export const AddActivityPanel = ({ miejsceDocelowe, setModAct, modActIdx, dayInd
             </AddActivityPanelTitle>
             <AddActivityPanelBox>
                 <PanelBoxNav>
-                    <KonfiguratorRadioButton className={radioChosen == 0 ? "chosenA" : ""} onClick={() => setRadioChosen(0)}>
+                    <KonfiguratorRadioButton className={radioChosen == 0 ? "chosen" : ""} onClick={() => setRadioChosen(0)}>
                         <img src={"../icons/castle.svg"} width={'30px'} />
                     </KonfiguratorRadioButton>
-                    <KonfiguratorRadioButton className={radioChosen == 1 ? "chosenB" : ""} onClick={() => setRadioChosen(1)}>
+                    <KonfiguratorRadioButton className={radioChosen == 1 ? "chosen" : ""} onClick={() => setRadioChosen(1)}>
                         <img src={"../icons/park.svg"} width={'30px'} />
                     </KonfiguratorRadioButton >
-                    <KonfiguratorRadioButton className={radioChosen == 2 ? "chosenC" : ""} onClick={() => setRadioChosen(2)}>
+                    <KonfiguratorRadioButton className={radioChosen == 2 ? "chosen" : ""} onClick={() => setRadioChosen(2)}>
                         <img src={"../icons/serce.svg"} width={'30px'} />
                     </KonfiguratorRadioButton>
-                    <KonfiguratorRadioButton className={radioChosen == 3 ? "chosenD" : ""} onClick={() => setRadioChosen(3)}>
+                    <KonfiguratorRadioButton className={radioChosen == 3 ? "chosen" : ""} onClick={() => setRadioChosen(3)}>
                         <img src={"../icons/pencil.svg"} width={'30px'} />
                     </KonfiguratorRadioButton>
                 </PanelBoxNav>
@@ -569,7 +572,7 @@ export const AddActivityPanel = ({ miejsceDocelowe, setModAct, modActIdx, dayInd
                                         onClick={e => {
                                             e.stopPropagation();
                                             setModAct({ flag: false, dayIdx: null, idx: null });
-                                            if (!modActIdx && modActIdx !== 0) {
+                                            if (!modActIdx && modActIdx !== 0) { 
                                                 addActivity(dayIndex, atrakcja);
                                             } else {
                                                 addActivity(dayIndex, modActIdx, atrakcja);
@@ -578,7 +581,7 @@ export const AddActivityPanel = ({ miejsceDocelowe, setModAct, modActIdx, dayInd
                                             addAlert(atrakcja.nazwa);
                                         }}
                                     >
-                                        <img src="../icons/icon-plus.svg" height="20px" />
+                                        <img src="../icons/plus-white.svg" height="20px" />
                                     </div>
                                     <div
                                         className="operationButton b"
@@ -586,9 +589,7 @@ export const AddActivityPanel = ({ miejsceDocelowe, setModAct, modActIdx, dayInd
                                     >
                                         <img src="../icons/icon-serce.svg" height="20px" />
                                     </div>
-                                    <div className="operationButton c">
-                                        <img src="../icons/icon-mark1.svg" height="20px" />
-                                    </div>
+                                   
                                 </div>
                             </AtrakcjaResultMid>
                         ))}
@@ -623,17 +624,11 @@ export const AddActivityPanel = ({ miejsceDocelowe, setModAct, modActIdx, dayInd
                                             addAlert(act.nazwa);
                                         }}
                                     >
-                                        <img src="../icons/icon-plus.svg" height="20px" />
+                                        <img src="../icons/plus-white.svg" height="20px" />
+                                        Dodaj do planu
                                     </div>
-                                    <div
-                                        className="operationButton b"
-                                        onClick={() => addToFav(act)}
-                                    >
-                                        <img src="../icons/icon-serce.svg" height="20px" />
-                                    </div>
-                                    <div className="operationButton c">
-                                        <img src="../icons/icon-mark1.svg" height="20px" />
-                                    </div>
+                                   
+                                    
                                 </div>
                             </AtrakcjaResultMid>
                         ))

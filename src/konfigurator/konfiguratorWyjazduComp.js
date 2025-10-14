@@ -64,7 +64,7 @@ const KonfiguratorWyjazduCompMainbox = styled.div`
         border-bottom: 1px solid lightgray;
         margin-bottom: 10px;
         @media screen and (max-width: 800px){
-            padding-left: 5px;
+            padding-left: 15px;
         }
     }
     
@@ -82,7 +82,9 @@ const KonfiguratorNavBar = styled.div`
     background-color: #f6f6f6;
     padding: 5px;
     @media screen and (max-width: 800px){
-       
+        width: 90%;
+        margin: 10px auto;
+        margin-top: 0;
         a{
             display: none;
         }
@@ -149,8 +151,7 @@ const KonfiguratorWyjazduOutbox = styled.div`
 
     @media screen and (max-width: 800px){
         width: 95%;
-        margin-right: auto;
-        margin-left: 5px;
+        margin: auto;
     }
 `
 const AddAttractionWrapper = styled.div`
@@ -194,7 +195,7 @@ export function minutesToTime(totalMinutes) {
 }
 
 
-export const KonfiguratorWyjazduComp = ({ changeStartHour, deleteActivity, startModifyingAct, setActivityPanelOpened, addActivity, onAttractionTimeChange, swapActivities, onTransportChange, timeSchedule, chosenTransportSchedule, loading, atrakcje, routeSchedule, activitesSchedule, liczbaDni, wybranyDzien, setWybranyDzien }) => {
+export const KonfiguratorWyjazduComp = ({ changeStartHour, deleteActivity, startModifyingAct, setActivityPanelOpened, addActivity, onAttractionTimeChange, swapActivities, onTransportChange, timeSchedule, chosenTransportSchedule, loading, atrakcje, routeSchedule, activitesSchedule, liczbaDni, wybranyDzien, setWybranyDzien, checkOut }) => {
     //useEffect(() => { console.log("TEST3", activitesSchedule, routeSchedule, timeSchedule, chosenTransportSchedule) }, [activitesSchedule, routeSchedule, timeSchedule, chosenTransportSchedule])
 
     const [localWybranyDzien, setLocalWybranyDzien] = useState(wybranyDzien);
@@ -321,6 +322,7 @@ export const KonfiguratorWyjazduComp = ({ changeStartHour, deleteActivity, start
                                                                                     startModifyingAct={startModifyingAct}
                                                                                     deleteActivity={deleteActivity}
                                                                                     changeStartHour={changeStartHour}
+                                                                                    checkOut={checkOut}
                                                                                 />
                                                                             </DraggableWrap>
                                                                         )}
@@ -375,9 +377,9 @@ const AddAttractionButtonMainbox = styled.div`
                 border: 1px solid lightgray;
                 box-shadow: 2px 2px 2px lightgray;
                 &:hover{
-                    background - color: #e8e8e8;
-                box-shadow: 0px 0px 2px lightgray;
-    }
+                    background-color: #e8e8e8;
+                    box-shadow: 0px 0px 2px lightgray;
+                }
                 @media screen and (max-width: 800px)
                 {
                     width: 100%;
