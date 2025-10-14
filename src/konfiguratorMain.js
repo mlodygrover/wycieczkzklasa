@@ -528,6 +528,19 @@ const SummaryInfoBox = styled.div`
         }
 
     }
+    .summaryInfoBoxMoreButton{
+        color: #fefefe;
+        font-weight: 400;
+        font-size: 14px;
+        margin-top: 5px;
+        transition: 0.3s ease;
+        cursor: pointer;
+        text-decoration: underline;
+        &:hover{
+            color: #e0e0e0;
+            
+        }
+    }
 
 `
 //inputpairb
@@ -856,9 +869,12 @@ export const KonfiguratorMain = ({ dataPrzyjazduInit, dataWyjazduInit, standardH
                         ...prev,
                         {
                             id: "invalidCheckout",
-                            content: `Hej, pamiętaj, że musicie wymeldować się z hotelu do godziny ${wybranyHotel.checkOut}! 
-                            Musiałem poprawić plan dnia, następnym razem uważaj 😉`
-                        }
+                            content: `Nalezy wymeldować sie z  hotelu do godziny ${wybranyHotel.checkOut}! 
+                            Musiałem poprawić plan dnia.`,
+                            type: "error"
+                        },
+
+
                     ];
                 });
 
@@ -870,6 +886,36 @@ export const KonfiguratorMain = ({ dataPrzyjazduInit, dataWyjazduInit, standardH
 
         handleSwap();
     }, [lastDaySwap]);
+    function addRouteAlert(dayIdx) {
+        console.log("TEST8", routeSchedule[routeSchedule.length - 1][routeSchedule[routeSchedule.length - 1].length - 1]?.transitRoute);
+        dayIdx != 0 && setAlertsTable(prev => {
+            if (prev.some(alert => alert.id === "routeFromFull")) return prev;
+            return [
+                ...prev,
+                {
+                    id: "routeFromFull",
+                    route: routeSchedule[routeSchedule.length - 1][routeSchedule[routeSchedule.length - 1].length - 1]?.transitRoute,
+                    type: "route"
+                },
+
+
+            ];
+        });
+        dayIdx == 0 && setAlertsTable(prev => {
+            if (prev.some(alert => alert.id === "routeFromFull")) return prev;
+            return [
+                ...prev,
+                {
+                    id: "routeFromFull",
+                    route: routeSchedule[0][0]?.transitRoute,
+                    type: "route"
+                },
+
+
+            ];
+        });
+        
+    }
     function deleteAlert(alertId) {
         setAlertsTable(prev =>
             prev.filter(alert => alert.id !== alertId)
@@ -1499,7 +1545,8 @@ export const KonfiguratorMain = ({ dataPrzyjazduInit, dataWyjazduInit, standardH
         };
 
         const recalculate = async () => {
-            try {
+            try {   
+                console.log("TEST9")
                 await generateRouteSchedule();
             } catch (err) {
                 console.error("❌ Błąd podczas generowania trasy:", err);
@@ -1976,6 +2023,9 @@ export const KonfiguratorMain = ({ dataPrzyjazduInit, dataWyjazduInit, standardH
                                         </div>
                                     ))
                                 }
+                                <div className="summaryInfoBoxMoreButton" onClick={() => addRouteAlert(0)}>
+                                    Pokaż całą trasę
+                                </div>
 
                             </>
                             :
@@ -2001,11 +2051,14 @@ export const KonfiguratorMain = ({ dataPrzyjazduInit, dataWyjazduInit, standardH
                                         </div>
                                     ))
                                 }
-
+                                <div className="summaryInfoBoxMoreButton" onClick={() => addRouteAlert(routeSchedule.length - 1)}>
+                                    Pokaż całą trasę
+                                </div>
                             </>
                             :
                             "To nie będzie ciężki przejazd"
                         }
+
 
 
                     </SummaryInfoBox>
@@ -2023,7 +2076,7 @@ export const KonfiguratorMain = ({ dataPrzyjazduInit, dataWyjazduInit, standardH
 
             </KonfiguratorMainMainbox>
             {alertsTable && alertsTable.length &&
-                <AlertsBox key={alertsTable} alertsTable={alertsTable} deleteAlert={deleteAlert}/>
+                <AlertsBox key={alertsTable} alertsTable={alertsTable} deleteAlert={deleteAlert} />
             }
         </>
 
