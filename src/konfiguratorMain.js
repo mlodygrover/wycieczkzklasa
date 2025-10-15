@@ -914,7 +914,7 @@ export const KonfiguratorMain = ({ dataPrzyjazduInit, dataWyjazduInit, standardH
 
             ];
         });
-        
+
     }
     function deleteAlert(alertId) {
         setAlertsTable(prev =>
@@ -928,28 +928,24 @@ export const KonfiguratorMain = ({ dataPrzyjazduInit, dataWyjazduInit, standardH
         return Math.ceil((num + 0.0001) / 5) * 5; // dodanie małej wartości, by np. 20 -> 25
     }
 
-    async function generateRouteSchedule(activitiesScheduleLocal) {
+    async function generateRouteSchedule(activitiesScheduleProps) {
         if (activitiesSchedule.length != chosenTransportSchedule.length && activitiesSchedule != timeSchedule.length) {
             return;
         }
 
         // ⏱️ odblokowanie po 1 sekundzie
 
-        if (!activitiesScheduleLocal) {
-            activitiesScheduleLocal = activitiesSchedule;
-        }
-
+        const activitiesScheduleLocal = structuredClone(activitiesScheduleProps)
         const tabRoutesTmp = Array.from({ length: liczbaDni }, () => []);
         const tabTimeScheduleTmp = Array.from({ length: liczbaDni }, (_, i) => [startHours[i]]);
 
         // 🔹 Pętla po dniach
         for (let dayIdx = 0; dayIdx < activitiesScheduleLocal.length; dayIdx++) {
             const day = activitiesScheduleLocal[dayIdx];
-
             // 🔹 Pętla po aktywnościach
             for (let actIdx = 0; actIdx < day.length - 1; actIdx++) {
-                const current = day[actIdx];
-                const next = day[actIdx + 1];
+                let current = day[actIdx];
+                let next = day[actIdx + 1];
 
                 const sameLocation =
                     current?.lokalizacja?.lat === next?.lokalizacja?.lat &&
@@ -964,7 +960,6 @@ export const KonfiguratorMain = ({ dataPrzyjazduInit, dataWyjazduInit, standardH
                     });
                     continue;
                 }
-
                 try {
                     const res = await fetch(
                         `http://localhost:5006/routeSummary?fromLat=${current.lokalizacja.lat}&fromLng=${current.lokalizacja.lng}&toLat=${next.lokalizacja.lat}&toLng=${next.lokalizacja.lng}`
@@ -1063,17 +1058,38 @@ export const KonfiguratorMain = ({ dataPrzyjazduInit, dataWyjazduInit, standardH
 
     function verifyBaseActs(tab) {
         if (!tab.length || !miejsceDocelowe || !miejsceStartowe) return tab;
+        const newTab = tab.map(day => [...day]);
         for (let i = 0; i < tab.length; i++) {
 
             if (tab.length && i === 0) {
                 let baseRouteToToAdd = true;
                 let baseBookInToAdd = tab.length > 1;
+                let baseRouteToId = -1;
                 for (let j = 0; j < tab[i].length; j++) {
-                    if (tab[i][j]?.idGoogle == "baseRouteTo") baseRouteToToAdd = false;
-                    if (tab[i][j]?.idGoogle == "baseBookIn") baseBookInToAdd = false;
+                    if (tab[i][j]?.idGoogle == "baseRouteTo") {
+                        baseRouteToToAdd = false;
+                        baseRouteToId = j;
+                    }
+
+                    if (tab[i][j]?.idGoogle == "baseBookIn") {
+                        baseBookInToAdd = false;
+                    }
 
                 }
+                if (!baseRouteToToAdd) {
+                    tab[i][baseRouteToId] = {
+                        idGoogle: "baseRouteTo",
+                        nazwa: "Wyjazd do miejsca docelowego",
+                        adres: "",
+                        czasZwiedzania: 0,
+                        lokalizacja: {
+                            lat: miejsceStartowe?.location?.lat || 52.40567859999999,
+                            lng: miejsceStartowe?.location?.lng || 16.9312766
+                        }
+                    }
+                    //console.log("TEST11", tab[i][baseRouteToId])
 
+                }
                 if (baseRouteToToAdd) {
 
 
@@ -1154,13 +1170,27 @@ export const KonfiguratorMain = ({ dataPrzyjazduInit, dataWyjazduInit, standardH
             if (tab.length && i === tab.length - 1) {
                 let baseRouteFromToAdd = true;
                 let baseBookOutToAdd = tab.length > 1;
-
+                let baseRouteFromId = -1;
+                
                 for (let j = 0; j < tab[i].length; j++) {
-                    if (tab[i][j]?.idGoogle == "baseRouteFrom") baseRouteFromToAdd = false;
+                    if (tab[i][j]?.idGoogle == "baseRouteFrom"){ baseRouteFromToAdd = false; baseRouteFromId = j};
                     if (tab[i][j]?.idGoogle == "baseBookOut") baseBookOutToAdd = false;
 
                 }
+                if (!baseRouteFromToAdd) {
+                    tab[i][baseRouteFromId] = {
+                        idGoogle: "baseRouteFrom",
+                        nazwa: "Powrót do domu",
+                        adres: "",
+                        czasZwiedzania: 0,
+                        lokalizacja: {
+                            lat: miejsceStartowe?.location?.lat || 52.40567859999999,
+                            lng: miejsceStartowe?.location?.lng || 16.9312766
+                        }
+                    }
+                    //console.log("TEST11", tab[i][baseRouteToId])
 
+                }
                 if (baseRouteFromToAdd) {
 
 
@@ -1522,46 +1552,37 @@ export const KonfiguratorMain = ({ dataPrzyjazduInit, dataWyjazduInit, standardH
 
 
     useEffect(() => {
-        const prev = prevValues.current;
         if (!miejsceDocelowe || !miejsceStartowe) return;
+
+        const prev = prevValues.current;
         const changed =
             JSON.stringify(prev.chosenTransportSchedule) !== JSON.stringify(chosenTransportSchedule) ||
             JSON.stringify(prev.startHours) !== JSON.stringify(startHours) ||
-            JSON.stringify(prev.activitiesSchedule) !== JSON.stringify(activitiesSchedule) ||
-            JSON.stringify(prev.miejsceStartowe) !== JSON.stringify(miejsceStartowe) ||
-            JSON.stringify(prev.miejsceDocelowe) !== JSON.stringify(miejsceDocelowe);
+            JSON.stringify(prev.activitiesSchedule) !== JSON.stringify(activitiesSchedule)
 
-        if (!changed) {
-            return; // brak rzeczywistej zmiany — nic nie rób
-        }
+        if (!changed) return;
 
-        // aktualizacja poprzednich wartości
         prevValues.current = {
             chosenTransportSchedule,
             startHours,
-            activitiesSchedule,
             miejsceStartowe,
             miejsceDocelowe,
         };
 
         const recalculate = async () => {
-            try {   
-                console.log("TEST9")
-                await generateRouteSchedule();
-            } catch (err) {
-                console.error("❌ Błąd podczas generowania trasy:", err);
-            }
+            const cloned = structuredClone(activitiesSchedule);
+            await generateRouteSchedule(cloned);
         };
 
         recalculate();
-    },
-        [
-            chosenTransportSchedule,
-            startHours,
-            activitiesSchedule,
-            miejsceStartowe,
-            miejsceDocelowe,
-        ]);
+    }, [chosenTransportSchedule, startHours, activitiesSchedule]);
+    useEffect(() => {
+        setActivitiesSchedule(prev => {
+            const updated = verifyBaseActs(structuredClone(prev)); // 🔹 pełna kopia
+            return updated;
+        });
+    }, [miejsceStartowe]);
+
 
 
 
@@ -1627,9 +1648,8 @@ export const KonfiguratorMain = ({ dataPrzyjazduInit, dataWyjazduInit, standardH
         // 🧹 Wyczyść timeout przy zmianie zależności lub unmount
         return () => clearTimeout(handler);
     }, [googleIdTest, linkTest]);*/
-    useEffect(() => {
-        console.log("TEST2", miejsceDocelowe)
-    }, [miejsceDocelowe])
+
+
 
     const pokojeOpiekunowie = 2;
     useEffect(() => {
@@ -1726,6 +1746,11 @@ export const KonfiguratorMain = ({ dataPrzyjazduInit, dataWyjazduInit, standardH
         pokojeOpiekunowie
     ]);
 
+
+
+    useEffect(() => {
+        //console.log("test10", routeSchedule, activitiesSchedule)
+    }, [routeSchedule])
 
 
     //temp temp temp

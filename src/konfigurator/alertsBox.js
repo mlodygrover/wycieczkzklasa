@@ -7,15 +7,15 @@ const AlertsOutbox = styled.div`
         left: 0;
         width: 100vw;
         min-height: 100vh;
-        background-color: rgba(44, 44, 44, 0.6);
+        background-color: rgba(12, 3, 59, 0.31);
         z-index: 400;
         display: flex;
         align-items: center;
         justify-content: center;
         transition: opacity 0.3s ease-in-out;
         overflow-y: auto; /* ✅ pozwól przewijać cały overlay (lub zamień na hidden, jeśli chcesz tylko scroll w środku) */
-        
-
+        backdrop-filter: blur(3px);
+        -webkit-backdrop-filter: blur(3px);
     .alertsBoxMainbox {
         min-width: 300px;
         max-height: 90vh; /* 🔹 ograniczenie wysokości */
@@ -29,8 +29,8 @@ const AlertsOutbox = styled.div`
         flex-direction: column;
         align-items: center;
         gap: 10px;
-        justify-content: flex-start;
-        box-shadow: 0 4px 40px rgba(0, 0, 0, 0.3);
+        justify-content: flex-start; 
+        box-shadow: 0px 4px 20px rgba(3, 0, 46, 1);
         font-size: 16px;
         text-align: center;
         cursor: pointer;    
