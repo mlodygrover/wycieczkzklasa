@@ -22,7 +22,7 @@ const AddActivityPanelMainbox = styled.div.withConfig({
     margin: auto;
     border-radius: ${props => !props.opened ? "20px" : "0"};
     overflow: hidden;
-    background-color: #f0f0f0;
+    background-color: white;
     display: flex;
     flex-direction: column;
     align-items: flex-start;
@@ -125,10 +125,24 @@ const AddActivityPanelBox = styled.div`
 const PanelBoxNav = styled.div`
     width: 100%;
     display: flex;
+    height: 36px;
+    padding: 2px 4px;
+    box-sizing: border-box;
     flex-direction: row;
-    align-items: center;
+    align-items: stretch;
     justify-content: flex-start;
     gap: 5px;
+    border-radius: 999px;
+    background-color: #f6f6f6;
+    .panelBoxNavButton{
+        flex:1;
+        background-color: #f0f0f0;
+        border-radius: 9999px;
+        &.chosen{
+            background-color: #008d73ff;
+        }
+    
+    }
 `
 const PanelBoxContent = styled.div`
   display: ${props => props.hidden ? "none" : "flex"};
@@ -438,6 +452,7 @@ export const AddActivityPanel = ({ miejsceDocelowe, setModAct, modActIdx, dayInd
             </AddActivityPanelTitle>
             <AddActivityPanelBox>
                 <PanelBoxNav>
+                    {/*
                     <KonfiguratorRadioButton className={radioChosen == 0 ? "chosen" : ""} onClick={() => setRadioChosen(0)}>
                         <img src={"../icons/castle.svg"} width={'30px'} />
                     </KonfiguratorRadioButton>
@@ -450,6 +465,28 @@ export const AddActivityPanel = ({ miejsceDocelowe, setModAct, modActIdx, dayInd
                     <KonfiguratorRadioButton className={radioChosen == 3 ? "chosen" : ""} onClick={() => setRadioChosen(3)}>
                         <img src={"../icons/pencil.svg"} width={'30px'} />
                     </KonfiguratorRadioButton>
+                    */}
+                    {[
+                        { id: 0, icon: "../icons/castle.svg", label: "Zamki" },
+                        { id: 1, icon: "../icons/park.svg", label: "Parki" },
+                        { id: 2, icon: "../icons/serce.svg", label: "Ulubione" },
+                        { id: 3, icon: "../icons/pencil.svg", label: "Edycja" }
+                    ].map(option => (
+                        <label
+                            key={option.id}
+                            className={radioChosen === option.id ? "panelBoxNavButton chosen" : "panelBoxNavButton"}
+                        >
+                            <input
+                                type="radio"
+                                name="navChoice"
+                                value={option.id}
+                                checked={radioChosen === option.id}
+                                onChange={() => setRadioChosen(option.id)}
+                                style={{ display: "none" }} // ukrywamy natywny wygląd radio
+                            />
+                            <img src={option.icon} width="30px" alt={option.label} />
+                        </label>
+                    ))}
                 </PanelBoxNav>
 
                 <PanelBoxContent hidden={radioChosen !== 0} key={searchActivity}>
@@ -587,7 +624,7 @@ export const AddActivityPanel = ({ miejsceDocelowe, setModAct, modActIdx, dayInd
                                         onClick={e => {
                                             e.stopPropagation();
                                             setModAct({ flag: false, dayIdx: null, idx: null });
-                                            if (!modActIdx && modActIdx !== 0) { 
+                                            if (!modActIdx && modActIdx !== 0) {
                                                 addActivity(dayIndex, atrakcja);
                                             } else {
                                                 addActivity(dayIndex, modActIdx, atrakcja);
@@ -604,7 +641,7 @@ export const AddActivityPanel = ({ miejsceDocelowe, setModAct, modActIdx, dayInd
                                     >
                                         <img src="../icons/icon-serce.svg" height="20px" />
                                     </div>
-                                   
+
                                 </div>
                             </AtrakcjaResultMid>
                         ))}
@@ -642,8 +679,8 @@ export const AddActivityPanel = ({ miejsceDocelowe, setModAct, modActIdx, dayInd
                                         <img src="../icons/plus-white.svg" height="20px" />
                                         Dodaj do planu
                                     </div>
-                                   
-                                    
+
+
                                 </div>
                             </AtrakcjaResultMid>
                         ))
