@@ -229,6 +229,22 @@ export const AttractionResultSmall = ({ icon = "../icons/castle.svg", attraction
 }
 
 const AttractionResultFullMainbox = styled.div`
+    opacity: 0;
+    transform: translateY(10px);
+    animation: fadeIn 0.6s ease forwards;
+    
+    @keyframes fadeIn {
+        from {
+            opacity: 0;
+            transform: translateY(10px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+
     width: calc(100% - 50px);
     
     height: 150px;
@@ -393,6 +409,7 @@ const AttractionResultFullOutbox = styled.div`
     gap: 10px;
 
 
+
 `
 const AttractionResultFullNav = styled.div`
     
@@ -509,7 +526,7 @@ export const AttractionResultFull = ({
     const prevLocalTime = useRef(localTime);
 
     useEffect(() => {
-        
+
         // jeśli wartość się nie zmieniła — zakończ efekt
         if (prevLocalTime.current === localTime) {
             return;
@@ -633,7 +650,7 @@ export const AttractionResultFull = ({
                         <img src="../icons/icon-time.svg" height={'20px'} />
                         {actIdx == 0 && <IncreaseButton onClick={() => setLocalStartTime((localStartTime - 10) % 1440)}><img src="../icons/minus-white.svg" height={'15px'} /></IncreaseButton>}
                         {minutesToTime(localStartTime) || "00"}
-                        {actIdx == 0 && <IncreaseButton onClick={() => setLocalStartTime( localStartTime + 10 < checkOut ? (localStartTime + 10) % 1440 : localStartTime ) } > <img src="../icons/plus-white.svg" height="15px" alt="Zwiększ" /> </IncreaseButton>}
+                        {actIdx == 0 && <IncreaseButton onClick={() => setLocalStartTime(localStartTime + 10 < checkOut ? (localStartTime + 10) % 1440 : localStartTime)} > <img src="../icons/plus-white.svg" height="15px" alt="Zwiększ" /> </IncreaseButton>}
 
                         {attraction?.czasZwiedzania != 0 &&
                             <>

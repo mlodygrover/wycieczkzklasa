@@ -12,6 +12,8 @@ const baseActivities = [
 const AddActivityPanelMainbox = styled.div.withConfig({
     shouldForwardProp: (prop) => prop !== 'opened' // nie wysyłaj opened do DOM
 })`
+
+  
     font-family: Inter;
     width: ${props => !props.opened ? "1200px" : "100%"};
     min-height: ${props => !props.opened ? "300px" : "100vh"};
@@ -32,7 +34,20 @@ const AddActivityPanelMainbox = styled.div.withConfig({
         height: 100%;
         min-height: 100vh;
     }
+    opacity: 0;
+    transform: translateY(10px);
+    animation: fadeIn 0.6s ease forwards;
     
+    @keyframes fadeIn {
+        from {
+            opacity: 0;
+            transform: translateY(10px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
 `;
 
 const AddActivityPanelNav = styled.div`
