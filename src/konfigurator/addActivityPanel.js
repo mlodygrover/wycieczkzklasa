@@ -4,6 +4,8 @@ import { KonfiguratorRadioButton } from "../konfiguratorMain";
 import LeafletMap from "../roots/googleMapViewer";
 import { StarRating } from "../roots/wyborPoleAtrakcja";
 import { OwnAttraction } from "../ownAttraction";
+import { minutesToStringTime } from "../roots/attractionResults";
+import { AtrakcjaResultMidComp } from "./atrakcjaResultMid";
 
 const baseActivities = [
     { idGoogle: "baseAct", czasZwiedzania: 30, nazwa: "Przerwa śniadaniowa", adres: "", cenaZwiedzania: 0, icon: "../icons/park.svg" }
@@ -131,18 +133,25 @@ const PanelBoxNav = styled.div`
     flex-direction: row;
     align-items: stretch;
     justify-content: flex-start;
-    gap: 5px;
+    gap: 2px;
     border-radius: 999px;
     background-color: #f6f6f6;
     .panelBoxNavButton{
         flex:1;
-        background-color: #f0f0f0;
+        cursor: pointer;
+        transition: 0.3s ease;
         border-radius: 9999px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
         &.chosen{
             background-color: #008d73ff;
-        }
+            img {
+                filter: brightness(0) invert(1);
+            }
     
     }
+}
 `
 const PanelBoxContent = styled.div`
   display: ${props => props.hidden ? "none" : "flex"};
@@ -156,10 +165,10 @@ const PanelBoxContent = styled.div`
 export const AtrakcjaResultMid = styled.div`
   flex: 1 1 250px;   /* rośnie i maleje, bazowa szerokość ~250px */
   min-width: 200px;  /* minimalna szerokość kafelka */
-  background: #eee;
-  border-radius: 8px;
+  
+  border-radius: 20px;
   box-sizing: border-box;
-  background-color: #eaeaea;
+  background-color: white;
   border: 1px solid lightgray;
   display: flex;
   flex-direction: column;
@@ -169,17 +178,100 @@ export const AtrakcjaResultMid = styled.div`
   font-weight: 300;
   padding-bottom: 20px;
   min-height: fit-content;
-  div{
-  display: flex;
-  align-items: center;
-  justify-content: flex-start;
   gap: 5px;
+  font-family: 'Inter';
+  .addActivityAddButton{
+    height: 30px;
+        width: 90%;
+        background-color: #008d73ff;
+        margin: 3px auto;
+        border-radius: 5px;
+        color: white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        font-size: 14px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: 0.3s ease-in-out;
+        box-sizing: border-box;
+        
+        &:hover{
+            background-color: #007a61ff;
+        }
+
   }
-  .mapBox{
-    
+  .atrakcjaResultMidName{
+    text-align: left;
+    display: flex;
+    flex-direction: row;
+    gap: 5px;
+    font-family: 'Inter';
+    font-size: 16px;
+    width: 90%;
+    font-weight: 500;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: flex-start;
+    margin: auto;
+    .doubleName{
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        justify-content: center;
+        font-size: 14px;
+        &.a{
+            font-size: 16px;
+        }
+        span{
+            font-weight: 400;
+            font-size: 13px;
+            color: #606060;
+        }
+        .doubleNameRating{
+            color: auto;
+            display: flex;
+            flex-direction: row;
+            align-items: center;
+            justify-content: flex-start;
+            gap: 5px;
+            a{
+                font-size: 12px;   
+                color: #606060;         
+            }
+        }
+        
+
+    }
+  }
+  .mapBox {
+  padding-bottom: 5px;
+  width: 100%;
+  height: 150px;
+  position: relative; /* konieczne dla ::after */
+  overflow: hidden;   /* żeby overlay nie wychodził poza box */
+
+  img {
     width: 100%;
-    height: 150px;
+    height: 100%;
+    object-fit: cover;
+    object-position: center;
+    filter: brightness(1.05) saturate(0.8) contrast(0.95);
+    display: block;
   }
+
+  &::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: rgba(255, 220, 180, 0.2); /* delikatny pastelowy overlay */
+    mix-blend-mode: soft-light;
+    pointer-events: none;
+  }
+}
+
   .titleBox{
     padding-top: 10px;
     width: 90%;
@@ -343,8 +435,7 @@ export const SuccessAlert = styled.div`
 const PanelBoxFilter = styled.div`
     width: 100%;
     height: 40px;
-    background-color: #fafafa;
-    border: 1px solid lightgray;
+    background-color: #f6f6f6;
     display: flex;
     flex-direction: row;
     align-items: center;
@@ -359,7 +450,7 @@ const PanelBoxFilter = styled.div`
         outline: 0;
         border: none;
         padding-left: 10px;
-        font-size: 16px;
+        font-size: 14px;
         font-weight: 400;
         font-family: inherit;
         box-sizing: border-box;
@@ -467,7 +558,7 @@ export const AddActivityPanel = ({ miejsceDocelowe, setModAct, modActIdx, dayInd
                     </KonfiguratorRadioButton>
                     */}
                     {[
-                        { id: 0, icon: "../icons/castle.svg", label: "Zamki" },
+                        { id: 0, icon: "../icons/castle.svg", label: "Podstawowe" },
                         { id: 1, icon: "../icons/park.svg", label: "Parki" },
                         { id: 2, icon: "../icons/serce.svg", label: "Ulubione" },
                         { id: 3, icon: "../icons/pencil.svg", label: "Edycja" }
@@ -484,7 +575,7 @@ export const AddActivityPanel = ({ miejsceDocelowe, setModAct, modActIdx, dayInd
                                 onChange={() => setRadioChosen(option.id)}
                                 style={{ display: "none" }} // ukrywamy natywny wygląd radio
                             />
-                            <img src={option.icon} width="30px" alt={option.label} />
+                            <img src={option.icon} width="25px" alt={option.label} />
                         </label>
                     ))}
                 </PanelBoxNav>
@@ -590,60 +681,8 @@ export const AddActivityPanel = ({ miejsceDocelowe, setModAct, modActIdx, dayInd
                                 )
                         )
                         .map((atrakcja, idx) => (
-                            <AtrakcjaResultMid key={atrakcja.googleId}>
-                                <div className="mapBox" style={{ pointerEvents: "none" }}>
-                                    <LeafletMap
-                                        lat={atrakcja?.lokalizacja?.lat || 52.5333}
-                                        lng={atrakcja?.lokalizacja?.lng || 16.9252}
-                                        zoom={11}
-                                    />
-                                </div>
-                                <div className="titleBox">
-                                    <img src="../icons/castle.svg" height="15px" />
-                                    {atrakcja.nazwa}
-                                </div>
-                                <div className="adresBox">
-                                    <img src="../icons/icon-adres.svg" height="15px" />
-                                    {atrakcja.adres}
-                                </div>
-                                <div className="ratingBox">
-                                    <StarRating rating={atrakcja.ocena} />
-                                    {atrakcja.ocena} <a>({atrakcja.liczbaOpinie})</a>
-                                </div>
-                                <div className="timeBox">
-                                    <img src="../icons/icon-time.svg" height="15px" />
-                                    {atrakcja?.czasZwiedzania || "60min"}
-                                </div>
-                                <div className="timeBox">
-                                    <img src="../icons/icon-ticket.svg" height="15px" />
-                                    {atrakcja?.cenaZwiedzania || "Bezpłatne"}
-                                </div>
-                                <div className="buttonsBox">
-                                    <div
-                                        className="operationButton a"
-                                        onClick={e => {
-                                            e.stopPropagation();
-                                            setModAct({ flag: false, dayIdx: null, idx: null });
-                                            if (!modActIdx && modActIdx !== 0) {
-                                                addActivity(dayIndex, atrakcja);
-                                            } else {
-                                                addActivity(dayIndex, modActIdx, atrakcja);
-                                                closePanel();
-                                            }
-                                            addAlert(atrakcja.nazwa);
-                                        }}
-                                    >
-                                        <img src="../icons/plus-white.svg" height="20px" />
-                                    </div>
-                                    <div
-                                        className="operationButton b"
-                                        onClick={() => addToFav(atrakcja)}
-                                    >
-                                        <img src="../icons/icon-serce.svg" height="20px" />
-                                    </div>
+                            <AtrakcjaResultMidComp radioChosen={radioChosen} dayIndex={dayIndex} setModAct={setModAct} atrakcja={atrakcja} modActIdx={modActIdx} addActivity={addActivity} closePanel={closePanel} addAlert={addAlert} addToFav={addToFav} key={atrakcja.googleId} />
 
-                                </div>
-                            </AtrakcjaResultMid>
                         ))}
 
                 </PanelBoxContent>
