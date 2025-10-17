@@ -160,6 +160,13 @@ const PanelBoxContent = styled.div`
   gap: 10px;                 /* odstęp między kafelkami */
   width: 100%;
   margin-top: 10px;
+     .googleLogoDiv{
+        margin-top: 5px;
+                width: 90%;
+                display: flex;
+                align-items: center;
+        
+    }
 `;
 
 export const AtrakcjaResultMid = styled.div`
@@ -210,7 +217,7 @@ export const AtrakcjaResultMid = styled.div`
     font-family: 'Inter';
     font-size: 16px;
     width: 90%;
-    font-weight: 500;
+    font-weight: 400;
     display: flex;
     flex-direction: row;
     align-items: center;
@@ -224,6 +231,7 @@ export const AtrakcjaResultMid = styled.div`
         font-size: 14px;
         &.a{
             font-size: 16px;
+            font-weight: 500;
         }
         span{
             font-weight: 400;
@@ -666,7 +674,9 @@ export const AddActivityPanel = ({ miejsceDocelowe, setModAct, modActIdx, dayInd
                                 </div>
                             </SuccessAlert>
                     ))}
-
+                    <div className="googleLogoDiv">
+                        <img src="googlelogo.svg" />
+                    </div>
                     {atrakcje
                         .filter((atrakcja) =>
                             atrakcja.nazwa
@@ -680,6 +690,7 @@ export const AddActivityPanel = ({ miejsceDocelowe, setModAct, modActIdx, dayInd
                                         .toLowerCase()
                                 )
                         )
+
                         .map((atrakcja, idx) => (
                             <AtrakcjaResultMidComp radioChosen={radioChosen} dayIndex={dayIndex} setModAct={setModAct} atrakcja={atrakcja} modActIdx={modActIdx} addActivity={addActivity} closePanel={closePanel} addAlert={addAlert} addToFav={addToFav} key={atrakcja.googleId} />
 

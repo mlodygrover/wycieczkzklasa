@@ -29,7 +29,7 @@ export const AtrakcjaResultMidComp = ({ radioChosen, dayIndex, setModAct, atrakc
     return (
         <AtrakcjaResultMid key={`${atrakcja}${priceChanged}`}>
             <div className="mapBox" style={{ pointerEvents: "none" }}>
-                {atrakcja.photos.length ? <img src={atrakcja.photos[0]} height={'100%'} width={'100%'} /> :
+                {
                     <LeafletMap
                         lat={atrakcja?.lokalizacja?.lat || 52.5333}
                         lng={atrakcja?.lokalizacja?.lng || 16.9252}

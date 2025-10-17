@@ -87,6 +87,12 @@ const AlertsOutbox = styled.div`
             overflow: hidden;
             box-sizing: border-box;
 
+            .googleLogoDiv{
+                width: 90%;
+                text-align: left;
+                margin: 10px auto; 
+                padding-left:10px;
+            }
             .routeTile{
                 padding: 10px 2px;
                 background-color: #343642;
@@ -168,7 +174,7 @@ export const AlertsBox = ({ alertsTable, deleteAlert }) => {
             <div
                 className="alertsBoxMainbox"
 
-            >   
+            >
                 <div className="alertsBoxTitle">
                     <img src="../icons/icon-info.svg" height="25px" />Informacje
                 </div>
@@ -197,13 +203,18 @@ export const AlertsBox = ({ alertsTable, deleteAlert }) => {
                         alert.type == "route"
                             ?
                             <div className={idx == 0 ? "routeTileWrapper first" : "routeTileWrapper"} key={`${idx}idx${alert}`}>
+
                                 <div className="routeTile">
+
                                     {alert.route.map((routePart, idx) => (
                                         <div className="routeSummaryRow" key={`${routePart.type}_${idx}`}>
                                             <img src={routePart.type == "WALK" ? "../icons/pedestrian-white.svg" : routePart?.vehicleType == "TRAM" ? "../icons/tram.svg" : "../icons/train-white.svg"} height={'20px'} />
                                             {routePart.type == "WALK" ? <div className="routeSummaryRowContent">{routePart.instructions}</div> : <div className="routeSummaryRowContent">{routePart.departureStop} - {routePart.arrivalStop}</div>}
                                         </div>
                                     ))}
+                                    <div className="googleLogoDiv">
+                                        <img src="googlelogo-white.svg" />
+                                    </div>
                                 </div>
                             </div>
                             :

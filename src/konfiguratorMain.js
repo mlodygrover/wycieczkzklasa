@@ -50,6 +50,13 @@ const KonfiguratorMainMainboxLeft = styled.div`
         border-right: none;
         border-left: 1px solid lightgray;
     }
+    .googleLogoDiv{
+    margin-top: 5px;
+        width: 90%;
+        display: flex;
+        align-items: center;
+        
+    }
     display: flex;
     flex-direction: column;
     justify-content: flex-start;
@@ -470,6 +477,13 @@ const SummaryInfoBox = styled.div`
     color: white;
     padding: 15px 5px;
     box-sizing: border-box;
+     .googleLogoDiv{
+        margin-top: 5px;
+        width: 90%;
+        display: flex;
+        align-items: center;
+        
+    }
     
     .summaryInfoBoxTitle{
         margin: 0 auto;
@@ -1171,9 +1185,9 @@ export const KonfiguratorMain = ({ dataPrzyjazduInit, dataWyjazduInit, standardH
                 let baseRouteFromToAdd = true;
                 let baseBookOutToAdd = tab.length > 1;
                 let baseRouteFromId = -1;
-                
+
                 for (let j = 0; j < tab[i].length; j++) {
-                    if (tab[i][j]?.idGoogle == "baseRouteFrom"){ baseRouteFromToAdd = false; baseRouteFromId = j};
+                    if (tab[i][j]?.idGoogle == "baseRouteFrom") { baseRouteFromToAdd = false; baseRouteFromId = j };
                     if (tab[i][j]?.idGoogle == "baseBookOut") baseBookOutToAdd = false;
 
                 }
@@ -1606,9 +1620,7 @@ export const KonfiguratorMain = ({ dataPrzyjazduInit, dataWyjazduInit, standardH
         return `${day}/${month}/${year}`;
     }
     //temp temp temp
-    useEffect(()=>{
-        setMiejsceDocelowe(miejsceStartowe)
-    }, [miejsceStartowe])
+
     /*
     const link1 = "https://ogrod.amu.edu.pl/";
 
@@ -1971,7 +1983,12 @@ export const KonfiguratorMain = ({ dataPrzyjazduInit, dataWyjazduInit, standardH
 
                         </div>
                     </div>
+                    <div className="googleLogoDiv">
+                        <img src="googlelogo.svg" />
+                    </div>
+
                     <>
+
                         {
                             atrakcje
                                 .filter(atrakcja => atrakcja.nazwa.toLowerCase().includes(attractionsSearching.toLowerCase()) || atrakcja.adres.toLowerCase().includes(attractionsSearching.toLowerCase()))
@@ -2069,7 +2086,7 @@ export const KonfiguratorMain = ({ dataPrzyjazduInit, dataWyjazduInit, standardH
                         </div>
                         {routeFromPrint && routeFromPrint.length > 0 ?
                             <>
-
+                                
                                 {
                                     routeFromPrint.map((rt, rtIdx) => (
                                         <div className="routeSummaryRow" key={`${rt.line}_${rtIdx}`}>

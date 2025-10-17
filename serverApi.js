@@ -13,7 +13,6 @@ const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY || "" });
 console.log(process.env.OPENAI_API_KEY)
 const fs = require("fs");
 const cheerio = require("cheerio");
-const { v2: cloudinary } = require("cloudinary");
 
 const app = express();
 const PORT = 5006;
@@ -260,37 +259,7 @@ app.post("/addAttraction", async (req, res) => {
 
 
 
-cloudinary.config({
-    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-    api_key: process.env.CLOUDINARY_API_KEY,
-    api_secret: process.env.CLOUDINARY_API_SECRET,
-});
 
-// 🔧 Pomocnicza funkcja do uploadu zdjęć do Cloudinary
-async function uploadPhotoToCloudinary(photoRef) {
-    try {
-        // Google zwraca 302 redirect, więc najpierw pobierz właściwy URL
-        const googlePhotoUrl = `https://maps.googleapis.com/maps/api/place/photo?maxwidth=600&photo_reference=${photoRef}&key=${process.env.GOOGLE_API_KEY}`;
-        const redirectResponse = await axios.get(googlePhotoUrl, { maxRedirects: 0, validateStatus: null });
-
-        // Sprawdź, czy jest przekierowanie
-        const finalUrl = redirectResponse.headers.location || googlePhotoUrl;
-
-        // Teraz Cloudinary pobierze obraz sam, bez udziału Twojego serwera
-        const result = await cloudinary.uploader.upload(finalUrl, {
-            folder: "google_attractions",
-            resource_type: "image",
-        });
-
-        return result.secure_url;
-    } catch (err) {
-        console.error("❌ Błąd remote uploadu do Cloudinary:", err.message);
-        return null;
-    }
-}
-
-
-// 🌍 GŁÓWNY ENDPOINT
 app.get("/getAttractions", async (req, res) => {
     const { placeId, lat, lng } = req.query;
     const parentPlaceId = placeId;
@@ -303,14 +272,12 @@ app.get("/getAttractions", async (req, res) => {
         // 1️⃣ Sprawdzenie w bazie
         const attractionsFromDb = await Attraction.find({ parentPlaceId });
         if (attractionsFromDb.length >= 50) {
-            console.log("TEST1", parentPlaceId)
-            console.log("📦 ZWRACAM Z DB");
+            console.log("ZWRACAM Z DB")
             return res.json(attractionsFromDb);
         }
-
-        console.log("🌍 POBIERAM Z GOOGLE API...");
-
-        const R = 0.18;
+        console.log("KAFELKUJE")
+        // 2️⃣ Przygotowanie kafelków
+        const R = 0.18; // ~20 km w stopniach
         const centerLat = parseFloat(lat);
         const centerLng = parseFloat(lng);
 
@@ -321,13 +288,14 @@ app.get("/getAttractions", async (req, res) => {
             { latOffset: R, lngOffset: R },
         ];
 
-        const types = ["tourist_attraction", "museum"];
         const allGoogleAttractions = [];
+        const types = ["tourist_attraction", "museum"]; // 🔹 typy do wyszukania
 
         for (const offset of offsets) {
             const tileLat = centerLat + offset.latOffset;
             const tileLng = centerLng + offset.lngOffset;
 
+            // 🔁 dla każdego typu wyszukujemy osobno
             for (const type of types) {
                 let nextPageToken = null;
                 let page = 0;
@@ -345,29 +313,19 @@ app.get("/getAttractions", async (req, res) => {
 
                     if (data.status !== "OK" && data.status !== "ZERO_RESULTS") break;
 
+                    // 🔹 Filtrowanie wyników — pomijamy hotele i galerie handlowe
                     const filteredResults = (data.results || []).filter(place => {
                         const types = place.types || [];
-                        return (
-                            !types.includes("shopping_mall") &&
-                            !types.includes("lodging") &&
-                            !types.includes("store") &&
-                            !types.includes("furniture_store") &&
-                            !types.includes("home_goods_store")
-                        );
+                        return !types.includes("shopping_mall") && !types.includes("lodging") && !types.includes("store") && !types.includes("furniture_store") && !types.includes("home_goods_store");
                     });
 
                     for (const place of filteredResults) {
+
+                        // 🔹 unikalność po place_id
                         if (!allGoogleAttractions.some(a => a.googleId === place.place_id)) {
-                            const website = await getPlaceDetails(place.place_id);
-
-                            let cloudinaryPhoto = null;
-                            if (1==3 && place.photos && place.photos.length > 0) {
-                                const firstPhotoRef = place.photos[0].photo_reference;
-                                cloudinaryPhoto = await uploadPhotoToCloudinary(firstPhotoRef);
-                            }
-
+                            const website = await getPlaceDetails(place.place_id); // <- pobranie strony
                             allGoogleAttractions.push({
-                                parentPlaceId: placeId,
+                                placeId,
                                 googleId: place.place_id,
                                 nazwa: place.name,
                                 adres: place.vicinity || "",
@@ -375,7 +333,8 @@ app.get("/getAttractions", async (req, res) => {
                                 liczbaOpinie: place.user_ratings_total || 0,
                                 lokalizacja: place.geometry.location,
                                 typy: place.types || [],
-                                photoUrl: cloudinaryPhoto, // ✅ trwały link z Cloudinary
+                                ikona: place.icon || null,
+                                photos: [],
                                 stronaInternetowa: website,
                             });
                         }
@@ -385,34 +344,36 @@ app.get("/getAttractions", async (req, res) => {
                     page++;
 
                     if (nextPageToken) {
+                        // Google wymaga ~2s opóźnienia zanim next_page_token zacznie działać
                         await new Promise(resolve => setTimeout(resolve, 2000));
                     }
                 } while (nextPageToken && page < 3);
             }
         }
 
-        // 3️⃣ Zapis nowych atrakcji do bazy
+        // 3️⃣ Zapis do bazy tylko nowych atrakcji
         const newAttractions = [];
         for (const attr of allGoogleAttractions) {
             const exists = await Attraction.findOne({ googleId: attr.googleId });
             if (!exists) {
-                const newAttr = new Attraction(attr);
+                const newAttr = new Attraction({ ...attr, parentPlaceId: placeId });
                 await newAttr.save();
                 newAttractions.push(newAttr);
             }
         }
 
-        // 4️⃣ Połączenie wyników i sortowanie
+        // 4️⃣ Połączenie wyników
         const allAttractions = [
             ...attractionsFromDb.map(a => a.toObject()),
             ...newAttractions.map(a => a.toObject()),
         ];
 
+        // 🔹 Sortowanie po liczbie opinii (najpopularniejsze na górze)
         allAttractions.sort((a, b) => (b.liczbaOpinie || 0) - (a.liczbaOpinie || 0));
-        console.log("ZWROCONO ATRAKCJE")
+
         res.json(allAttractions);
     } catch (err) {
-        console.error("❌ Błąd w getAttractions:", err.response?.data || err.message);
+        console.error("Błąd w getAttractions:", err.response?.data || err.message);
         res.status(500).json({ error: "Błąd serwera." });
     }
 });
