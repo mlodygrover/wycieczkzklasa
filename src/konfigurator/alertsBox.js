@@ -89,7 +89,7 @@ const AlertsOutbox = styled.div`
 
             .googleLogoDiv{
                 width: 90%;
-                text-align: left;
+                text-align: center;
                 margin: 10px auto; 
                 padding-left:10px;
             }

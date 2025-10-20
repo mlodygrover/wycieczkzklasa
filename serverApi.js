@@ -842,6 +842,7 @@ function cleanWhitespacePreserveLines(text) {
 
 const puppeteer = require("puppeteer");
 const { url } = require("inspector");
+const { Console } = require("console");
 
 function isDynamicHTML(html) {
     if (!html || typeof html !== "string") return true;
@@ -1783,11 +1784,6 @@ app.get("/findHotel", async (req, res) => {
         res.status(500).json({ error: "Błąd podczas wyszukiwania hoteli." });
     }
 });
-
-
-
-
-
 
 app.listen(PORT, () => {
     console.log(`Serwer działa na http://localhost:${PORT}`);

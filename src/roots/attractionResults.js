@@ -6,6 +6,7 @@ import { da } from "date-fns/locale"
 import { timeToMinutes } from "../konfiguratorMain"
 import { minutesToTime } from "../konfigurator/konfiguratorWyjazduComp"
 import React from "react"
+import { Loader2 } from "../loader2"
 const GooglePopupCardMainbox = styled.div`
     position: absolute;
     top: 0;
@@ -635,7 +636,7 @@ export const AttractionResultFull = ({
                     <div className="attractionStats">
                         <img src="../icons/icon-time.svg" height={'20px'} />
                         {actIdx == 0 && <IncreaseButton onClick={() => setLocalStartTime((localStartTime - 10) % 1440)}><img src="../icons/minus-white.svg" height={'15px'} /></IncreaseButton>}
-                        {minutesToTime(localStartTime) || "00"}
+                        {isNaN(minutesToTime(localStartTime)) ? minutesToTime(localStartTime) : <Loader2/> }
                         {actIdx == 0 && <IncreaseButton onClick={() => setLocalStartTime(localStartTime + 10 < checkOut ? (localStartTime + 10) % 1440 : localStartTime)} > <img src="../icons/plus-white.svg" height="15px" alt="Zwiększ" /> </IncreaseButton>}
 
                         {attraction?.czasZwiedzania != 0 &&

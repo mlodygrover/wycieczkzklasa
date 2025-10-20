@@ -20,6 +20,7 @@ import { parseJSON } from "date-fns";
 import AttractionResultMediumComponent from "./attractionResultMediumComp";
 import { Checkbox2 } from "./checkbox1";
 import { AlertsBox } from "./konfigurator/alertsBox";
+import { ChatBox } from "./konfigurator/chatBox";
 
 const testResults = [
     { nazwa: "Poznań", region: "Wielkopolska", kraj: "Polska" },
@@ -1620,7 +1621,9 @@ export const KonfiguratorMain = ({ dataPrzyjazduInit, dataWyjazduInit, standardH
         return `${day}/${month}/${year}`;
     }
     //temp temp temp
-
+    useEffect(()=>{
+        setMiejsceDocelowe(miejsceStartowe)
+    }, [miejsceStartowe])
     /*
     const link1 = "https://ogrod.amu.edu.pl/";
 
@@ -1808,6 +1811,7 @@ export const KonfiguratorMain = ({ dataPrzyjazduInit, dataWyjazduInit, standardH
 
     const [routeToPrint, setRouteToPrint] = useState([]);
     const [routeFromPrint, setRouteFromPrint] = useState([])
+
     useEffect(() => {
         if (!routeSchedule || !routeSchedule.length) return;
         const routeToPlan = routeSchedule[0][0]?.transitRoute || [];
@@ -2024,6 +2028,7 @@ export const KonfiguratorMain = ({ dataPrzyjazduInit, dataWyjazduInit, standardH
                     }
                 </KonfiguratorMainMainboxRight>
                 <KonfiguratorMainMainboxLeft className="right">
+
                     <div className="mainboxLeftTitle">
                         Podsumowanie wyjazdu
                     </div>
@@ -2056,24 +2061,38 @@ export const KonfiguratorMain = ({ dataPrzyjazduInit, dataWyjazduInit, standardH
                             <img src="../icons/hotel-white.svg" width="20px" />
                             Przejazd do {miejsceDocelowe?.nazwa}
                         </div>
-                        {routeToPrint && routeToPrint.length > 0 ?
-                            <>
+                        {
+                            standardTransportu == 0 ?
+                                routeToPrint && routeToPrint.length > 0 ?
+                                    <>
 
-                                {
-                                    routeToPrint.map((rt, rtIdx) => (
-                                        <div className="routeSummaryRow" key={`${rt.line}_${rtIdx}`}>
-                                            <img src="../icons/train-white.svg" height={'20px'} />
-                                            <div className="routeSummaryRowContent">{rt.line}, {minutesToStringTime(rt.time)}<a>{rt.depart} - {rt.arrival}</a></div>
+                                        {
+                                            routeToPrint.map((rt, rtIdx) => (
+                                                <div className="routeSummaryRow" key={`${rt.line}_${rtIdx}`}>
+                                                    <img src="../icons/train-white.svg" height={'20px'} />
+                                                    <div className="routeSummaryRowContent">{rt.line}, {minutesToStringTime(rt.time)}<a>{rt.depart} - {rt.arrival}</a></div>
+                                                </div>
+                                            ))
+                                        }
+                                        <div className="summaryInfoBoxMoreButton" onClick={() => addRouteAlert(0)}>
+                                            Pokaż całą trasę
                                         </div>
-                                    ))
-                                }
-                                <div className="summaryInfoBoxMoreButton" onClick={() => addRouteAlert(0)}>
-                                    Pokaż całą trasę
-                                </div>
 
-                            </>
-                            :
-                            "To nie będzie ciężki przejazd"
+                                    </>
+                                    :
+                                    "To nie będzie ciężki przejazd"
+                                :
+                                standardTransportu == 1 ?
+                                    <>
+                                        <img src="../icons/bus-white.svg" height="30px" />
+                                        
+                                    </>
+
+                                    :
+                                    <>
+                                        <img src="../icons/ownTransport-white.svg" height="30px" />
+                                        Własny transport
+                                    </>
                         }
 
 
@@ -2084,23 +2103,38 @@ export const KonfiguratorMain = ({ dataPrzyjazduInit, dataWyjazduInit, standardH
                             <img src="../icons/hotel-white.svg" width="20px" />
                             Powrót do {miejsceStartowe?.nazwa}
                         </div>
-                        {routeFromPrint && routeFromPrint.length > 0 ?
-                            <>
-                                
-                                {
-                                    routeFromPrint.map((rt, rtIdx) => (
-                                        <div className="routeSummaryRow" key={`${rt.line}_${rtIdx}`}>
-                                            <img src="../icons/train-white.svg" height={'20px'} />
-                                            <div className="routeSummaryRowContent">{rt.line}, {minutesToStringTime(rt.time)}<a>{rt.depart} - {rt.arrival}</a></div>
+                        {
+                            standardTransportu == 0 ?
+                                routeFromPrint && routeFromPrint.length > 0 ?
+                                    <>
+
+                                        {
+                                            routeFromPrint.map((rt, rtIdx) => (
+                                                <div className="routeSummaryRow" key={`${rt.line}_${rtIdx}`}>
+                                                    <img src="../icons/train-white.svg" height={'20px'} />
+                                                    <div className="routeSummaryRowContent">{rt.line}, {minutesToStringTime(rt.time)}<a>{rt.depart} - {rt.arrival}</a></div>
+                                                </div>
+                                            ))
+                                        }
+                                        <div className="summaryInfoBoxMoreButton" onClick={() => addRouteAlert(routeSchedule.length - 1)}>
+                                            Pokaż całą trasę
                                         </div>
-                                    ))
-                                }
-                                <div className="summaryInfoBoxMoreButton" onClick={() => addRouteAlert(routeSchedule.length - 1)}>
-                                    Pokaż całą trasę
-                                </div>
-                            </>
-                            :
-                            "To nie będzie ciężki przejazd"
+                                    </>
+                                    :
+                                    "To nie będzie ciężki przejazd"
+                                :
+                                standardTransportu == 1 ?
+                                    <>
+                                        <img src="../icons/bus-white.svg" height="30px" />
+                                       
+                                    </>
+
+                                    :
+                                    <>
+                                        <img src="../icons/ownTransport-white.svg" height="30px" />
+                                        Własny transport
+                                    </>
+
                         }
 
 
@@ -2116,6 +2150,7 @@ export const KonfiguratorMain = ({ dataPrzyjazduInit, dataWyjazduInit, standardH
 
                         />
                     </div>
+                    <ChatBox />
                 </KonfiguratorMainMainboxLeft>
 
             </KonfiguratorMainMainbox>
