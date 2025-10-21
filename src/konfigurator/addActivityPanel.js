@@ -8,7 +8,7 @@ import { minutesToStringTime } from "../roots/attractionResults";
 import { AtrakcjaResultMidComp } from "./atrakcjaResultMid";
 
 const baseActivities = [
-    { idGoogle: "baseAct", czasZwiedzania: 30, nazwa: "Przerwa śniadaniowa", adres: "", cenaZwiedzania: 0, icon: "../icons/park.svg" }
+    { googleId: "baseAct", czasZwiedzania: 30, nazwa: "Przerwa śniadaniowa", adres: "", cenaZwiedzania: 0, icon: "../icons/park.svg" }
 ]
 
 const AddActivityPanelMainbox = styled.div.withConfig({

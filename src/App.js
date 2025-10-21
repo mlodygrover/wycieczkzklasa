@@ -28,7 +28,6 @@ import { KonfiguratorMain } from './konfiguratorMain.js';
 import { AttractionsList } from './roots/attractionsListTest.js';
 import { AddActivityButton } from './roots/addnewactivity.js';
 import { AddActivityPanel } from './konfigurator/addActivityPanel.js';
-import WikipediaPhoto from './wikipediaPhoto.js';
 
 const teksty = [
   { tyt: "Połącz twój pomysł z naszym doświadczeniem", tekst: "Dzięki konfiguratorowi wycieczek WycieczkaZKlasą, zrealizuj swój pomysł na wyjazd, nie martwiąc się niczym poza pasjonującym programem wyjazdu!" },
@@ -42,7 +41,6 @@ function App() {
   return (
     <>
       <div className="App">
-        <WikipediaPhoto/>
         <MenuRadio />
         {/*
           

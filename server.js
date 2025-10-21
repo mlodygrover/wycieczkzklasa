@@ -510,7 +510,7 @@ const atrakcjaSchema = new mongoose.Schema(
         adres: { type: String, required: true },
         czasZwiedzania: { type: Number },
         cenaZwiedzania: { type: Number },
-        idGoogle: { type: String },
+        googleId: { type: String },
         ocenaGoogle: { type: Number },
         liczbaOcen: { type: Number },
         zdjecia: { type: [String] },
@@ -532,7 +532,7 @@ async function updatePopularAttractions(tablePopular, miasto) {
         const googleId = attraction.place_id;
         try {
             // Sprawdzamy, czy atrakcja z danym googleId już istnieje
-            const existing = await Atrakcja.findOne({ idGoogle: googleId });
+            const existing = await Atrakcja.findOne({ googleId: googleId });
             if (!existing) {
 
                 const czas = await estimateZwiedzanie(attraction.name, attraction.address);
@@ -545,7 +545,7 @@ async function updatePopularAttractions(tablePopular, miasto) {
                     // Jeśli nie masz danych dla tych pól, możesz ustawić domyślne wartości (np. 0)
                     czasZwiedzania: typeof czas === 'number' ? czas : 452,
                     cenaOsoba: 0,
-                    idGoogle: googleId,
+                    googleId: googleId,
                     ocenaGoogle: attraction.rating || 0,
                     liczbaOcen: attraction.user_ratings_total || 0
                 });
@@ -678,7 +678,7 @@ app.get('/api/pobierz-atrakcje', async (req, res) => {
 
 app.post('/ask', async (req, res) => {
 
-    const { question, idGoogle } = req.body;
+    const { question, googleId } = req.body;
     const userQuestion = question;
     console.log(req.body)
     if (!userQuestion) {
@@ -728,14 +728,14 @@ app.post('/ask', async (req, res) => {
         const answer = randint;//gptResponse.data.choices[0].message.content.trim();
         if (typeof answer === 'number') {
             const updated = await Atrakcja.findOneAndUpdate(
-                { idGoogle },
+                { googleId },
                 { $set: { cenaZwiedzania: answer } },
                 { new: true }
             );
             if (!updated) {
-                console.warn(`Nie znaleziono dokumentu Atrakcja o idGoogle=${idGoogle}`);
+                console.warn(`Nie znaleziono dokumentu Atrakcja o googleId=${googleId}`);
             } else {
-                console.log(`Zaktualizowano Atrakcję ${idGoogle}, cenaZwiedzania=${answer}`);
+                console.log(`Zaktualizowano Atrakcję ${googleId}, cenaZwiedzania=${answer}`);
             }
         } else {
             console.warn(`fetchPriceInfo zwróciło wartość nie‑liczbową: ${answer}`);
@@ -749,16 +749,16 @@ app.post('/ask', async (req, res) => {
     }
 });
 app.get('/api/attraction-photos', async (req, res) => {
-    const { idGoogle } = req.query;
-    if (!idGoogle) {
-        return res.status(400).json({ error: "Parametr 'idGoogle' jest wymagany." });
+    const { googleId } = req.query;
+    if (!googleId) {
+        return res.status(400).json({ error: "Parametr 'googleId' jest wymagany." });
     }
 
     try {
         // Szukamy atrakcji w bazie danych
-        const attraction = await Atrakcja.findOne({ idGoogle });
+        const attraction = await Atrakcja.findOne({ googleId });
         if (!attraction) {
-            return res.status(404).json({ error: "Nie znaleziono atrakcji o podanym idGoogle." });
+            return res.status(404).json({ error: "Nie znaleziono atrakcji o podanym googleId." });
         }
 
         // Jeśli atrakcja ma już zapisane linki do zdjęć, zwracamy je
@@ -771,7 +771,7 @@ app.get('/api/attraction-photos', async (req, res) => {
             'https://maps.googleapis.com/maps/api/place/details/json',
             {
                 params: {
-                    place_id: idGoogle,
+                    place_id: googleId,
                     fields: "photos",
                     key: GOOGLE_API_KEY
                 }
@@ -800,16 +800,16 @@ app.get('/api/attraction-photos', async (req, res) => {
 });
 
 app.get('/api/attraction-location', async (req, res) => {
-    const { idGoogle } = req.query;
-    if (!idGoogle) {
-        return res.status(400).json({ error: "Parametr 'idGoogle' jest wymagany." });
+    const { googleId } = req.query;
+    if (!googleId) {
+        return res.status(400).json({ error: "Parametr 'googleId' jest wymagany." });
     }
 
     try {
-        // Szukamy atrakcji w bazie po idGoogle
-        const attraction = await Atrakcja.findOne({ idGoogle });
+        // Szukamy atrakcji w bazie po googleId
+        const attraction = await Atrakcja.findOne({ googleId });
         if (!attraction) {
-            return res.status(404).json({ error: "Atrakcja o podanym idGoogle nie została znaleziona." });
+            return res.status(404).json({ error: "Atrakcja o podanym googleId nie została znaleziona." });
         }
 
         // Jeśli lokalizacja już została zapisana, zwracamy ją
@@ -972,13 +972,13 @@ const GOOGLE_CX = '64f549210ce9e471c';
 const GOOGLE_KEY = GOOGLE_API_KEY;
 
 app.get('/api/attraction-image', async (req, res) => {
-    const { nazwa = '', adres = '', idGoogle = '' } = req.query;
+    const { nazwa = '', adres = '', googleId = '' } = req.query;
     if (!nazwa) return res.status(400).json({ error: 'Brakuje parametru nazwa' });
 
-    // jeśli mamy idGoogle, sprawdź w DB
-    if (idGoogle) {
+    // jeśli mamy googleId, sprawdź w DB
+    if (googleId) {
         try {
-            const istniejąca = await Atrakcja.findOne({ idGoogle });
+            const istniejąca = await Atrakcja.findOne({ googleId });
             if (istniejąca?.zdjecie) {
                 console.log("KORZYSTAM")
                 return res.json({ url: istniejąca.zdjecie, source: 'cache' });
@@ -1045,12 +1045,12 @@ app.get('/api/attraction-image', async (req, res) => {
         return res.status(404).json({ error: 'Nie znaleziono zdjęcia' });
     }
 
-    // zapisz w DB, jeśli mamy idGoogle
-    if (idGoogle) {
+    // zapisz w DB, jeśli mamy googleId
+    if (googleId) {
         try {
             console.log("ZAPISUJE W BAZIE")
             await Atrakcja.updateOne(
-                { idGoogle },
+                { googleId },
                 { $set: { zdjecie: foundUrl } }
             );
         } catch (err) {
@@ -1069,18 +1069,18 @@ const PLACE_PHOTO_URL = 'https://maps.googleapis.com/maps/api/place/photo';
 
 /**
  * Dziala ale nie zapisuje do bazy zdjecia tylko link
- * GET /api/valid-attraction-photos?idGoogle=<PLACE_ID>
+ * GET /api/valid-attraction-photos?googleId=<PLACE_ID>
  * Zwraca tablicę działających URL-i do zdjęć.
  
 app.get('/api/valid-attraction-photo', async (req, res) => {
-    const { idGoogle } = req.query;
-    if (!idGoogle) {
-        return res.status(400).json({ error: 'Brakuje parametru idGoogle' });
+    const { googleId } = req.query;
+    if (!googleId) {
+        return res.status(400).json({ error: 'Brakuje parametru googleId' });
     }
 
     try {
         // 0) Sprawdź w DB, czy mamy już zapisany działający link
-        const existing = await Atrakcja.findOne({ idGoogle });
+        const existing = await Atrakcja.findOne({ googleId });
         if (existing?.zdjecieGoogle) {
             return res.json({ url: existing.zdjecieGoogle, source: 'cache' });
         }
@@ -1088,7 +1088,7 @@ app.get('/api/valid-attraction-photo', async (req, res) => {
         // 1) Pobierz informacje o zdjęciach z Place Details
         const details = await axios.get(PLACE_DETAILS_URL, {
             params: {
-                place_id: idGoogle,
+                place_id: googleId,
                 fields: 'photos',
                 key: PLACE_API_KEY
             }
@@ -1121,7 +1121,7 @@ app.get('/api/valid-attraction-photo', async (req, res) => {
 
         // 4) Zapisz w DB w polu zdjecieGoogle i odeślij
         await Atrakcja.updateOne(
-            { idGoogle },
+            { googleId },
             { $set: { zdjecieGoogle: workingUrl } }
         );
 
@@ -1145,18 +1145,18 @@ const s3 = new AWS.S3({
 });
 
 app.get('/api/valid-attraction-photo', async (req, res) => {
-  const { idGoogle } = req.query;
-  if (!idGoogle) return res.status(400).json({ error: 'Brakuje idGoogle' });
+  const { googleId } = req.query;
+  if (!googleId) return res.status(400).json({ error: 'Brakuje googleId' });
 
   // 0) Cache w DB:
-  const existing = await Atrakcja.findOne({ idGoogle });
+  const existing = await Atrakcja.findOne({ googleId });
   if (existing?.zdjecieS3) {
     return res.json({ url: existing.zdjecieS3, source: 'cache' });
   }
 
   // 1) Pobierz kandydatów z Google Places API...
   const details = await axios.get(PLACE_DETAILS_URL, {
-    params: { place_id: idGoogle, fields: 'photos', key: PLACE_API_KEY }
+    params: { place_id: googleId, fields: 'photos', key: PLACE_API_KEY }
   });
   const photos = details.data.result?.photos || [];
   if (!photos.length) return res.status(404).json({ error: 'Brak zdjęć' });
@@ -1175,7 +1175,7 @@ app.get('/api/valid-attraction-photo', async (req, res) => {
 
   // 3) Pobierz do buffer i wrzuć na Wasabi:
   const img = await axios.get(workingUrl, { responseType: 'arraybuffer' });
-  const key = `attractions/${idGoogle}/${Date.now()}.jpg`;
+  const key = `attractions/${googleId}/${Date.now()}.jpg`;
   await s3.putObject({
     Bucket: process.env.S3_BUCKET,
     Key: key,
@@ -1187,7 +1187,7 @@ app.get('/api/valid-attraction-photo', async (req, res) => {
   const s3Url = `https://${process.env.S3_BUCKET}.${process.env.WASABI_ENDPOINT}/${key}`;
 
   // 4) Zapisz w DB i odeślij:
-  await Atrakcja.updateOne({ idGoogle }, { $set: { zdjecieS3: s3Url } });
+  await Atrakcja.updateOne({ googleId }, { $set: { zdjecieS3: s3Url } });
   res.json({ url: s3Url, source: 'wasabi' });
 });
 

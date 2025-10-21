@@ -21,6 +21,7 @@ import AttractionResultMediumComponent from "./attractionResultMediumComp";
 import { Checkbox2 } from "./checkbox1";
 import { AlertsBox } from "./konfigurator/alertsBox";
 import { ChatBox } from "./konfigurator/chatBox";
+import { ChatBox2 } from "./konfigurator/chatBox2";
 
 const testResults = [
     { nazwa: "Poznań", region: "Wielkopolska", kraj: "Polska" },
@@ -842,7 +843,7 @@ export const KonfiguratorMain = ({ dataPrzyjazduInit, dataWyjazduInit, standardH
         if (!activitiesSchedule.length) return;
         for (let j = 0; j < activitiesSchedule[i].length; j++) {
             if (timeSchedule.length && Array.isArray(timeSchedule[i])) {
-                if (activitiesSchedule[i][j]?.idGoogle == "baseBookOut" && timeSchedule[i][j] > timeToMinutes(wybranyHotel.checkOut)) {
+                if (activitiesSchedule[i][j]?.googleId == "baseBookOut" && timeSchedule[i][j] > timeToMinutes(wybranyHotel.checkOut)) {
 
                     toChange = j;
                 }
@@ -1041,7 +1042,7 @@ export const KonfiguratorMain = ({ dataPrzyjazduInit, dataWyjazduInit, standardH
                     transportCzas = tabRoutesTmp[dayIdx][actIdx]?.czasy[chosenTransportSchedule[dayIdx][actIdx]];
                 }
                 if (chosenTransportSchedule.length === activitiesSchedule.length) {
-                    if (activity.idGoogle === "baseBookIn") {
+                    if (activity.googleId === "baseBookIn") {
                         const val = maximum(
                             tabTimeScheduleTmp[dayIdx][actIdx] +
                             activitiesSchedule[dayIdx][actIdx].czasZwiedzania +
@@ -1081,19 +1082,19 @@ export const KonfiguratorMain = ({ dataPrzyjazduInit, dataWyjazduInit, standardH
                 let baseBookInToAdd = tab.length > 1;
                 let baseRouteToId = -1;
                 for (let j = 0; j < tab[i].length; j++) {
-                    if (tab[i][j]?.idGoogle == "baseRouteTo") {
+                    if (tab[i][j]?.googleId == "baseRouteTo") {
                         baseRouteToToAdd = false;
                         baseRouteToId = j;
                     }
 
-                    if (tab[i][j]?.idGoogle == "baseBookIn") {
+                    if (tab[i][j]?.googleId == "baseBookIn") {
                         baseBookInToAdd = false;
                     }
 
                 }
                 if (!baseRouteToToAdd) {
                     tab[i][baseRouteToId] = {
-                        idGoogle: "baseRouteTo",
+                        googleId: "baseRouteTo",
                         nazwa: "Wyjazd do miejsca docelowego",
                         adres: "",
                         czasZwiedzania: 0,
@@ -1112,7 +1113,7 @@ export const KonfiguratorMain = ({ dataPrzyjazduInit, dataWyjazduInit, standardH
 
                         tab[i] = [
                             {
-                                idGoogle: "baseBookIn",
+                                googleId: "baseBookIn",
                                 nazwa: "Zameldowanie w miejscu noclegu",
                                 adres: "",
                                 czasZwiedzania: 30,
@@ -1128,7 +1129,7 @@ export const KonfiguratorMain = ({ dataPrzyjazduInit, dataWyjazduInit, standardH
 
                         tab[i] = [
                             {
-                                idGoogle: "baseRouteTo",
+                                googleId: "baseRouteTo",
                                 nazwa: "Wyjazd do miejsca docelowego",
                                 adres: "",
                                 czasZwiedzania: 0,
@@ -1145,7 +1146,7 @@ export const KonfiguratorMain = ({ dataPrzyjazduInit, dataWyjazduInit, standardH
                     else if (tab.length) {
                         tab[i] = [
                             {
-                                idGoogle: "baseRouteTo",
+                                googleId: "baseRouteTo",
                                 nazwa: "Wyjazd do miejsca docelowego",
                                 adres: "",
                                 czasZwiedzania: 0,
@@ -1165,7 +1166,7 @@ export const KonfiguratorMain = ({ dataPrzyjazduInit, dataWyjazduInit, standardH
                     tab[i] = [
                         tab[i][0],
                         {
-                            idGoogle: "baseBookIn",
+                            googleId: "baseBookIn",
                             nazwa: "Zameldowanie w miejscu noclegu",
                             adres: "",
                             czasZwiedzania: 30,
@@ -1188,13 +1189,13 @@ export const KonfiguratorMain = ({ dataPrzyjazduInit, dataWyjazduInit, standardH
                 let baseRouteFromId = -1;
 
                 for (let j = 0; j < tab[i].length; j++) {
-                    if (tab[i][j]?.idGoogle == "baseRouteFrom") { baseRouteFromToAdd = false; baseRouteFromId = j };
-                    if (tab[i][j]?.idGoogle == "baseBookOut") baseBookOutToAdd = false;
+                    if (tab[i][j]?.googleId == "baseRouteFrom") { baseRouteFromToAdd = false; baseRouteFromId = j };
+                    if (tab[i][j]?.googleId == "baseBookOut") baseBookOutToAdd = false;
 
                 }
                 if (!baseRouteFromToAdd) {
                     tab[i][baseRouteFromId] = {
-                        idGoogle: "baseRouteFrom",
+                        googleId: "baseRouteFrom",
                         nazwa: "Powrót do domu",
                         adres: "",
                         czasZwiedzania: 0,
@@ -1214,7 +1215,7 @@ export const KonfiguratorMain = ({ dataPrzyjazduInit, dataWyjazduInit, standardH
                         tab[i] = [
                             ...tab[i],
                             {
-                                idGoogle: "baseBookOut",
+                                googleId: "baseBookOut",
                                 nazwa: "Wymeldowanie z miejsca noclegu",
                                 adres: "",
                                 czasZwiedzania: 30,
@@ -1224,7 +1225,7 @@ export const KonfiguratorMain = ({ dataPrzyjazduInit, dataWyjazduInit, standardH
                                 }
                             },
                             {
-                                idGoogle: "baseRouteFrom",
+                                googleId: "baseRouteFrom",
                                 nazwa: "Powrót do domu",
                                 adres: "",
                                 czasZwiedzania: 0,
@@ -1242,7 +1243,7 @@ export const KonfiguratorMain = ({ dataPrzyjazduInit, dataWyjazduInit, standardH
                         tab[i] = [
                             ...tab[i],
                             {
-                                idGoogle: "baseRouteFrom",
+                                googleId: "baseRouteFrom",
                                 nazwa: "Powrót do domu",
                                 adres: "",
                                 czasZwiedzania: 0,
@@ -1263,7 +1264,7 @@ export const KonfiguratorMain = ({ dataPrzyjazduInit, dataWyjazduInit, standardH
                         ...tab[i].slice(0, tab[i].length - 1),
                         tab[i][0],
                         {
-                            idGoogle: "baseBookOut",
+                            googleId: "baseBookOut",
                             nazwa: "Wymeldowanie z miejsca noclegu",
                             adres: "",
                             czasZwiedzania: 30,
@@ -1282,16 +1283,16 @@ export const KonfiguratorMain = ({ dataPrzyjazduInit, dataWyjazduInit, standardH
             if (i < tab.length - 1) {
                 // Usuń ewentualne baseRouteFrom i baseBookOut
                 tab[i] = tab[i].filter(
-                    act => act.idGoogle !== "baseRouteFrom" && act.idGoogle !== "baseBookOut"
+                    act => act.googleId !== "baseRouteFrom" && act.googleId !== "baseBookOut"
                 );
 
                 // Dodaj baseHotelIn tylko jeśli jeszcze go nie ma
-                const hasHotelIn = tab[i].some(act => act.idGoogle === "baseHotelIn");
+                const hasHotelIn = tab[i].some(act => act.googleId === "baseHotelIn");
                 if (!hasHotelIn) {
                     tab[i] = [
                         ...tab[i],
                         {
-                            idGoogle: "baseHotelIn",
+                            googleId: "baseHotelIn",
                             nazwa: "Powrót na nocleg",
                             adres: wybranyHotel.adres,
                             czasZwiedzania: 0,
@@ -1305,16 +1306,16 @@ export const KonfiguratorMain = ({ dataPrzyjazduInit, dataWyjazduInit, standardH
             }
             if (i > 0) {
                 tab[i] = tab[i].filter(
-                    act => act.idGoogle !== "baseRouteTo" && act.idGoogle !== "baseBookIn"
+                    act => act.googleId !== "baseRouteTo" && act.googleId !== "baseBookIn"
                 );
 
                 // Dodaj baseHotelIn tylko jeśli jeszcze go nie ma
-                const hasHotelOut = tab[i].some(act => act.idGoogle === "baseHotelOut");
+                const hasHotelOut = tab[i].some(act => act.googleId === "baseHotelOut");
                 if (!hasHotelOut) {
                     tab[i] = [
 
                         {
-                            idGoogle: "baseHotelOut",
+                            googleId: "baseHotelOut",
                             nazwa: "Pobudka",
                             adres: wybranyHotel.adres,
                             czasZwiedzania: 0,
@@ -1332,7 +1333,7 @@ export const KonfiguratorMain = ({ dataPrzyjazduInit, dataWyjazduInit, standardH
         }
         if (tab && tab.length > 1) {
             for (let i = 0; i < tab.length; i++) {
-                if (tab[i][0].idGoogle != "baseRouteTO") {
+                if (tab[i][0].googleId != "baseRouteTO") {
                 }
             }
 
@@ -1347,14 +1348,14 @@ export const KonfiguratorMain = ({ dataPrzyjazduInit, dataWyjazduInit, standardH
 
     function addActivity(dayIndex, activity) {
         if (konfiguratorLoading) return; // nic nie rób dopóki trwa ładowanie
-
+         if (activity?.googleId?.includes("base")) return;
         setActivitiesSchedule(prev => {
             const updated = prev.map((dayActivities, idx) => {
                 if (idx !== dayIndex) return dayActivities;
 
                 // kopiujemy tablicę, aby nie mutować
                 const newDay = [...dayActivities];
-
+                console.log("TEST3", newDay)
                 // Sprawdzenie ostatniego elementu
                 const last = newDay[newDay.length - 1];
                 const newActivity = {
@@ -1362,7 +1363,7 @@ export const KonfiguratorMain = ({ dataPrzyjazduInit, dataWyjazduInit, standardH
                     czasZwiedzania: activity?.czasZwiedzania || 60
                 };
 
-                if (last?.idGoogle === "baseRouteFrom" || last?.idGoogle === "baseHotelIn") {
+                if (last?.googleId === "baseRouteFrom" || last?.googleId === "baseHotelIn") {
                     // wstaw nową aktywność PRZED ostatnim elementem
                     newDay.splice(newDay.length - 1, 0, newActivity);
                 } else {
@@ -1379,6 +1380,7 @@ export const KonfiguratorMain = ({ dataPrzyjazduInit, dataWyjazduInit, standardH
     }
 
     function deleteActivity(dayIndex, actIdx) {
+        if (activitiesSchedule[dayIndex][actIdx]?.googleId?.includes("base")) return;
         setActivitiesSchedule(prev =>
             prev.map((dayActivities, dIdx) =>
                 dIdx === dayIndex
@@ -1418,7 +1420,7 @@ export const KonfiguratorMain = ({ dataPrzyjazduInit, dataWyjazduInit, standardH
     }
 
     function changeActivity(dayIdx, idx, activity) {
-
+        if (activitiesSchedule[dayIdx][idx]?.googleId?.includes("base")) return;
         setActivitiesSchedule(prevSchedule =>
             prevSchedule.map((day, dIndex) =>
                 dIndex === dayIdx
@@ -1621,9 +1623,6 @@ export const KonfiguratorMain = ({ dataPrzyjazduInit, dataWyjazduInit, standardH
         return `${day}/${month}/${year}`;
     }
     //temp temp temp
-    useEffect(()=>{
-        setMiejsceDocelowe(miejsceStartowe)
-    }, [miejsceStartowe])
     /*
     const link1 = "https://ogrod.amu.edu.pl/";
 
@@ -1998,7 +1997,7 @@ export const KonfiguratorMain = ({ dataPrzyjazduInit, dataWyjazduInit, standardH
                                 .filter(atrakcja => atrakcja.nazwa.toLowerCase().includes(attractionsSearching.toLowerCase()) || atrakcja.adres.toLowerCase().includes(attractionsSearching.toLowerCase()))
                                 .toSorted((a, b) => (b.liczbaOpinie * b.ocena || 0) - (a.liczbaOpinie * a.ocena || 0))
                                 .map((atrakcja, idx) => (
-                                    <AttractionResultMediumComponent key={`${atrakcja.idGoogle}${idx}`} atrakcja={atrakcja} wybranyDzien={wybranyDzien} addActivity={addActivity} />
+                                    <AttractionResultMediumComponent key={`${atrakcja.googleId}${idx}`} atrakcja={atrakcja} wybranyDzien={wybranyDzien} addActivity={addActivity} />
 
                                 ))
 
@@ -2028,7 +2027,8 @@ export const KonfiguratorMain = ({ dataPrzyjazduInit, dataWyjazduInit, standardH
                     }
                 </KonfiguratorMainMainboxRight>
                 <KonfiguratorMainMainboxLeft className="right">
-
+                    
+                    <ChatBox2 activitiesSchedule={activitiesSchedule} miejsceDocelowe={miejsceDocelowe} attractions={atrakcje} addActivity={addActivity} swapActivities={swapActivities} changeActivity={changeActivity} deleteActivity={deleteActivity}/>
                     <div className="mainboxLeftTitle">
                         Podsumowanie wyjazdu
                     </div>
@@ -2150,7 +2150,6 @@ export const KonfiguratorMain = ({ dataPrzyjazduInit, dataWyjazduInit, standardH
 
                         />
                     </div>
-                    <ChatBox />
                 </KonfiguratorMainMainboxLeft>
 
             </KonfiguratorMainMainbox>

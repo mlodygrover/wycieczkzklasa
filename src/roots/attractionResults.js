@@ -7,6 +7,8 @@ import { timeToMinutes } from "../konfiguratorMain"
 import { minutesToTime } from "../konfigurator/konfiguratorWyjazduComp"
 import React from "react"
 import { Loader2 } from "../loader2"
+import { Clock, MapPin, Ticket, Users, Bus, Car, Train, ChevronUp, ChevronDown, Trash2, RefreshCw } from 'lucide-react';
+
 const GooglePopupCardMainbox = styled.div`
     position: absolute;
     top: 0;
@@ -172,7 +174,7 @@ const AttractionResultSmallMainbox = styled.div`
 
 
 
-export const AttractionResultSmall = ({ icon = "../icons/castle.svg", attraction = { idGoogle: "abcd", nazwa: "Ratusz Poznański Ratusz Poznańsk Ratusz Poznańsk", adres: "Stary Rynek 40", czasZwiedzania: null, cenaZwiedzania: null }, onClick }) => {
+export const AttractionResultSmall = ({ icon = "../icons/castle.svg", attraction = { googleId: "abcd", nazwa: "Ratusz Poznański Ratusz Poznańsk Ratusz Poznańsk", adres: "Stary Rynek 40", czasZwiedzania: null, cenaZwiedzania: null }, onClick }) => {
     const [opened, setOpened] = useState(false)
     return (
 
@@ -233,6 +235,7 @@ const AttractionResultFullMainbox = styled.div`
   
 
     width: calc(100% - 50px);
+    font-family: 'Inter';
     
     height: 150px;
     display: flex;
@@ -243,10 +246,9 @@ const AttractionResultFullMainbox = styled.div`
     padding: 10px;
     border-radius: 10px;
     border: 1px solid lightgray;
-    border-left: 5px solid red;
     margin: 0;
-    box-shadow: 2px 2px 2px lightgray;
     box-sizing: border-box;
+    box-shadow: 0 0 5px lightgray;
     &.baseAct{
         border-left: 5px solid #f42582;
     }
@@ -287,7 +289,7 @@ const AttractionResultFullMainbox = styled.div`
         justify-content: center;
         background-color: #f0f0f0;
         border-radius: 10px;
-
+        position: relative;
         .photoSlide{
             width: 100%;
             height: 100%;
@@ -298,6 +300,57 @@ const AttractionResultFullMainbox = styled.div`
             align-items: center;
             justify-content: center;
         }
+        .photoAddress{
+            position: absolute;
+            width: 98%;
+            bottom: 5px;
+            padding: 2px;
+            box-shadow: 0 0 5px gray;;
+            box-sizing: border-box;
+            border: 1px solid lightgray;
+            background-color: white;
+            border-radius: 5px;
+            z-index: 99999;
+            font-size: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 500;
+            color: #606060;
+
+        }
+            .mapOverlay {
+                font-family: 'Inter';
+                font-weight: 500;
+                position: absolute;
+                bottom: 8px;
+                left: 8px;
+                right: 8px;
+                background: rgba(255, 255, 255, 0.95);
+                padding: 6px 10px;
+                border-radius: 6px;
+                box-shadow: 0 2px 8px rgba(0, 0, 0, 0.34);
+                z-index: 500;
+                display: flex;
+                align-items: center;
+                gap: 6px;
+                font-size: 12px;
+                color: #666;
+                backdrop-filter: blur(4px);
+                
+                svg {
+                    width: 14px;
+                    height: 14px;
+                    color: #22c55e;
+                    flex-shrink: 0;
+                }
+                
+                span {
+                    overflow: hidden;
+                    text-overflow: ellipsis;
+                    white-space: nowrap;
+                }
+            }
     }
 
     .descPart
@@ -325,17 +378,41 @@ const AttractionResultFullMainbox = styled.div`
             justify-content: center;
             font-size: 14px;
             font-weight: 300;
+            .activityTime {
+                display: flex;
+                align-items: center;
+                gap: 6px;
+                font-size: 14px;
+                font-weight: 600;
+                color: #22c55e;
+                background: #f0fdf4;
+                padding: 6px 12px;
+                border-radius: 8px;
+            }
         }
         .attractionBorder{
             width: 100%;
             height: 1px;
             background-color: lightgray;
-            margin: 5px auto;
+            margin: 6px auto;
         }
         .attractionTitle{
             font-size: 16px;
             color: #505050;
-            font-weight: 300;
+            font-weight: 500;
+            display: flex;
+            flex-direction: row;
+            align-items: center;
+            justify-content: flex-start;
+            gap: 6px;
+            .titlePic{
+                background-color: #22c55e;
+                padding: 3px;
+                border-radius: 5px;    
+                display: flex;
+                align-items: center;
+                justify-content: center;       
+            }
            
         }
         .attractionAdres{
@@ -363,7 +440,64 @@ const AttractionResultFullMainbox = styled.div`
         }
         
     }
-  
+    
+    .actionButtons {
+        display: flex;
+        gap: 4px;
+        transition: opacity 0.2s;
+    }
+    
+    .actionButton {
+        width: 32px;
+        height: 32px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border: 1px solid #e0e0e0;
+        background: white;
+        border-radius: 6px;
+        cursor: pointer;
+        transition: all 0.2s;
+        padding: 0;
+        
+        svg {
+        width: 16px;
+        height: 16px;
+        color: #666;
+        }
+        
+        &:hover {
+        border-color: #4ade80;
+        background: #f0fdf4;
+        
+        svg {
+            color: #22c55e;
+        }
+        }
+        
+        &.danger:hover {
+        border-color: #ef4444;
+        background: #fef2f2;
+        
+        svg {
+            color: #ef4444;
+        }
+        }
+        
+        &:disabled {
+        opacity: 0.3;
+        cursor: not-allowed;
+        
+        &:hover {
+            border-color: #e0e0e0;
+            background: white;
+            
+            svg {
+            color: #666;
+            }
+        }
+        }
+    }
 
     @media screen and (max-width: 600px)
     {
@@ -545,7 +679,7 @@ export const AttractionResultFull = ({
     return (
         <AttractionResultFullOutbox key={attraction.id || actIdx}>
             <AttractionResultFullNav>
-                {attraction.idGoogle != "baseRouteTo" && attraction.idGoogle != "baseRouteFrom" && attraction.idGoogle != "baseHotelIn" && attraction.idGoogle != "baseHotelOut" && <>
+                {1==2 && attraction.googleId != "baseRouteTo" && attraction.googleId != "baseRouteFrom" && attraction.googleId != "baseHotelIn" && attraction.googleId != "baseHotelOut" && <>
                     <div className={actIdx === 1 ? "buttonFullNav off" : "buttonFullNav nav"}>
                         <img
                             src={"../icons/icon-arrow.svg"}
@@ -561,10 +695,10 @@ export const AttractionResultFull = ({
 
                         />
                     </div>
-                    <div className={attraction.idGoogle !== "baseBookOut" && attraction.idGoogle !== "baseBookIn" ? "buttonFullNav swap" : "buttonFullNav off"} onClick={() => startModifyingAct(dayIdx, actIdx)}>
+                    <div className={attraction.googleId !== "baseBookOut" && attraction.googleId !== "baseBookIn" ? "buttonFullNav swap" : "buttonFullNav off"} onClick={() => startModifyingAct(dayIdx, actIdx)}>
                         <img src={"../icons/swap-white.svg"} height={'30px'} style={{ transform: 'rotate(90deg)' }} />
                     </div>
-                    <div className={attraction.idGoogle !== "baseBookOut" && attraction.idGoogle !== "baseBookIn" ? "buttonFullNav del" : "buttonFullNav off"} onClick={() => deleteActivity(dayIdx, actIdx)}>
+                    <div className={attraction.googleId !== "baseBookOut" && attraction.googleId !== "baseBookIn" ? "buttonFullNav del" : "buttonFullNav off"} onClick={() => deleteActivity(dayIdx, actIdx)}>
                         <img src={"../icons/icon-trash.svg"} height={'30px'} />
                     </div>
                     <div className={actIdx === lastIdx - 1 ? "buttonFullNav off" : "buttonFullNav nav"}>
@@ -586,27 +720,27 @@ export const AttractionResultFull = ({
                 </>
                 }
             </AttractionResultFullNav>
-            <AttractionResultFullMainbox className={attraction.idGoogle != "baseAct" ? "" : "baseAct"}>
+            <AttractionResultFullMainbox className={attraction.googleId != "baseAct" ? "" : "baseAct"}>
                 <div className="photoPart">
                     <div className="photoSlide" style={{ pointerEvents: "none" }}>
-                        {attraction.idGoogle != "baseAct"
+                        {attraction.googleId != "baseAct"
                             ?
-                            attraction.idGoogle == "baseHotelIn" ?
+                            attraction.googleId == "baseHotelIn" ?
                                 <img src={"../icons/gosleep2.svg"} height={'70%'} style={{ margin: 'auto' }} />
                                 :
-                                attraction.idGoogle == "baseHotelOut" ?
+                                attraction.googleId == "baseHotelOut" ?
                                     <img src={"../icons/wakeup.svg"} height={'70%'} style={{ margin: 'auto' }} />
                                     :
-                                    attraction.idGoogle == "baseRouteTo" ?
+                                    attraction.googleId == "baseRouteTo" ?
                                         <img src={"../icons/departure.svg"} height={'70%'} style={{ margin: 'auto' }} />
                                         :
-                                        attraction.idGoogle == "baseRouteFrom" ?
+                                        attraction.googleId == "baseRouteFrom" ?
                                             <img src={"../icons/arrival.svg"} height={'70%'} style={{ margin: 'auto' }} />
                                             :
-                                            attraction.idGoogle == "baseBookIn" ?
+                                            attraction.googleId == "baseBookIn" ?
                                                 <img src={"../icons/bookIn.svg"} height={'70%'} style={{ margin: 'auto' }} />
                                                 :
-                                                attraction.idGoogle == "baseBookOut" ?
+                                                attraction.googleId == "baseBookOut" ?
                                                     <img src={"../icons/bookOut.svg"} height={'70%'} style={{ margin: 'auto' }} />
                                                     :
 
@@ -619,24 +753,34 @@ export const AttractionResultFull = ({
                             :
                             <img src={attraction.icon} height={'100%'} style={{ margin: 'auto' }} />
                         }
+                        {!attraction.googleId?.includes("base") && (
+                            <>
+
+                                <div className="mapOverlay">
+                                    <MapPin />
+                                    <span>{attraction.adres}</span>
+                                </div>
+                            </>
+                        )}
                     </div>
                 </div>
                 <div className="descPart">
 
                     <div className="attractionTitle">
-                        <img src={"../icons/castle.svg"} height={'20px'} /> {attraction?.nazwa || "brak danych"}
+                        <div className="titlePic"><img src="../icons/tourist-attraction-white.svg" width="20px" alt="Ikona atrakcji" /></div>{attraction?.nazwa || "brak danych"}
                     </div>
-                    <div className="attractionAdres">
-                        <img src={"../icons/icon-location.svg"} height={'20px'} />{attraction?.adres || "brak danych"}
-                    </div>
+
                     <div className="attractionBorder">
 
                     </div>
 
                     <div className="attractionStats">
-                        <img src="../icons/icon-time.svg" height={'20px'} />
                         {actIdx == 0 && <IncreaseButton onClick={() => setLocalStartTime((localStartTime - 10) % 1440)}><img src="../icons/minus-white.svg" height={'15px'} /></IncreaseButton>}
-                        {isNaN(minutesToTime(localStartTime)) ? minutesToTime(localStartTime) : <Loader2/> }
+                        <div className="activityTime">
+                            <Clock size={16} />
+                            {isNaN(minutesToTime(localStartTime)) ? minutesToTime(localStartTime) : <Loader2 />}
+                        </div>
+
                         {actIdx == 0 && <IncreaseButton onClick={() => setLocalStartTime(localStartTime + 10 < checkOut ? (localStartTime + 10) % 1440 : localStartTime)} > <img src="../icons/plus-white.svg" height="15px" alt="Zwiększ" /> </IncreaseButton>}
 
                         {attraction?.czasZwiedzania != 0 &&
@@ -655,6 +799,35 @@ export const AttractionResultFull = ({
                             </>
                         }
 
+                    </div>
+                    <div className="attractionBorder">
+
+                    </div>
+                    <div className="actionButtons">
+                        <button
+                            className="actionButton"
+                            title="Przesuń w górę"
+                        >
+                            <ChevronUp />
+                        </button>
+                        <button
+                            className="actionButton"
+                            title="Przesuń w dół"
+                        >
+                            <ChevronDown />
+                        </button>
+                        <button
+                            className="actionButton"
+                            title="Zamień na inną"
+                        >
+                            <RefreshCw />
+                        </button>
+                        <button
+                            className="actionButton danger"
+                            title="Usuń"
+                        >
+                            <Trash2 />
+                        </button>
                     </div>
 
 

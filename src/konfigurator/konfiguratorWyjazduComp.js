@@ -282,12 +282,12 @@ export const KonfiguratorWyjazduComp = ({ changeStartHour, deleteActivity, start
                                                             const lastIdx = activitesSchedule[wybranyDzien].length - 1;
 
                                                             return (
-                                                                <React.Fragment key={atrakcja.idGoogle || idx}>
+                                                                <React.Fragment key={atrakcja.googleId || idx}>
                                                                     {routeAbove}
 
                                                                     <Draggable
-                                                                        key={atrakcja.idGoogle || String(idx)}
-                                                                        draggableId={atrakcja.idGoogle || String(idx)}
+                                                                        key={atrakcja.googleId || String(idx)}
+                                                                        draggableId={atrakcja.googleId || String(idx)}
                                                                         index={idx}
                                                                         isDragDisabled={idx === 0 || idx === lastIdx} // 🔒 nie da się chwycić 1. ani ostatniej
                                                                     >

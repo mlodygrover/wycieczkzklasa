@@ -8,7 +8,7 @@ const AlertsOutbox = styled.div`
         width: 100vw;
         min-height: 100vh;
         background-color: rgba(12, 3, 59, 0.31);
-        z-index: 400;
+        z-index: 501;
         display: flex;
         align-items: center;
         justify-content: center;

@@ -1785,6 +1785,133 @@ app.get("/findHotel", async (req, res) => {
     }
 });
 
+// === ENDPOINT: czat planujący wyjazd ===
+// WYMAGANE: const OpenAI = require("openai"); const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+
+app.post("/chat-planner", async (req, res) => {
+    try {
+        const {
+            message,                    // string – nowa wiadomość użytkownika
+            history = [],               // [{role:'user'|'assistant', content:'...'}]
+            activitiesSchedule = [],    // tablica dni -> tablica aktywności [{idGoogle, nazwa}]
+            attractions = [],           // tablica atrakcji [{idGoogle, nazwa}]
+            miejsceDocelowe = null      // { nazwa, location:{lat,lng}, ... }
+        } = req.body || {};
+
+        if (!message || !miejsceDocelowe) {
+            return res.status(400).json({ error: "Brak 'message' lub 'miejsceDocelowe' w body." });
+        }
+
+        // 🔹 Dane wejściowe są już odchudzone, ale kontrolnie odfiltrujmy zbędne pola
+        const slimAttractions = attractions.slice(0, 50).map(a => ({
+            googeleId: a.googleId || null,
+            nazwa: a.nazwa || null
+        }));
+
+        const slimSchedule = activitiesSchedule.map(day =>
+            Array.isArray(day)
+                ? day.map(act => ({
+                    googleId: act?.googleId || null,
+                    nazwa: act?.nazwa || null
+                }))
+                : []
+        );
+
+        // 🔧 SYSTEM PROMPT
+        const systemPrompt = `
+Jesteś inteligentnym asystentem planowania szkolnego wyjazdu do miejsca "${miejsceDocelowe?.nazwa || "?"}".
+Masz dostęp do:
+- "activitiesSchedule": obecny plan dni i atrakcji (googleId + nazwa),
+- "attractions": dostępne atrakcje w miejscu docelowym (googleId + nazwa),
+- funkcji, które możesz zaproponować w odpowiedzi:
+  addActivity(dayIndex, activity)
+  swapActivities(dayIndex, actIndexA, actIndexB)
+  changeActivity(dayIndex, actIndex, activity)
+  deleteActivity(dayIndex, actIndex)
+
+
+ZASADY:
+-Zwracaj wielką uwage na googleId - jest to zdecydowanie najwazniejsze pole i nie moga pojawic sie w nim bledy!!
+- Odpowiadaj po polsku, zwięźle (2–4 zdania), naturalnie i profesjonalnie.
+- W odpowiedzi podaj:
+   1️⃣ Krótką wiadomość tekstową.
+   2️⃣ NOWĄ LINIĘ i linijkę w formacie:
+       **commands** <komenda1>; <komenda2>; ...
+- Jeśli nie masz komend, zwróć: **commands** (pusta lista).
+- W komendach:
+   • Jeśli atrakcja pochodzi z bazy (jest w "attractions"), zwracaj tylko { googleId, nazwa, czasZwiedzania }.
+   • Jeśli AI wymyśla nową atrakcję, użyj { googleId:"aiGenerated", nazwa, adres, czasZwiedzania }.
+- Jesli chcesz dodac jakas atrakcje, !!koniecznie sprawdz czy znajduje sie w tablicy atrakcji i przepisz jego id!!. Wymyslaj wlasne tylko w przypadku nieuniknionej koniecznosci.
+- Jeśli użytkownik pisze coś niezwiązanego z planowaniem wyjazdu lub używa wulgaryzmów — nie podawaj żadnych komend i odpowiedz stosownym komunikatem.
+
+PRZYKŁAD WYJŚCIA (w komendach nie uzywaj spacji):
+"Świetny pomysł! Możemy dodać wizytę w Muzeum Narodowym w pierwszym dniu, by rozpocząć kulturalnie."
+**commands** addActivity(0, { googleId:"123XYZ", nazwa:"Muzeum Narodowe", czasZwiedzania:90 }); deleteActivity(1, 0)
+`;
+
+        // 🔹 Zbudowanie promptu z historią i kontekstem
+        const messagesForModel = [
+            { role: "system", content: systemPrompt },
+            ...history.slice(-10),
+            {
+                role: "user",
+                content:
+                    `KONTEKST:\n` +
+                    `- Miejsce docelowe: ${miejsceDocelowe?.nazwa}\n` +
+                    `- Atrakcje (skrót): ${JSON.stringify(slimAttractions)}\n` +
+                    `- Obecny plan: ${JSON.stringify(slimSchedule)}\n\n` +
+                    `WIADOMOŚĆ UŻYTKOWNIKA:\n${message}`
+            }
+        ];
+
+        const completion = await openai.chat.completions.create({
+            model: "gpt-5-mini",
+            messages: messagesForModel,
+        });
+
+        let reply = (completion.choices?.[0]?.message?.content || "").trim();
+        let messageAnswer = "";
+        // 🔹 Usuń wszystko od linii zaczynającej się na "**commands**"
+        if (reply.includes("**commands**")) {
+            messageAnswer = reply.split("**commands**")[0].trim();
+        }
+
+        // 🔹 Ekstrakcja komend z linii **commands**
+        let commandsLine = "";
+        const lines = reply.split("\n");
+        for (const ln of lines) {
+            if (ln.trim().startsWith("**commands**")) {
+                commandsLine = ln.trim();
+                break;
+            }
+        }
+
+        // Wytnij wszystko po "**commands**" i rozbij po średnikach
+        let commands = [];
+        if (commandsLine) {
+            const afterMarker = commandsLine.replace("**commands**", "").trim();
+            if (afterMarker.length > 0) {
+                commands = afterMarker
+                    .split(";")
+                    .map(s => s.trim())
+                    .filter(Boolean);
+            }
+        }
+
+        return res.json({
+            ok: true,
+            reply: messageAnswer,    // pełny tekst konwersacji z linią **commands**
+            commands, // lista samych komend jako tekst
+        });
+
+    } catch (err) {
+        console.error("❌ /chat-planner błąd:", err?.response?.data || err.message);
+        return res.status(500).json({ error: "Błąd generowania odpowiedzi czatu." });
+    }
+});
+
+
+
 app.listen(PORT, () => {
     console.log(`Serwer działa na http://localhost:${PORT}`);
 });
