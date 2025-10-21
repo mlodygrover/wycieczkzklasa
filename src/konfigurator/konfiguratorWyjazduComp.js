@@ -282,7 +282,7 @@ export const KonfiguratorWyjazduComp = ({ changeStartHour, deleteActivity, start
                                                             const lastIdx = activitesSchedule[wybranyDzien].length - 1;
 
                                                             return (
-                                                                <React.Fragment key={atrakcja.googleId || idx}>
+                                                                <React.Fragment key={`${atrakcja.googleId}${idx}` || idx}>
                                                                     {routeAbove}
 
                                                                     <Draggable

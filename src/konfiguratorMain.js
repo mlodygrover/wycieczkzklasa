@@ -1616,7 +1616,10 @@ export const KonfiguratorMain = ({ dataPrzyjazduInit, dataWyjazduInit, standardH
         return `${day}/${month}/${year}`;
     }
     //temp temp temp
-    /*
+   
+    /* useEffect(()=>{
+        setMiejsceDocelowe(miejsceStartowe)
+    }, [miejsceStartowe])
     const link1 = "https://ogrod.amu.edu.pl/";
 
     useEffect(() => {

@@ -2,6 +2,7 @@ import React, { use, useEffect, useRef, useState } from "react";
 import { useMapEvent } from "react-leaflet";
 import styled from "styled-components";
 import { minutesToStringTime } from "./roots/attractionResults";
+import VariantButton from "./variantButton";
 
 const AttractionResultMedium = styled.div`
     width: 90%;
@@ -237,14 +238,15 @@ const AttractionResultMediumComponent = ({
         
 
     }, [atrakcja])
+    const [selectedVariant, setSelectedVariant] = useState(null)
     function setWariant(idx) {
+        setSelectedVariant(idx)
         atrakcja.czasZwiedzania = atrakcja.warianty[idx].czasZwiedzania || 60;
         atrakcja.cenaZwiedzania = atrakcja.warianty[idx].cenaZwiedzania || 10;
         atrakcja.chosenWariant = atrakcja.warianty[idx].nazwaWariantu;
-
     }
     return (
-        <AttractionResultMedium key={atrakcja.googleId + "bok"}>
+        <AttractionResultMedium key={`${atrakcja.googleId}${atrakcja.cenaZwiedzania}${selectedVariant}`}>
             <div className="attractionResultMediumTitleBox">
                 <div className="titleIconBox">
                     <img src="../icons/color-castle.svg" width="20px" alt="Ikona atrakcji" />
@@ -289,6 +291,8 @@ const AttractionResultMediumComponent = ({
                 </div>
             </div>
             {atrakcja?.warianty && atrakcja.warianty.length > 1 &&
+            <>
+                {/*
                 <div className={wariantsOpened ? "wariantButton opened" : "wariantButton"} onClick={() => setWariantsOpened(!wariantsOpened)} ref={wariantButtonRef}>
                     <img src="../icons/filterViolet.svg" height={'15px'}></img>{atrakcja.chosenWariant && !wariantsOpened ? atrakcja.chosenWariant : "Wybierz wariant"}
                     <div className={wariantsOpened ? "wariantsResults opened" : "wariantsResults"}>
@@ -299,7 +303,9 @@ const AttractionResultMediumComponent = ({
 
                         ))}
                     </div>
-                </div>
+                </div>*/}
+                <VariantButton variants={atrakcja.warianty} onSelect={setWariant}/>
+                </>
             }
 
             <div
