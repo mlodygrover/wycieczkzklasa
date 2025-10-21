@@ -234,7 +234,7 @@ export const AttractionResultSmall = ({ icon = "../icons/castle.svg", attraction
 const AttractionResultFullMainbox = styled.div`
   
 
-    width: calc(100% - 50px);
+    width: 100%;
     font-family: 'Inter';
     
     height: 150px;
@@ -384,7 +384,7 @@ const AttractionResultFullMainbox = styled.div`
                 gap: 6px;
                 font-size: 14px;
                 font-weight: 600;
-                color: #22c55e;
+                color: #1aa04bff;
                 background: #f0fdf4;
                 padding: 6px 12px;
                 border-radius: 8px;
@@ -459,6 +459,10 @@ const AttractionResultFullMainbox = styled.div`
         cursor: pointer;
         transition: all 0.2s;
         padding: 0;
+        @media screen and (max-width: 600px){
+            width: 40px;
+            height: 40px;
+        }
         
         svg {
         width: 16px;
@@ -478,10 +482,10 @@ const AttractionResultFullMainbox = styled.div`
         &.danger:hover {
         border-color: #ef4444;
         background: #fef2f2;
-        
-        svg {
-            color: #ef4444;
-        }
+            
+            svg {
+                color: #ef4444;
+            }
         }
         
         &:disabled {
@@ -493,16 +497,17 @@ const AttractionResultFullMainbox = styled.div`
             background: white;
             
             svg {
-            color: #666;
+                color: #666;
             }
         }
-        }
+        
+    }
     }
 
     @media screen and (max-width: 600px)
     {
         flex-direction: column;
-        height: 300px;
+        height: 450px;
         width: 100%;
         .photoPart
         {   height: 60%;
@@ -587,21 +592,21 @@ const AttractionResultFullNav = styled.div`
 `
 
 const IncreaseButton = styled.div`
-  width: 15px;
-  height: 15px;
-  background-color: black;
+  aspect-ratio: 1 / 1;
+  height: 75%;
+  background-color: #1aa04bff;
   display: flex;
   align-items: center;   /* pionowe wyśrodkowanie */
   justify-content: center !important;  /* poziome wyśrodkowanie */
   text-align: center;   /* fallback dla samego tekstu */
   color: white;
-  border-radius: 2222px;
+  border-radius: 5px;
   margin: 2px;
 
   transition: 0.3s ease-in-out;
 
   &:hover{
-    background-color: #606060;
+    background-color: #127035ff;
     cursor: pointer;
 
   }
@@ -678,48 +683,7 @@ export const AttractionResultFull = ({
 
     return (
         <AttractionResultFullOutbox key={attraction.id || actIdx}>
-            <AttractionResultFullNav>
-                {1==2 && attraction.googleId != "baseRouteTo" && attraction.googleId != "baseRouteFrom" && attraction.googleId != "baseHotelIn" && attraction.googleId != "baseHotelOut" && <>
-                    <div className={actIdx === 1 ? "buttonFullNav off" : "buttonFullNav nav"}>
-                        <img
-                            src={"../icons/icon-arrow.svg"}
-                            height={'30px'}
-                            onClick={async () => {
-                                if (actIdx === 0) return;
-                                try {
-                                    await swapActivities(dayIdx, actIdx, actIdx - 1);
-                                } catch (err) {
-                                    console.error("❌ Błąd podczas zamiany atrakcji:", err);
-                                }
-                            }}
 
-                        />
-                    </div>
-                    <div className={attraction.googleId !== "baseBookOut" && attraction.googleId !== "baseBookIn" ? "buttonFullNav swap" : "buttonFullNav off"} onClick={() => startModifyingAct(dayIdx, actIdx)}>
-                        <img src={"../icons/swap-white.svg"} height={'30px'} style={{ transform: 'rotate(90deg)' }} />
-                    </div>
-                    <div className={attraction.googleId !== "baseBookOut" && attraction.googleId !== "baseBookIn" ? "buttonFullNav del" : "buttonFullNav off"} onClick={() => deleteActivity(dayIdx, actIdx)}>
-                        <img src={"../icons/icon-trash.svg"} height={'30px'} />
-                    </div>
-                    <div className={actIdx === lastIdx - 1 ? "buttonFullNav off" : "buttonFullNav nav"}>
-                        <img
-                            src={"../icons/icon-arrow.svg"}
-                            height={'30px'}
-                            style={{ transform: 'rotate(180deg)' }}
-                            onClick={async () => {
-                                if (actIdx !== lastIdx) {
-                                    try {
-                                        await swapActivities(dayIdx, actIdx + 1, actIdx);
-                                    } catch (err) {
-                                        console.error("❌ Błąd zamiany w dół:", err);
-                                    }
-                                }
-                            }}
-                        />
-                    </div>
-                </>
-                }
-            </AttractionResultFullNav>
             <AttractionResultFullMainbox className={attraction.googleId != "baseAct" ? "" : "baseAct"}>
                 <div className="photoPart">
                     <div className="photoSlide" style={{ pointerEvents: "none" }}>
@@ -803,32 +767,65 @@ export const AttractionResultFull = ({
                     <div className="attractionBorder">
 
                     </div>
-                    <div className="actionButtons">
-                        <button
-                            className="actionButton"
-                            title="Przesuń w górę"
-                        >
-                            <ChevronUp />
-                        </button>
-                        <button
-                            className="actionButton"
-                            title="Przesuń w dół"
-                        >
-                            <ChevronDown />
-                        </button>
-                        <button
-                            className="actionButton"
-                            title="Zamień na inną"
-                        >
-                            <RefreshCw />
-                        </button>
-                        <button
-                            className="actionButton danger"
-                            title="Usuń"
-                        >
-                            <Trash2 />
-                        </button>
-                    </div>
+
+
+                    {!["baseRouteTo", "baseRouteFrom", "baseHotelIn", "baseHotelOut"].includes(attraction.googleId) && (
+                        <div className={`buttonFullNav ${actIdx === 1 ? "off" : "nav"}`}>
+                            <div className="actionButtons">
+                                <button
+                                    className="actionButton"
+                                    title="Przesuń w górę"
+                                    disabled={actIdx <= 1}
+                                    onClick={async () => {
+                                        if (actIdx === 0) return;
+                                        try {
+                                            await swapActivities(dayIdx, actIdx, actIdx - 1);
+                                        } catch (err) {
+                                            console.error("❌ Błąd podczas zamiany atrakcji:", err);
+                                        }
+                                    }}
+                                >
+                                    <ChevronUp />
+                                </button>
+
+                                <button
+                                    className="actionButton"
+                                    title="Przesuń w dół"
+                                    disabled={actIdx === lastIdx - 1}   // jeżeli chcesz zablokować na końcu
+                                    onClick={async () => {
+                                        if (actIdx !== lastIdx) {
+                                            try {
+                                                await swapActivities(dayIdx, actIdx + 1, actIdx);
+                                            } catch (err) {
+                                                console.error("❌ Błąd zamiany w dół:", err);
+                                            }
+                                        }
+                                    }}
+                                >
+                                    <ChevronDown />
+                                </button>
+
+                                <button
+                                    title="Zamień na inną"
+                                    className="actionButton"
+                                    onClick={() => startModifyingAct(dayIdx, actIdx)}
+                                    disabled={["baseBookOut", "baseBookIn"].includes(attraction.googleId)}
+                                >
+                                    <RefreshCw />
+                                </button>
+
+                                <button
+                                    className="actionButton danger"
+                                    title="Usuń"
+                                    disabled={["baseBookOut", "baseBookIn"].includes(attraction.googleId)}
+                                    onClick={() => deleteActivity(dayIdx, actIdx)}
+                                >
+                                    <Trash2 />
+                                </button>
+                            </div>
+                        </div>
+                    )}
+
 
 
                 </div>
@@ -874,7 +871,7 @@ const RouteResultButton = styled.div`
 
 `
 const RouteResultOutbox = styled.div`
-    width: calc(100% - 50px);
+    width: 100%;
     max-width: 1000px;
     height: 50px;
     background-color: #fafafa;

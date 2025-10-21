@@ -903,7 +903,6 @@ export const KonfiguratorMain = ({ dataPrzyjazduInit, dataWyjazduInit, standardH
         handleSwap();
     }, [lastDaySwap]);
     function addRouteAlert(dayIdx) {
-        console.log("TEST8", routeSchedule[routeSchedule.length - 1][routeSchedule[routeSchedule.length - 1].length - 1]?.transitRoute);
         dayIdx != 0 && setAlertsTable(prev => {
             if (prev.some(alert => alert.id === "routeFromFull")) return prev;
             return [
@@ -1103,7 +1102,6 @@ export const KonfiguratorMain = ({ dataPrzyjazduInit, dataWyjazduInit, standardH
                             lng: miejsceStartowe?.location?.lng || 16.9312766
                         }
                     }
-                    //console.log("TEST11", tab[i][baseRouteToId])
 
                 }
                 if (baseRouteToToAdd) {
@@ -1204,7 +1202,6 @@ export const KonfiguratorMain = ({ dataPrzyjazduInit, dataWyjazduInit, standardH
                             lng: miejsceStartowe?.location?.lng || 16.9312766
                         }
                     }
-                    //console.log("TEST11", tab[i][baseRouteToId])
 
                 }
                 if (baseRouteFromToAdd) {
@@ -1355,7 +1352,6 @@ export const KonfiguratorMain = ({ dataPrzyjazduInit, dataWyjazduInit, standardH
 
                 // kopiujemy tablicę, aby nie mutować
                 const newDay = [...dayActivities];
-                console.log("TEST3", newDay)
                 // Sprawdzenie ostatniego elementu
                 const last = newDay[newDay.length - 1];
                 const newActivity = {
@@ -1374,7 +1370,6 @@ export const KonfiguratorMain = ({ dataPrzyjazduInit, dataWyjazduInit, standardH
                 return newDay;
             });
             const toReturn = verifyBaseActs(updated);
-            console.log("TEST2", toReturn, updated)
             return toReturn; // zachowanie dotychczasowej logiki
         });
     }
@@ -1425,7 +1420,7 @@ export const KonfiguratorMain = ({ dataPrzyjazduInit, dataWyjazduInit, standardH
             prevSchedule.map((day, dIndex) =>
                 dIndex === dayIdx
                     ? day.map((act, aIndex) =>
-                        aIndex === idx ? { ...activity, czasZwiedzania: 20 } : act
+                        aIndex === idx ? { ...activity, czasZwiedzania: activity?.czasZwiedzania ? activity.czasZwiedzania : 60 } : act
                     )
                     : day
             )
@@ -1455,7 +1450,6 @@ export const KonfiguratorMain = ({ dataPrzyjazduInit, dataWyjazduInit, standardH
     }, [modyfikacja])
 
     async function changeActivityTime(dayIdx, actIdx, time) {
-        console.log("TEST3");
         // 🔹 Utwórz głęboką kopię harmonogramu i zaktualizuj wybrany czas
         const tmpActivities = activitiesSchedule.map((day, dIdx) =>
             day.map((activity, aIdx) =>
@@ -1464,7 +1458,6 @@ export const KonfiguratorMain = ({ dataPrzyjazduInit, dataWyjazduInit, standardH
                     : activity
             )
         );
-        console.log("TEST4", actIdx, tmpActivities)
         setActivitiesSchedule(tmpActivities);
         return true;
 
@@ -1764,12 +1757,11 @@ export const KonfiguratorMain = ({ dataPrzyjazduInit, dataWyjazduInit, standardH
 
 
 
-    useEffect(() => {
-        //console.log("test10", routeSchedule, activitiesSchedule)
-    }, [routeSchedule])
+
 
 
     //temp temp temp
+    
     const setOffOthers = (s) => {
         if (s != 0) {
             setMiejsceStartowePopupOpened(false)

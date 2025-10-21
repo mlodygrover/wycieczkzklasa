@@ -467,7 +467,6 @@ export const ChatBox2 = ({ activitiesSchedule, attractions, miejsceDocelowe, add
 
                 // Przykładowa automatyczna obsługa (opcjonalna)
                 response.data.commands.forEach((cmd) => {
-                    console.log("TEST2", parseArguments(cmd));
                     let cmdTab = parseArguments(cmd);
 
                     if (cmdTab[0] === "addActivity") {
@@ -497,7 +496,35 @@ export const ChatBox2 = ({ activitiesSchedule, attractions, miejsceDocelowe, add
                         addActivity(dayIdx, attrToAdd);
                     }
                     else if (cmdTab[0] === "swapActivities") {
-                        swapActivities(cmdTab[1],  cmdTab[2], cmdTab[3])
+                        swapActivities(cmdTab[1], cmdTab[2], cmdTab[3])
+                    }
+                    else if (cmdTab[0] === "changeActivity") {
+                        const baseAttr = cmdTab[3];
+
+                        // Znajdź atrakcję w bazie po ID (jeśli istnieje)
+                        const foundAttr = attractions.find(a => a.googleId === baseAttr.googleId);
+
+                        let attrToAdd;
+
+                        if (foundAttr) {
+                            // Jeśli atrakcja istnieje w bazie – używamy jej danych
+                            attrToAdd = {
+                                ...foundAttr,
+                                czasZwiedzania: baseAttr?.czasZwiedzania ?? foundAttr.czasZwiedzania ?? 0
+                            };
+                        } else {
+                            // Jeśli AI wygenerowało nową atrakcję – tworzymy pełny obiekt
+                            attrToAdd = {
+                                ...baseAttr,
+                                lokalizacja: { lat: 52.2233, lng: 21.2233 },
+                                cenaZwiedzania: baseAttr?.cenaZwiedzania ?? 0
+                            };
+                        }
+                        changeActivity(cmdTab[1], cmdTab[2], attrToAdd)
+                    }
+                    else if(cmdTab[0] === "deleteActivity") {
+                        deleteActivity(cmdTab[1], cmdTab[2]);
+
                     }
                     /*
                     try {

@@ -286,7 +286,7 @@ export const KonfiguratorWyjazduComp = ({ changeStartHour, deleteActivity, start
                                                                     {routeAbove}
 
                                                                     <Draggable
-                                                                        key={atrakcja.googleId || String(idx)}
+                                                                        key={`${atrakcja.googleId}_${idx}_${wybranyDzien}` || String(idx)}
                                                                         draggableId={atrakcja.googleId || String(idx)}
                                                                         index={idx}
                                                                         isDragDisabled={idx === 0 || idx === lastIdx} // 🔒 nie da się chwycić 1. ani ostatniej

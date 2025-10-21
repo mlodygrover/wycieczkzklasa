@@ -1821,13 +1821,13 @@ app.post("/chat-planner", async (req, res) => {
         const systemPrompt = `
 Jesteś inteligentnym asystentem planowania szkolnego wyjazdu do miejsca "${miejsceDocelowe?.nazwa || "?"}".
 Masz dostęp do:
-- "activitiesSchedule": obecny plan dni i atrakcji (googleId + nazwa),
+- "activitiesSchedule": obecny plan dni i atrakcji (googleId + nazwa), aktywnosci baseHotelIn, baseHotelOut, baseRouteTo, baseRouteFrom sa sztywno ustawione na poczatku i koncu dnia, baseBookIn oraz baseBookOut moga byc przesuwane w ciagu dnia uwzgledniajac dobe hotelowa
 - "attractions": dostępne atrakcje w miejscu docelowym (googleId + nazwa),
 - funkcji, które możesz zaproponować w odpowiedzi:
-  addActivity(dayIndex, activity)
-  swapActivities(dayIndex, actIndexA, actIndexB)
-  changeActivity(dayIndex, actIndex, activity)
-  deleteActivity(dayIndex, actIndex)
+  addActivity(dayIndex, activity) - dodajesz nowa aktywnosc na koniec planu, przed powrotem na nocleg.
+  swapActivities(dayIndex, actIndexA, actIndexB) - zamieniasz aktywnosci o podanych indeksach 
+  changeActivity(dayIndex, actIndex, activity) - zamieniasz aktywnosc o podanym indeksie na nowa, nie dziala dla aktywnosci podstawowych o googleId base...
+  deleteActivity(dayIndex, actIndex) - usuwasz aktywnosc, nie dziala dla aktywnosci podstawowych o googleId base...
 
 
 ZASADY:
