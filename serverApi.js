@@ -1043,15 +1043,29 @@ async function crawlDomainLinks(
     maxDepth = 2,
     excludeKeywords = ["aktualn", "blog", "news", "kontakt", "polityka", "regulamin", "kariera"]
 ) {
-    const origin = new URL(startUrl).origin;
+    const start = new URL(startUrl);
+    const origin = start.origin;
+    const basePath = start.pathname.endsWith("/") ? start.pathname : start.pathname + "/";
+
     const visited = new Set();
     const collected = new Map(); // href → { href, text }
 
-    async function crawl(url, depth) {
-        if (depth > maxDepth) return;
-        if (visited.has(url)) return;
+    // pomocnicza funkcja obliczająca głębokość względem basePath
+    function calculateDepth(urlPath) {
+        const relativePath = urlPath.replace(basePath, "");
+        const segments = relativePath.split("/").filter(Boolean);
+        return segments.length;
+    }
 
+    async function crawl(url) {
+        if (visited.has(url)) return;
         visited.add(url);
+
+        const currentUrl = new URL(url);
+        const depth = calculateDepth(currentUrl.pathname);
+
+        if (depth > maxDepth) return;
+
         console.log(`🌐 [${depth}/${maxDepth}] Analizuję: ${url}`);
 
         try {
@@ -1066,43 +1080,50 @@ async function crawlDomainLinks(
                 const href = $(el).attr("href");
                 if (!href) return;
 
-                // Ignoruj anchor, tel, mailto, JS
+                // Pomijaj anchor, tel, mailto, JS
                 if (href.match(/^(#|tel:|mailto:|javascript:)/i)) return;
 
                 const absUrl = href.startsWith("http")
                     ? href
                     : new URL(href, origin).href;
 
-                // Tylko z tej samej domeny
+                // tylko ta sama domena
                 if (!absUrl.startsWith(origin)) return;
-
-                // Pomijaj nieistotne linki
+                // tylko w obrębie startowej ścieżki
+                if (!absUrl.startsWith(origin + basePath)) return;
+                // pomijaj niechciane słowa
                 if (excludeKeywords.some((kw) => absUrl.toLowerCase().includes(kw))) return;
 
-                // Zapisz unikalny link
+                // sprawdź głębokość
+                const candidateUrl = new URL(absUrl);
+                const candidateDepth = calculateDepth(candidateUrl.pathname);
+                if (candidateDepth > maxDepth) return;
+
                 if (!collected.has(absUrl)) {
                     collected.set(absUrl, { href: absUrl, text: $(el).text().trim() });
                 }
             });
 
-            // Rekurencyjnie przejdź do podlinkowanych stron (z tego poziomu)
+            // odwiedzaj nowe linki
             const nextLinks = Array.from(collected.keys()).filter(
                 (link) => !visited.has(link)
             );
 
             for (const link of nextLinks) {
-                await crawl(link, depth + 1);
+                await crawl(link);
             }
         } catch (err) {
             console.warn(`⚠️ Błąd przy ${url}: ${err.message}`);
         }
     }
 
-    await crawl(startUrl, 1);
+    await crawl(startUrl);
 
     console.log(`✅ Zebrano ${collected.size} unikalnych linków (do głębokości ${maxDepth}).`);
     return Array.from(collected.values());
 }
+
+
 
 async function analyzeAttractionLinks(url) {
     try {
@@ -1125,7 +1146,7 @@ async function analyzeAttractionLinks(url) {
             Jesteś ekspertem od stron atrakcji turystycznych.
             Dostałeś listę linków z menu danej witryny.
             Twoim zadaniem jest wskazanie, który link prowadzi do cennika zawierajacego ceny biletow i ewentualnie warianty oferty, dla pojedynczej osoby indywidualnej bez zadnych znizek. Priorytetem jest cena biletow, w przypadku niepewnosci mozesz zwroci wiecej niz jeden link.
-            Najlepiej gdybys zwrocil tylko jeden link w ktorym bedzie oferta podstawowa (bez grupowych, szkolnych itp).
+            Najlepiej gdybys zwrocil tylko jeden link w ktorym bedzie oferta podstawowa (bez grupowych, szkolnych itp). W przypadku znaczacych watpliwosci czy wybrac np strone cennik czy zwiedzanie zwroc oba. Podobnie gdy zakladka zawierajaca potencjalnie ceny ma kolejne link, np /zwiedzanie/abcd zwroc rowniez te nastepne linki.
             Zwróć TYLKO tablicę linków w formacie JSON:
             {
             "relevantLinks": ["https://..."]
@@ -1187,7 +1208,7 @@ Struktura JSON:
   }
 ]
 
-Nie zwracaj ofert grupowych jako osobnych wariantów.
+Nie zwracaj ofert grupowych jako osobnych wariantów. Najlepiej podaj ceny dla osoby indywidualnej bez zadnych znizek, jesli jednak podane beda tylko ceny grupowe podaj ja w przeliczeniu na osobe (powiedzmy w grupie 15 osobowej). Jesli nie znajdziesz zadnej informacji o cenach zwroc pusta tablice [].
 Odpowiedź ma być **czystym JSON**, bez Markdowna ani komentarzy.
 `;
 
@@ -1277,6 +1298,21 @@ app.get("/place-offer", async (req, res) => {
         let deleteSecond = false;
         let innerLinks = await analyzeAttractionLinks(urls[0]);
         console.log("➡️ Znalezione linki w menu:", innerLinks);
+        if (!innerLinks.length) {
+            return res.json({
+                warianty: [{
+                    nazwaWariantu: "def",
+                    czasZwiedzania: 30,
+                    cenaZwiedzania: -1,
+                    cenaUlgowa: null,
+                    interval: "404",
+                    godzinyOtwarcia: [
+                        [null, null], [null, null], [null, null],
+                        [null, null], [null, null], [null, null], [null, null]
+                    ]
+                }]
+            });
+        }
 
         if (innerLinks.length === 1) {
             innerLinks.push(urls[0]);

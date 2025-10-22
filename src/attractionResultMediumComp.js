@@ -229,7 +229,7 @@ const AttractionResultMediumComponent = ({
     useEffect(() => {
         if (atrakcja?.warianty && atrakcja.warianty.length > 0) {
             atrakcja.czasZwiedzania = atrakcja.warianty[0].czasZwiedzania || 60;
-            atrakcja.cenaZwiedzania = atrakcja.warianty[0].cenaZwiedzania || 10;
+            atrakcja.cenaZwiedzania = atrakcja.warianty[0].cenaZwiedzania || 0;
         }
         else {
             atrakcja.czasZwiedzania = 60;
@@ -242,7 +242,7 @@ const AttractionResultMediumComponent = ({
     function setWariant(idx) {
         setSelectedVariant(idx)
         atrakcja.czasZwiedzania = atrakcja.warianty[idx].czasZwiedzania || 60;
-        atrakcja.cenaZwiedzania = atrakcja.warianty[idx].cenaZwiedzania || 10;
+        atrakcja.cenaZwiedzania = atrakcja.warianty[idx].cenaZwiedzania || 0;
         atrakcja.chosenWariant = atrakcja.warianty[idx].nazwaWariantu;
     }
     return (
@@ -265,7 +265,7 @@ const AttractionResultMediumComponent = ({
                     </div>
                     <div className="detailRowElement">
                         <img src="../icons/icon-ticket.svg" width="20px" alt="Cena" />{" "}
-                        {atrakcja.cenaZwiedzania == 0 ? "Bezpłatne" : atrakcja.cenaZwiedzania ? atrakcja.cenaZwiedzania + "zł /osoba" : ""}
+                        {atrakcja?.warianty.length == 0 ? "Dodaj aby obliczyć": atrakcja.cenaZwiedzania == 0 ? "Bezpłatne" : atrakcja.cenaZwiedzania ? atrakcja.cenaZwiedzania + "zł /osoba" : ""}
                     </div>
                 </div>
 
@@ -304,7 +304,7 @@ const AttractionResultMediumComponent = ({
                         ))}
                     </div>
                 </div>*/}
-                <VariantButton variants={atrakcja.warianty} onSelect={setWariant}/>
+                <VariantButton variants={atrakcja.warianty} onSelect={setWariant} selectedVariantInit={selectedVariant}/>
                 </>
             }
 

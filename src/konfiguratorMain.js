@@ -1345,7 +1345,7 @@ export const KonfiguratorMain = ({ dataPrzyjazduInit, dataWyjazduInit, standardH
 
     function addActivity(dayIndex, activity) {
         if (konfiguratorLoading) return; // nic nie rób dopóki trwa ładowanie
-         if (activity?.googleId?.includes("base")) return;
+        if (activity?.googleId?.includes("base")) return;
         setActivitiesSchedule(prev => {
             const updated = prev.map((dayActivities, idx) => {
                 if (idx !== dayIndex) return dayActivities;
@@ -1616,7 +1616,31 @@ export const KonfiguratorMain = ({ dataPrzyjazduInit, dataWyjazduInit, standardH
         return `${day}/${month}/${year}`;
     }
     //temp temp temp
-   
+    /*
+    const googleIdTest = "ChIJibBLOT9bBEcRL9IL_IaJz2I";
+    const linkTest = "https://fara.archpoznan.pl/pl/";
+
+    useEffect(() => {
+        if (!googleIdTest || !linkTest) return; // ⛔ brak wymaganych danych — nie wywołujemy API
+
+        const handler = setTimeout(async () => {
+            try {
+                console.log(`🔄 Aktualizuję ofertę dla ${googleIdTest} z linku ${linkTest}...`);
+
+                const response = await axios.get("http://localhost:5006/update-offer", {
+                    params: { googleId: googleIdTest, link: linkTest },
+                    timeout: 120000, // 2 minuty
+                });
+
+                console.log("✅ Oferta zaktualizowana:", response.data);
+            } catch (err) {
+                console.error("❌ Błąd przy aktualizacji oferty:", err.message);
+            }
+        }, 1000); // ⏱️ 1 sekunda opóźnienia
+
+        // 🧹 Wyczyść timeout przy zmianie zależności lub unmount
+        return () => clearTimeout(handler);
+    }, [googleIdTest, linkTest]);
     /* useEffect(()=>{
         setMiejsceDocelowe(miejsceStartowe)
     }, [miejsceStartowe])
@@ -1764,7 +1788,7 @@ export const KonfiguratorMain = ({ dataPrzyjazduInit, dataWyjazduInit, standardH
 
 
     //temp temp temp
-    
+
     const setOffOthers = (s) => {
         if (s != 0) {
             setMiejsceStartowePopupOpened(false)
@@ -2022,8 +2046,8 @@ export const KonfiguratorMain = ({ dataPrzyjazduInit, dataWyjazduInit, standardH
                     }
                 </KonfiguratorMainMainboxRight>
                 <KonfiguratorMainMainboxLeft className="right">
-                    
-                    <ChatBox2 activitiesSchedule={activitiesSchedule} miejsceDocelowe={miejsceDocelowe} attractions={atrakcje} addActivity={addActivity} swapActivities={swapActivities} changeActivity={changeActivity} deleteActivity={deleteActivity}/>
+
+                    <ChatBox2 activitiesSchedule={activitiesSchedule} miejsceDocelowe={miejsceDocelowe} attractions={atrakcje} addActivity={addActivity} swapActivities={swapActivities} changeActivity={changeActivity} deleteActivity={deleteActivity} />
                     <div className="mainboxLeftTitle">
                         Podsumowanie wyjazdu
                     </div>
@@ -2080,7 +2104,7 @@ export const KonfiguratorMain = ({ dataPrzyjazduInit, dataWyjazduInit, standardH
                                 standardTransportu == 1 ?
                                     <>
                                         <img src="../icons/bus-white.svg" height="30px" />
-                                        
+
                                     </>
 
                                     :
@@ -2121,7 +2145,7 @@ export const KonfiguratorMain = ({ dataPrzyjazduInit, dataWyjazduInit, standardH
                                 standardTransportu == 1 ?
                                     <>
                                         <img src="../icons/bus-white.svg" height="30px" />
-                                       
+
                                     </>
 
                                     :

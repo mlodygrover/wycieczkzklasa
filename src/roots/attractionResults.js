@@ -237,7 +237,8 @@ const AttractionResultFullMainbox = styled.div`
     width: 100%;
     font-family: 'Inter';
     
-    height: 150px;
+    min-height: 150px;
+    height: fit-content;
     display: flex;
     flex-direction: row;
     align-items: stretch;
@@ -282,8 +283,7 @@ const AttractionResultFullMainbox = styled.div`
 
     .photoPart{
         width: 30%;
-        height: 100%;
-        
+        height: 150px;
         display: flex;
         align-items: center;
         justify-content: center;
@@ -362,6 +362,7 @@ const AttractionResultFullMainbox = styled.div`
         align-items: flex-start;
         justify-content: center;
         gap: 2px;
+        min-height: fit-content;
         
         div{
             display: flex;
@@ -516,6 +517,7 @@ const AttractionResultFullMainbox = styled.div`
         .descPart{
             margin-top: auto;
             height: 35%;
+            min-height: fit-content;
             width: 100%;
         }
    

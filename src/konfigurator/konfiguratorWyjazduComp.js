@@ -362,7 +362,7 @@ export const KonfiguratorWyjazduComp = ({ changeStartHour, deleteActivity, start
 
 const AddAttractionButtonMainbox = styled.div`
                 height: 150px;
-                width: calc(100% - 50px);
+                width: 100%;
                 max-width: 1000px;
                 background-color: #f0f0f0;
                 border-radius: 10px;

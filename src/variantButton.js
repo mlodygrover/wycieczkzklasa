@@ -12,7 +12,7 @@ const MainButton = styled.button`
   height: 30px;
   background: linear-gradient(135deg, #667eea 0%, #008d73ff 100%);
   border: none;
-  border-radius: 8px;
+  border-radius: 5px;
   color: #fff;
   cursor: pointer;
   display: flex;
@@ -133,9 +133,9 @@ const OptionPrice = styled.span`
   font-size: 13px;
 `;
 
-const VariantButton = ({ variants, placeholder = "Wybierz wariant", onSelect }) => {
+const VariantButton = ({ variants, placeholder = "Wybierz wariant", onSelect, selectedVariantInit }) => {
     const [isOpen, setIsOpen] = useState(false);
-    const [selectedVariant, setSelectedVariant] = useState(null);
+    const [selectedVariant, setSelectedVariant] = useState(selectedVariantInit);
     const containerRef = useRef(null);
 
     useEffect(() => {
@@ -162,11 +162,12 @@ const VariantButton = ({ variants, placeholder = "Wybierz wariant", onSelect }) 
             onSelect(variant);
         }
     };
-
+    
+    
     return (
         <Container ref={containerRef}>
             <MainButton onClick={handleToggle}>
-                <ButtonText>{selectedVariant ? variants[selectedVariant].nazwaWariantu : placeholder}</ButtonText>
+                <ButtonText>{selectedVariant !== null ? variants[selectedVariant].nazwaWariantu : placeholder}</ButtonText>
                 <Arrow isOpen={isOpen}>▼</Arrow>
             </MainButton>
 
