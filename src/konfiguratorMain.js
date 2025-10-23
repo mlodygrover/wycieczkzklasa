@@ -778,6 +778,7 @@ export const KonfiguratorMain = ({ dataPrzyjazduInit, dataWyjazduInit, standardH
 
     //test test test
     //dane z serwera
+    const [changedActivities, setChangeActivities] = useState([])
 
     //atrakcje
     const [atrakcje, setAtrakcje] = useState([]);
@@ -1343,36 +1344,82 @@ export const KonfiguratorMain = ({ dataPrzyjazduInit, dataWyjazduInit, standardH
 
     }, [activitiesSchedule, timeSchedule])
 
+    async function updateOffer({ googleId, link, delayMs = 1000 }) {
+        if (!googleId || !link) return; // ⛔ required data missing
+
+        // optional debounce-like delay
+        if (delayMs > 0) {
+            await new Promise((resolve) => setTimeout(resolve, delayMs));
+        }
+
+        try {
+            console.log(`🔄 Aktualizuję ofertę dla ${googleId} z linku ${link}...`);
+
+            const response = await axios.get("http://localhost:5006/update-offer", {
+                params: { googleId, link },
+                timeout: 120000, // 2 min
+            });
+
+            console.log("✅ Oferta zaktualizowana:", response.data);
+            return response.data;
+        } catch (err) {
+            console.error("❌ Błąd przy aktualizacji oferty:", err?.message || err);
+            throw err;
+        }
+    }
     function addActivity(dayIndex, activity) {
         if (konfiguratorLoading) return; // nic nie rób dopóki trwa ładowanie
         if (activity?.googleId?.includes("base")) return;
-        setActivitiesSchedule(prev => {
+
+        // jeśli brak wariantów, a jest strona — zainicjuj asynchroniczną aktualizację oferty
+        if (!activity?.warianty?.length && activity?.stronaInternetowa) {
+            console.log("Aktualizuje oferte dla ", activity.nazwa)
+            // asynchronicznie, bez await
+            updateOffer({
+                googleId: activity.googleId,
+                link: activity.stronaInternetowa,
+                delayMs: 0,
+            }).catch((err) => {
+                console.error("❌ updateOffer error:", err?.message || err);
+            });
+
+            // dopisz ID tylko jeśli jeszcze go nie ma
+            setChangeActivities((prev) =>
+                prev.includes(activity.googleId) ? prev : [...prev, activity.googleId]
+            );
+        }
+
+
+        // reszta logiki dodawania aktywności — bez zmian i bez oczekiwania na updateOffer
+        setActivitiesSchedule((prev) => {
             const updated = prev.map((dayActivities, idx) => {
                 if (idx !== dayIndex) return dayActivities;
 
-                // kopiujemy tablicę, aby nie mutować
-                const newDay = [...dayActivities];
-                // Sprawdzenie ostatniego elementu
+                const newDay = [...dayActivities]; // nie mutujemy
                 const last = newDay[newDay.length - 1];
+
                 const newActivity = {
                     ...activity,
-                    czasZwiedzania: activity?.czasZwiedzania || 60
+                    czasZwiedzania: activity?.czasZwiedzania || 60,
                 };
 
-                if (last?.googleId === "baseRouteFrom" || last?.googleId === "baseHotelIn") {
-                    // wstaw nową aktywność PRZED ostatnim elementem
+                if (
+                    last?.googleId === "baseRouteFrom" ||
+                    last?.googleId === "baseHotelIn"
+                ) {
+                    // wstaw przed „bazowym” końcem dnia
                     newDay.splice(newDay.length - 1, 0, newActivity);
                 } else {
-                    // dodaj na koniec normalnie
                     newDay.push(newActivity);
                 }
 
                 return newDay;
             });
-            const toReturn = verifyBaseActs(updated);
-            return toReturn; // zachowanie dotychczasowej logiki
+
+            return verifyBaseActs(updated); // zachowanie dotychczasowej logiki
         });
     }
+
 
     function deleteActivity(dayIndex, actIdx) {
         if (activitiesSchedule[dayIndex][actIdx]?.googleId?.includes("base")) return;

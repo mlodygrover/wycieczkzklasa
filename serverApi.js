@@ -843,6 +843,7 @@ function cleanWhitespacePreserveLines(text) {
 const puppeteer = require("puppeteer");
 const { url } = require("inspector");
 const { Console } = require("console");
+const { render } = require("@testing-library/react");
 
 function isDynamicHTML(html) {
     if (!html || typeof html !== "string") return true;
@@ -911,7 +912,11 @@ async function returnRenderedWebPage(url) {
         await page.goto(url, { waitUntil: "networkidle2", timeout: 45000 });
 
         const renderedHTML = await page.content();
-
+        const filename = `test23.html`;
+        fs.writeFileSync(filename, cleanWhitespacePreserveLines(
+            stripHTMLTags(removeHeadSection(removeScriptSections(renderedHTML)))
+        ), "utf8");
+        console.log(`💾 Zapisano ${filename} (${renderedHTML.length} znaków)`);
         console.log("✅ Strona wyrenderowana pomyślnie.");
         return cleanWhitespacePreserveLines(
             stripHTMLTags(removeHeadSection(removeScriptSections(renderedHTML)))
@@ -929,174 +934,120 @@ async function returnRenderedWebPage(url) {
 
 
 
-function normalizeUrl(base, href) {
-    try {
-        return new URL(href, base).href;
-    } catch {
-        return null;
+
+
+
+/** Normalizacja URL (https, bez #, bez końcowego / poza rootem) */
+function normalizeUrl(u) {
+    const url = new URL(u);
+    if (url.protocol === "http:") url.protocol = "https:"; // opcjonalnie wymuś https
+    url.hash = "";
+    url.host = url.host.toLowerCase();
+    if (url.pathname.length > 1 && url.pathname.endsWith("/")) {
+        url.pathname = url.pathname.slice(0, -1);
     }
+    return url.href;
+}
+
+/** Usuwa pierwszy segment językowy (pl, en, de, pl-PL itd.) na potrzeby wyliczenia głębokości */
+function stripLangPrefix(pathname) {
+    const parts = pathname.split("/").filter(Boolean);
+    if (parts.length === 0) return [];
+
+    const langRe = /^[a-z]{2,5}(-[a-z]{2,5})?$/i; // np. pl, en, pl-PL, pt-BR
+    if (langRe.test(parts[0])) {
+        return parts.slice(1);
+    }
+    return parts;
+}
+
+/** Głębokość ścieżki liczona od „roota”, z pominięciem prefiksu językowego */
+function depthFromRoot(pathname) {
+    return stripLangPrefix(pathname).length;
 }
 
 /**
- * 📋 Główna funkcja — pobiera linki z menu strony
- * @param {string} url - adres strony internetowej
- * @returns {Promise<Array<{text: string, href: string}>>}
+ * Crawl całej domeny (ten sam host) do głębokości maxDepth (od root, ignorując /pl, /en itp.).
+ * Zwraca do `limit` unikalnych linków w domenie.
  */
-async function extractMenuLinks(url) {
-    try {
-        console.log("🌍 Analizuję menu strony:", url);
-
-        const { data: html } = await axios.get(url, {
-            headers: { "User-Agent": "Mozilla/5.0 (Node.js MenuFetcher/1.0)" },
-            timeout: 20000,
-        });
-
-        const $ = cheerio.load(html);
-        const origin = new URL(url).origin;
-
-        // 🎯 Typowe selektory menu
-        const menuSelectors = [
-            "nav a",
-            ".menu a",
-            ".navbar a",
-            "#menu a",
-            ".main-menu a",
-            "header nav a",
-            "ul.nav a",
-        ];
-
-        let links = [];
-        for (const sel of menuSelectors) {
-            $(sel).each((_, el) => {
-                const href = $(el).attr("href");
-                const text = $(el).text().trim();
-
-                if (href && text) {
-                    const abs = normalizeUrl(origin, href);
-                    if (
-                        abs &&
-                        abs.startsWith(origin) &&
-                        !abs.match(/(#|tel:|mailto:|javascript:)/i)
-                    ) {
-                        links.push({ text, href: abs });
-                    }
-                }
-            });
-        }
-
-        // 🔁 Usuń duplikaty
-        const uniqueLinks = [
-            ...new Map(links.map((l) => [l.href, l])).values(),
-        ];
-
-        console.log(`✅ Znaleziono ${uniqueLinks.length} linków w menu.`);
-        return uniqueLinks;
-    } catch (err) {
-        console.error("❌ Błąd w extractMenuLinks:", err.message);
-        return [];
-    }
-}
-async function extractDomainLinks(url) {
-    try {
-        console.log("🌍 Pobieram stronę i analizuję wszystkie linki:", url);
-
-        const { data: html } = await axios.get(url, {
-            headers: { "User-Agent": "Mozilla/5.0 (Node.js DomainLinkExtractor/1.0)" },
-            timeout: 20000,
-        });
-
-        const $ = cheerio.load(html);
-        const origin = new URL(url).origin;
-
-        const links = [];
-
-        $("a[href]").each((_, el) => {
-            const href = $(el).attr("href");
-            const text = $(el).text().trim();
-
-            if (!href) return;
-            if (href.match(/^(#|tel:|mailto:|javascript:)/i)) return; // pomiń niepotrzebne
-            const abs = href.startsWith("http") ? href : new URL(href, origin).href;
-
-            // tylko linki z tej samej domeny
-            if (abs.startsWith(origin)) {
-                links.push({ text, href: abs });
-            }
-        });
-
-        // 🔁 Usuń duplikaty
-        const uniqueLinks = [
-            ...new Map(links.map((l) => [l.href, l])).values(),
-        ];
-
-        console.log(`✅ Znaleziono ${uniqueLinks.length} linków w domenie.`);
-        return uniqueLinks;
-    } catch (err) {
-        console.error("❌ Błąd w extractDomainLinks:", err.message);
-        return [];
-    }
-}
-
-
 async function crawlDomainLinks(
     startUrl,
     maxDepth = 2,
-    excludeKeywords = ["aktualn", "blog", "news", "kontakt", "polityka", "regulamin", "kariera"]
+    excludeKeywords = ["aktualn", "blog", "news", "kontakt", "polityka", "regulamin", "kariera"],
+    limit = 200
 ) {
     const start = new URL(startUrl);
-    const origin = start.origin;
-    const basePath = start.pathname.endsWith("/") ? start.pathname : start.pathname + "/";
+    const startHost = start.host.toLowerCase();
 
     const visited = new Set();
-    const collected = new Map(); // href → { href, text }
-
-    // pomocnicza funkcja obliczająca głębokość względem basePath
-    function calculateDepth(urlPath) {
-        const relativePath = urlPath.replace(basePath, "");
-        const segments = relativePath.split("/").filter(Boolean);
-        return segments.length;
-    }
+    const collected = new Map(); // href -> { href, text }
 
     async function crawl(url) {
-        if (visited.has(url)) return;
-        visited.add(url);
+        if (collected.size >= limit) return;
 
-        const currentUrl = new URL(url);
-        const depth = calculateDepth(currentUrl.pathname);
+        const normUrl = normalizeUrl(url);
+        if (visited.has(normUrl)) return;
+        visited.add(normUrl);
 
+        const currentUrl = new URL(normUrl);
+        const depth = depthFromRoot(currentUrl.pathname);
         if (depth > maxDepth) return;
 
-        console.log(`🌐 [${depth}/${maxDepth}] Analizuję: ${url}`);
+        console.log(`🌐 [${depth}/${maxDepth}] Analizuję: ${normUrl}`);
 
         try {
-            const { data: html } = await axios.get(url, {
+            const resp = await axios.get(normUrl, {
                 headers: { "User-Agent": "Mozilla/5.0 (Node.js Crawler/1.0)" },
                 timeout: 15000,
+                maxRedirects: 5,
+                validateStatus: (s) => s < 500
             });
+
+            const html = resp.data;
+            if (typeof html !== "string") {
+                console.debug(`⛔ Brak HTML (typ treści?): ${normUrl}`);
+                return;
+            }
 
             const $ = cheerio.load(html);
 
+            // Obsługa <base href>
+            let baseHref;
+            const baseTag = $("base[href]").attr("href");
+            if (baseTag) {
+                try {
+                    baseHref = new URL(baseTag, currentUrl).href;
+                } catch { /* ignore */ }
+            }
+
             $("a[href]").each((_, el) => {
-                const href = $(el).attr("href");
-                if (!href) return;
+                if (collected.size >= limit) return;
 
-                // Pomijaj anchor, tel, mailto, JS
-                if (href.match(/^(#|tel:|mailto:|javascript:)/i)) return;
+                const rawHref = $(el).attr("href");
+                if (!rawHref) return;
 
-                const absUrl = href.startsWith("http")
-                    ? href
-                    : new URL(href, origin).href;
+                // pomiń anchory, tel:, mailto:, javascript:
+                if (/^(#|tel:|mailto:|javascript:)/i.test(rawHref)) return;
 
-                // tylko ta sama domena
-                if (!absUrl.startsWith(origin)) return;
-                // tylko w obrębie startowej ścieżki
-                if (!absUrl.startsWith(origin + basePath)) return;
-                // pomijaj niechciane słowa
+                let absUrl;
+                try {
+                    // rozwiąż względem baseHref lub bieżącej strony
+                    absUrl = new URL(rawHref, baseHref || currentUrl).href;
+                } catch {
+                    return;
+                }
+
+                absUrl = normalizeUrl(absUrl);
+                const u = new URL(absUrl);
+
+                // tylko ten sam host (ta sama domena, bez subdomen — jeśli chcesz dopuścić subdomeny, zmień to porównanie)
+                if (u.host.toLowerCase() !== startHost) return;
+
+                // wykluczenia fraz
                 if (excludeKeywords.some((kw) => absUrl.toLowerCase().includes(kw))) return;
 
-                // sprawdź głębokość
-                const candidateUrl = new URL(absUrl);
-                const candidateDepth = calculateDepth(candidateUrl.pathname);
+                // kontrola głębokości od root (ignorując prefiks językowy)
+                const candidateDepth = depthFromRoot(u.pathname);
                 if (candidateDepth > maxDepth) return;
 
                 if (!collected.has(absUrl)) {
@@ -1104,26 +1055,29 @@ async function crawlDomainLinks(
                 }
             });
 
-            // odwiedzaj nowe linki
-            const nextLinks = Array.from(collected.keys()).filter(
-                (link) => !visited.has(link)
-            );
+            if (collected.size >= limit) return;
+
+            // BFS-owate przechodzenie po zebranych linkach
+            const nextLinks = Array.from(collected.keys())
+                .filter((link) => !visited.has(normalizeUrl(link)))
+                .slice(0, Math.max(0, limit - collected.size));
 
             for (const link of nextLinks) {
+                if (collected.size >= limit) break;
                 await crawl(link);
             }
         } catch (err) {
-            console.warn(`⚠️ Błąd przy ${url}: ${err.message}`);
+            console.warn(`⚠️ Błąd przy ${normUrl}: ${err.message}`);
         }
     }
 
     await crawl(startUrl);
 
-    console.log(`✅ Zebrano ${collected.size} unikalnych linków (do głębokości ${maxDepth}).`);
+    console.log(
+        `✅ Zebrano ${collected.size} unikalnych linków (do głębokości ${maxDepth}, limit ${limit}).`
+    );
     return Array.from(collected.values());
 }
-
-
 
 async function analyzeAttractionLinks(url) {
     try {
@@ -1253,27 +1207,6 @@ async function analyzeOffersFromCleanedPages(cleaned) {
     console.log("✅ Analiza zakończona.");
     return results;
 }
-/**
- * 🌍 Endpoint: /place-offer?link=https://palmiarnia.poznan.pl/
- */
-
-function flattenArrayPreserveSingles(arr) {
-    if (!Array.isArray(arr)) return [arr]; // jeśli nie tablica — zamień na jednoelementową tablicę
-
-    const result = [];
-
-    for (const item of arr) {
-        if (Array.isArray(item)) {
-            // 🔹 jeśli element jest tablicą — połącz go z wynikiem
-            result.push(...flattenArrayPreserveSingles(item));
-        } else {
-            // 🔹 jeśli element NIE jest tablicą — po prostu dodaj
-            result.push(item);
-        }
-    }
-
-    return result;
-}
 
 const offerQueue = new PQueue({
     intervalCap: 10,      // maksymalnie 10 zadań
@@ -1314,7 +1247,7 @@ app.get("/place-offer", async (req, res) => {
             });
         }
 
-        if (innerLinks.length === 1) {
+        if (innerLinks.length === 1 && innerLinks[0] != urls[0]) {
             innerLinks.push(urls[0]);
             deleteSecond = true;
         }
@@ -1323,14 +1256,25 @@ app.get("/place-offer", async (req, res) => {
         for (const url of innerLinks) {
             const html = await returnRenderedWebPage(url);
             if (html) results.push(html);
-        }
 
+        }
+        // zapisz wyniki do plików
+        results.forEach((content, idx) => {
+            const filename = `test${idx + 10}.html`;
+            fs.writeFileSync(filename, content, "utf8");
+            console.log(`💾 Zapisano ${filename} (${content.length} znaków)`);
+        });
         if (results.length === 0) {
             return res.status(500).json({ error: "Nie udało się pobrać żadnej strony." });
         }
 
-        // usuń wspólne nagłówki/stopki
-        let cleaned = results.length === 1 ? results : removeCommonEdges(results);
+        let cleaned;
+        if (results.length === 1 || (results.length == 2 && deleteSecond && results[0].length < 10000)) {
+            cleaned = results;
+        }
+        else {
+            cleaned = removeCommonEdges(results);
+        }
         if (cleaned.length === 2 && deleteSecond) {
             cleaned = [cleaned[0]];
         }
