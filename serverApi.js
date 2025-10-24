@@ -1254,6 +1254,7 @@ app.get("/place-offer", async (req, res) => {
 
         const results = [];
         for (const url of innerLinks) {
+            console.log("TEST3", innerLinks)
             const html = await returnRenderedWebPage(url);
             if (html) results.push(html);
 
@@ -1268,18 +1269,21 @@ app.get("/place-offer", async (req, res) => {
             return res.status(500).json({ error: "Nie udało się pobrać żadnej strony." });
         }
 
-        let cleaned;
+        let cleaned = [[]];
         if (results.length === 1 || (results.length == 2 && deleteSecond && results[0].length < 10000)) {
             cleaned = results;
+            console.log("TUTAJ1")
         }
         else {
             cleaned = removeCommonEdges(results);
+            console.log("TUTAJ2")
+
         }
         if (cleaned.length === 2 && deleteSecond) {
             cleaned = [cleaned[0]];
         }
-
-        const wyniki = await analyzeOffersFromCleanedPages(cleaned);
+        
+        const wyniki = await analyzeOffersFromCleanedPages(cleaned[0].length < 500  ? [results[0]] : cleaned);
 
         console.log(JSON.stringify(wyniki, null, 2));
 
@@ -1287,7 +1291,7 @@ app.get("/place-offer", async (req, res) => {
         cleaned.forEach((content, idx) => {
             const filename = `test${idx + 1}.html`;
             fs.writeFileSync(filename, content, "utf8");
-            console.log(`💾 Zapisano ${filename} (${content.length} znaków)`);
+            console.log(`💾 Zapisano ${filename} (${content.length} znaków ww)`);
         });
 
         res.json({

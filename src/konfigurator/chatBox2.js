@@ -493,7 +493,7 @@ export const ChatBox2 = ({ activitiesSchedule, attractions, miejsceDocelowe, add
                             };
                         }
 
-                        addActivity(dayIdx, attrToAdd);
+                        addActivity(dayIdx, attrToAdd, true);
                     }
                     else if (cmdTab[0] === "swapActivities") {
                         swapActivities(cmdTab[1], cmdTab[2], cmdTab[3])

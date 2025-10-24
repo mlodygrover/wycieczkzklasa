@@ -903,6 +903,13 @@ export const KonfiguratorMain = ({ dataPrzyjazduInit, dataWyjazduInit, standardH
 
         handleSwap();
     }, [lastDaySwap]);
+    function addAlert(type, content) {
+        setAlertsTable(prev => ([
+            ...(Array.isArray(prev) ? prev : []),
+            { id: "mainError", type, content }
+        ]));
+    }
+
     function addRouteAlert(dayIdx) {
         dayIdx != 0 && setAlertsTable(prev => {
             if (prev.some(alert => alert.id === "routeFromFull")) return prev;
@@ -1367,14 +1374,15 @@ export const KonfiguratorMain = ({ dataPrzyjazduInit, dataWyjazduInit, standardH
             throw err;
         }
     }
-    function addActivity(dayIndex, activity) {
-        if (konfiguratorLoading) return; // nic nie rób dopóki trwa ładowanie
+    function addActivity(dayIndex, activity, botAuthor = false) {
+        if (konfiguratorLoading) return;
         if (activity?.googleId?.includes("base")) return;
 
-        // jeśli brak wariantów, a jest strona — zainicjuj asynchroniczną aktualizację oferty
+        const needsAlert = !activity?.warianty?.length && !botAuthor;
+
         if (!activity?.warianty?.length && activity?.stronaInternetowa) {
-            console.log("Aktualizuje oferte dla ", activity.nazwa)
-            // asynchronicznie, bez await
+            console.log("Aktualizuje oferte dla ", activity.nazwa);
+
             updateOffer({
                 googleId: activity.googleId,
                 link: activity.stronaInternetowa,
@@ -1383,42 +1391,41 @@ export const KonfiguratorMain = ({ dataPrzyjazduInit, dataWyjazduInit, standardH
                 console.error("❌ updateOffer error:", err?.message || err);
             });
 
-            // dopisz ID tylko jeśli jeszcze go nie ma
-            setChangeActivities((prev) =>
+            setChangeActivities(prev =>
                 prev.includes(activity.googleId) ? prev : [...prev, activity.googleId]
             );
         }
 
-
-        // reszta logiki dodawania aktywności — bez zmian i bez oczekiwania na updateOffer
-        setActivitiesSchedule((prev) => {
+        setActivitiesSchedule(prev => {
             const updated = prev.map((dayActivities, idx) => {
                 if (idx !== dayIndex) return dayActivities;
 
-                const newDay = [...dayActivities]; // nie mutujemy
+                const newDay = [...dayActivities];
                 const last = newDay[newDay.length - 1];
-
                 const newActivity = {
                     ...activity,
                     czasZwiedzania: activity?.czasZwiedzania || 60,
                 };
 
-                if (
-                    last?.googleId === "baseRouteFrom" ||
-                    last?.googleId === "baseHotelIn"
-                ) {
-                    // wstaw przed „bazowym” końcem dnia
+                if (last?.googleId === "baseRouteFrom" || last?.googleId === "baseHotelIn") {
                     newDay.splice(newDay.length - 1, 0, newActivity);
                 } else {
                     newDay.push(newActivity);
                 }
-
                 return newDay;
             });
 
-            return verifyBaseActs(updated); // zachowanie dotychczasowej logiki
+            return verifyBaseActs(updated);
         });
+
+        if (needsAlert) {
+            addAlert(
+                "error",
+                "Uwaga! Podana aktywność nie ma zweryfikowanej oferty, nasz support niebawem ją zweryfikuje."
+            );
+        }
     }
+
 
 
     function deleteActivity(dayIndex, actIdx) {

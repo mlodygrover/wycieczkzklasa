@@ -174,7 +174,7 @@ const VariantButton = ({ variants, placeholder = "Wybierz wariant", onSelect, se
             <Dropdown isOpen={isOpen}>
                 {variants.map((variant, idx) => (
                     <VariantOption
-                        key={variant.nazwaWariantu}
+                        key={variant.nazwaWariantu + idx}
                         className={idx === selectedVariant ? 'selected' : ''}
                         onClick={() => handleSelect(idx)}
                     >
