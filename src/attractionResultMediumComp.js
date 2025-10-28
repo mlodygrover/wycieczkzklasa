@@ -244,6 +244,7 @@ const AttractionResultMediumComponent = ({
         atrakcja.czasZwiedzania = atrakcja.warianty[idx].czasZwiedzania || 60;
         atrakcja.cenaZwiedzania = atrakcja.warianty[idx].cenaZwiedzania || 0;
         atrakcja.chosenWariant = atrakcja.warianty[idx].nazwaWariantu;
+        atrakcja.selectedVariant = idx;
     }
     return (
         <AttractionResultMedium key={`${atrakcja.googleId}${atrakcja.cenaZwiedzania}${selectedVariant}`}>

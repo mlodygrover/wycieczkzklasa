@@ -195,7 +195,7 @@ export function minutesToTime(totalMinutes) {
 }
 
 
-export const KonfiguratorWyjazduComp = ({ changeStartHour, deleteActivity, startModifyingAct, setActivityPanelOpened, addActivity, onAttractionTimeChange, swapActivities, onTransportChange, timeSchedule, chosenTransportSchedule, loading, atrakcje, routeSchedule, activitesSchedule, liczbaDni, wybranyDzien, setWybranyDzien, checkOut }) => {
+export const KonfiguratorWyjazduComp = ({ changeActivity, changeStartHour, deleteActivity, startModifyingAct, setActivityPanelOpened, addActivity, onAttractionTimeChange, swapActivities, onTransportChange, timeSchedule, chosenTransportSchedule, loading, atrakcje, routeSchedule, activitesSchedule, liczbaDni, wybranyDzien, setWybranyDzien, checkOut }) => {
   
     const [localWybranyDzien, setLocalWybranyDzien] = useState(wybranyDzien);
     const [scheduleLoading, setScheduleLoading] = useState(false);
@@ -322,6 +322,7 @@ export const KonfiguratorWyjazduComp = ({ changeStartHour, deleteActivity, start
                                                                                     deleteActivity={deleteActivity}
                                                                                     changeStartHour={changeStartHour}
                                                                                     checkOut={checkOut}
+                                                                                    changeActivity={changeActivity}
                                                                                 />
                                                                             </DraggableWrap>
                                                                         )}

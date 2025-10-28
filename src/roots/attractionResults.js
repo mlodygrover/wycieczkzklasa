@@ -8,6 +8,7 @@ import { minutesToTime } from "../konfigurator/konfiguratorWyjazduComp"
 import React from "react"
 import { Loader2 } from "../loader2"
 import { Clock, MapPin, Ticket, Users, Bus, Car, Train, ChevronUp, ChevronDown, Trash2, RefreshCw } from 'lucide-react';
+import VariantButton from "../variantButton"
 
 const GooglePopupCardMainbox = styled.div`
     position: absolute;
@@ -250,6 +251,13 @@ const AttractionResultFullMainbox = styled.div`
     margin: 0;
     box-sizing: border-box;
     box-shadow: 0 0 5px lightgray;
+    .buttonFullNav{
+        display: flex;
+        flex-direction: row;
+        gap: 5px;
+        flex-wrap: wrap;
+        
+    }
     &.baseAct{
         border-left: 5px solid #f42582;
     }
@@ -363,15 +371,7 @@ const AttractionResultFullMainbox = styled.div`
         justify-content: center;
         gap: 2px;
         min-height: fit-content;
-        
-        div{
-            display: flex;
-            flex-direction: row;
-            align-items: center;
-            justify-content: flex-start;
-            gap: 2px;
-            text-align: left;
-        }
+       
         .attractionStats{
             display: flex;
             flex-direction: row;
@@ -449,8 +449,8 @@ const AttractionResultFullMainbox = styled.div`
     }
     
     .actionButton {
-        width: 32px;
-        height: 32px;
+        width: 30px;
+        height: 30px;
         display: flex;
         align-items: center;
         justify-content: center;
@@ -460,6 +460,7 @@ const AttractionResultFullMainbox = styled.div`
         cursor: pointer;
         transition: all 0.2s;
         padding: 0;
+        box-sizing: border-box;
         @media screen and (max-width: 600px){
             width: 40px;
             height: 40px;
@@ -539,59 +540,7 @@ const AttractionResultFullOutbox = styled.div`
 
 
 `
-const AttractionResultFullNav = styled.div`
-    
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 5px;
-    .buttonFullNav{
-        flex: 1;
-        max-width: 40px;
-        max-height: 40px;
-        border-radius: 5px;
-        cursor: pointer;
-        transition: 0.3s ease-in-out;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        &.nav{
-            background-color: #e0e0e0;
-        
-            &:hover{
-                background-color:  #a0a0a0;
-            
-            }
-        } 
-        &.swap{
-            background-color: #e6e9ff;
-            &:hover{
-                background-color: #3d54ff;
-            
-            }
-            
-        }
-        &.del{
-            background-color: #ffeded;
-            &:hover{
-                background-color: #dd0000;
-            
-            }
-            
-        }
-        &.off{
-            opacity: 0;          /* całkowicie przezroczysty */
-            pointer-events: none; 
-        }
-        
-    }
-        @media screen and (max-width: 800px){
-        display: none;}
 
-
-`
 
 const IncreaseButton = styled.div`
   aspect-ratio: 1 / 1;
@@ -630,12 +579,15 @@ export const AttractionResultFull = ({
     attraction,
     startModifyingAct,
     deleteActivity,
-    checkOut = 720
+    checkOut = 720, 
+    changeActivity
 }) => {
     const [localTime, setLocalTime] = useState(attraction.czasZwiedzania === null ? 55 : attraction.czasZwiedzania);
     const [localStartTime, setLocalStartTime] = useState(timeToMinutes(time || "08:00"))
 
-
+    useEffect(() => {
+        attraction?.warianty && attraction?.warianty.length && console.log("TEST6", attraction.warianty)
+    }, [attraction])
     useEffect(() => {
         if (actIdx == 0) {
             // Debounce: aktualizujemy globalny stan dopiero po 300ms od ostatniej zmiany
@@ -679,7 +631,14 @@ export const AttractionResultFull = ({
         };
     }, [localTime]);
 
-
+    function changeVariant(idx){
+        if(!attraction?.warianty || attraction?.warianty.length < idx + 1)return
+        let tmpAttraction = attraction;
+        tmpAttraction.czasZwiedzania = attraction.warianty[idx].czasZwiedzania || 60;
+        tmpAttraction.cenaZwiedzania = attraction.warianty[idx].cenaZwiedzania || 0;
+        tmpAttraction.selectedVariant = idx;
+        changeActivity(dayIdx, actIdx, tmpAttraction);
+    }
 
 
 
@@ -772,7 +731,7 @@ export const AttractionResultFull = ({
 
 
                     {!["baseRouteTo", "baseRouteFrom", "baseHotelIn", "baseHotelOut"].includes(attraction.googleId) && (
-                        <div className={`buttonFullNav ${actIdx === 1 ? "off" : "nav"}`}>
+                        <div className="buttonFullNav">
                             <div className="actionButtons">
                                 <button
                                     className="actionButton"
@@ -824,7 +783,11 @@ export const AttractionResultFull = ({
                                 >
                                     <Trash2 />
                                 </button>
+
                             </div>
+                            {
+                                attraction?.warianty && attraction?.warianty.length > 1 ? <VariantButton variants={attraction.warianty} selectedVariantInit={attraction?.selectedVariant || attraction.selectedVariant === 0 ? attraction.selectedVariant : null} onSelect={changeVariant} source={true} /> : ""
+                            }
                         </div>
                     )}
 

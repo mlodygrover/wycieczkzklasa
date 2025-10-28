@@ -8,9 +8,12 @@ const Container = styled.div`
 
 const MainButton = styled.button`
   width: 90%;
+  max-width: 250px;
+  min-width: 220px;
   margin: 0 auto;
   height: 30px;
-  background: linear-gradient(135deg, #667eea 0%, #008d73ff 100%);
+  /*background: linear-gradient(135deg, #667eea 0%, #008d73ff 100%);*/ 
+  background: #667eea;
   border: none;
   border-radius: 5px;
   color: #fff;
@@ -23,9 +26,17 @@ const MainButton = styled.button`
   font-family: inherit;
   box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
   position: relative;
+  white-space: nowrap;
   overflow: hidden;
+  text-overflow: ellipsis;
   font-weight: 500;
+
+  &.schedule{
   
+    @media screen and (max-width: 1000px){
+      display: none;
+    }
+  }
   &::before {
     content: '';
     position: absolute;
@@ -33,7 +44,8 @@ const MainButton = styled.button`
     left: 0;
     right: 0;
     bottom: 0;
-    background: linear-gradient(135deg, #008d73ff 0%, #667eea 100%);
+    /*background: linear-gradient(135deg, #008d73ff 0%, #667eea 100%);*/
+    background: #556dd9;
     opacity: 0;
     transition: opacity 0.3s ease;
   }
@@ -74,8 +86,8 @@ const Dropdown = styled.div`
   top: calc(100% + 5px);
   left: 50%;
   transform: ${props => props.isOpen
-        ? 'translate(-50%, 0) scale(1)'
-        : 'translate(-50%, -10px) scale(0.95)'};
+    ? 'translate(-50%, 0) scale(1)'
+    : 'translate(-50%, -10px) scale(0.95)'};
   width: 90%;
   background: #fff;
   border-radius: 12px;
@@ -133,58 +145,61 @@ const OptionPrice = styled.span`
   font-size: 13px;
 `;
 
-const VariantButton = ({ variants, placeholder = "Wybierz wariant", onSelect, selectedVariantInit }) => {
-    const [isOpen, setIsOpen] = useState(false);
-    const [selectedVariant, setSelectedVariant] = useState(selectedVariantInit);
-    const containerRef = useRef(null);
+const VariantButton = ({ variants, placeholder = "Wybierz wariant", onSelect, selectedVariantInit, source = false }) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const [selectedVariant, setSelectedVariant] = useState(selectedVariantInit);
+  const containerRef = useRef(null);
+  useEffect(() => {
+    source && console.log("TEST7", selectedVariantInit);
+  }, [])
 
-    useEffect(() => {
-        const handleClickOutside = (event) => {
-            if (containerRef.current && !containerRef.current.contains(event.target)) {
-                setIsOpen(false);
-            }
-        };
-
-        document.addEventListener('mousedown', handleClickOutside);
-        return () => {
-            document.removeEventListener('mousedown', handleClickOutside);
-        };
-    }, []);
-
-    const handleToggle = () => {
-        setIsOpen(!isOpen);
-    };
-
-    const handleSelect = (variant) => {
-        setSelectedVariant(variant);
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (containerRef.current && !containerRef.current.contains(event.target)) {
         setIsOpen(false);
-        if (onSelect) {
-            onSelect(variant);
-        }
+      }
     };
-    
-    
-    return (
-        <Container ref={containerRef}>
-            <MainButton onClick={handleToggle}>
-                <ButtonText>{selectedVariant !== null ? variants[selectedVariant].nazwaWariantu : placeholder}</ButtonText>
-                <Arrow isOpen={isOpen}>▼</Arrow>
-            </MainButton>
 
-            <Dropdown isOpen={isOpen}>
-                {variants.map((variant, idx) => (
-                    <VariantOption
-                        key={variant.nazwaWariantu + idx}
-                        className={idx === selectedVariant ? 'selected' : ''}
-                        onClick={() => handleSelect(idx)}
-                    >
-                        <OptionName>{variant.nazwaWariantu}</OptionName>
-                        {variant.cenaZwiedzania && <OptionPrice>{variant.cenaZwiedzania} zł</OptionPrice>}
-                    </VariantOption>
-                ))}
-            </Dropdown>
-        </Container>
-    );
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
+
+  const handleToggle = () => {
+    setIsOpen(!isOpen);
+  };
+
+  const handleSelect = (variant) => {
+    setSelectedVariant(variant);
+    setIsOpen(false);
+    if (onSelect) {
+      onSelect(variant);
+    }
+  };
+
+
+  return (
+    <Container ref={containerRef}>
+      <MainButton onClick={handleToggle} className={source && "schedule"}>
+        <ButtonText>{selectedVariant !== null ? variants[selectedVariant].nazwaWariantu : placeholder}</ButtonText>
+        <Arrow isOpen={isOpen}>▼</Arrow>
+      </MainButton>
+
+      <Dropdown isOpen={isOpen}>
+        {variants.map((variant, idx) => (
+          <VariantOption
+            key={variant.nazwaWariantu + idx}
+            className={idx === selectedVariant ? 'selected' : ''}
+            onClick={() => handleSelect(idx)}
+          >
+            <OptionName>{variant.nazwaWariantu}</OptionName>
+            {variant.cenaZwiedzania && <OptionPrice>{variant.cenaZwiedzania} zł</OptionPrice>}
+          </VariantOption>
+        ))}
+      </Dropdown>
+    </Container>
+  );
 };
 
 export default VariantButton;

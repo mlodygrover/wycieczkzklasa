@@ -69,7 +69,7 @@ const KonfiguratorMainMainboxLeft = styled.div`
     justify-content: flex-start;
     align-items: center;
     overflow-y: auto;
-    @media screen and (max-width: 800px){
+    @media screen and (max-width: 1000px){
         width: 100%;
         &.a{
 
@@ -1378,7 +1378,7 @@ export const KonfiguratorMain = ({ dataPrzyjazduInit, dataWyjazduInit, standardH
                     ...activity,
                     czasZwiedzania: activity?.czasZwiedzania || 60,
                 };
-
+                console.log("TEST5", newActivity)
                 if (last?.googleId === "baseRouteFrom" || last?.googleId === "baseHotelIn") {
                     newDay.splice(newDay.length - 1, 0, newActivity);
                 } else {
@@ -2129,7 +2129,7 @@ export const KonfiguratorMain = ({ dataPrzyjazduInit, dataWyjazduInit, standardH
                 */}
 
                 <KonfiguratorMainMainboxRight>
-                    <KonfiguratorWyjazduComp checkOut={timeToMinutes(wybranyHotel?.checkOut) || 720} changeStartHour={changeStartHour} deleteActivity={deleteActivity} startModifyingAct={startModifyingAct} setActivityPanelOpened={setActivityPanelOpened} onAttractionTimeChange={changeActivityTime} swapActivities={swapActivities} onTransportChange={changeChosenTransport} timeSchedule={timeSchedule} routeSchedule={routeSchedule} chosenTransportSchedule={chosenTransportSchedule} loading={konfiguratorLoading} activitesSchedule={activitiesSchedule} liczbaDni={liczbaDni} key={`schedule-${liczbaDni}-${konfiguratorLoading}-${timeSchedule}`} wybranyDzien={wybranyDzien} setWybranyDzien={setWybranyDzien} addActivity={addActivity} />
+                    <KonfiguratorWyjazduComp changeActivity={changeActivity} checkOut={timeToMinutes(wybranyHotel?.checkOut) || 720} changeStartHour={changeStartHour} deleteActivity={deleteActivity} startModifyingAct={startModifyingAct} setActivityPanelOpened={setActivityPanelOpened} onAttractionTimeChange={changeActivityTime} swapActivities={swapActivities} onTransportChange={changeChosenTransport} timeSchedule={timeSchedule} routeSchedule={routeSchedule} chosenTransportSchedule={chosenTransportSchedule} loading={konfiguratorLoading} activitesSchedule={activitiesSchedule} liczbaDni={liczbaDni} key={`schedule-${liczbaDni}-${konfiguratorLoading}-${timeSchedule}`} wybranyDzien={wybranyDzien} setWybranyDzien={setWybranyDzien} addActivity={addActivity} />
                     {activityPanelOpened &&
                         <AddAttractionWrapper>
                             <AddActivityPanelContainer>
