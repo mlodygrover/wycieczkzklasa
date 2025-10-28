@@ -21,6 +21,128 @@ const PORT = 5006;
 app.use(cors());
 app.use(express.json());
 
+function computeTransitCost(transitRoute) {
+    if (!Array.isArray(transitRoute) || transitRoute.length === 0) return 0;
+    let localSum = 0;
+    for (const seg of transitRoute) {
+        if (seg?.type === 'TRANSIT') {
+            const dur = Number(seg.durationMinutes) || 0;
+            localSum += dur > 45 ? Math.min(Math.ceil(dur / 4), 150) : 4 ; // przykład taryfy
+        }
+    }
+    return localSum;
+}
+
+async function computePrice({
+    activitiesSchedule,
+    liczbaUczestnikow,
+    liczbaOpiekunow,
+    routeSchedule,
+    wybranyHotel,
+    standardTransportu,
+    chosenTransportSchedule
+}) {
+    if(liczbaUczestnikow ==0)return 0;
+    // 1) suma aktywności
+    let sumaAktywnosci = 0;
+    for (let i = 0; i < activitiesSchedule.length; i++) {
+        for (let j = 0; j < activitiesSchedule[i].length; j++) {
+            const cena = Number(activitiesSchedule[i][j]?.cenaZwiedzania) || 0;
+            if (cena > 0) sumaAktywnosci += cena;
+        }
+    }
+    let aktywnosciPerUczestnik = Math.ceil(sumaAktywnosci * (liczbaOpiekunow + liczbaUczestnikow) / liczbaUczestnikow)
+    // 2) osoby i hotel
+    const hotelPrice = (Number(wybranyHotel?.cena) / Math.min(liczbaUczestnikow + liczbaOpiekunow, 30)) * (liczbaUczestnikow + liczbaOpiekunow) || 0;
+    const perPerson = Number(liczbaUczestnikow) > 0 ? (x) => x / Number(liczbaUczestnikow) : (x) => x;
+
+    // 3) wariant “tylko hotel + aktywności” (np. standardTransportu == 2)
+    if (standardTransportu === 2) {
+        return  aktywnosciPerUczestnik + perPerson(hotelPrice);
+    }
+
+    // 4) przejazdy
+    let sumaPrzejazdow = 0;
+    const dni = Array.isArray(activitiesSchedule) ? activitiesSchedule.length : 0;
+    // autokar: stawka dzienna × liczba dni
+    if (standardTransportu === 1) {
+        
+        sumaPrzejazdow += dni * 2500 / (liczbaUczestnikow); // przykładowa stawka
+    }
+
+    // transport publiczny wg chosenTransportSchedule (1 = transit)
+    if (Array.isArray(chosenTransportSchedule) && Array.isArray(routeSchedule)) {
+        for (let i = 0; i < chosenTransportSchedule.length; i++) {
+            const row = chosenTransportSchedule[i];
+            for (let j = 0; j < (row?.length || 0); j++) {
+                if (row[j] === 1) {
+                    const tr = routeSchedule[i]?.[j]?.transitRoute;
+                    sumaPrzejazdow += computeTransitCost(tr);
+                }
+                else if(standardTransportu === 0 && row[j] === 2){
+                    sumaPrzejazdow += Math.ceil((250 * routeSchedule[i][j]?.czasy[2] / 60) / liczbaUczestnikow)
+                    console.log("TEST2",  Math.ceil((250 * routeSchedule[i][j]?.czasy[2] / 60) / liczbaUczestnikow), (250 * routeSchedule[i][j]?.czasy[2] / 60))
+                }
+            }
+        }
+    }
+    
+    let przejazdyPerUczestnik = Math.ceil(sumaPrzejazdow * (liczbaOpiekunow + liczbaUczestnikow) / (liczbaUczestnikow))
+    console.log("Podzial ceny", sumaAktywnosci, aktywnosciPerUczestnik, hotelPrice, perPerson(hotelPrice), sumaPrzejazdow, przejazdyPerUczestnik, )
+    const nettoResult = aktywnosciPerUczestnik + przejazdyPerUczestnik + perPerson(hotelPrice);
+    const bruttoResult = Math.ceil(Math.max(50 + (dni - 1) * 35, nettoResult*1/10)) * 123 / 100 + nettoResult;
+    // 5) wynik per osoba
+    return bruttoResult 
+}
+
+
+app.post("/computePrice", async (req, res, next) => {
+    try {
+        const {
+            activitiesSchedule,
+            liczbaUczestnikow,
+            liczbaOpiekunow,
+            routeSchedule,
+            wybranyHotel,
+            chosenTransportSchedule,
+            standardTransportu
+        } = req.body;
+
+        if (
+            !Array.isArray(activitiesSchedule) ||
+            typeof liczbaUczestnikow !== "number" ||
+            typeof liczbaOpiekunow !== "number" ||
+            !Array.isArray(routeSchedule) ||
+            !wybranyHotel ||
+            !Array.isArray(chosenTransportSchedule) ||
+            typeof standardTransportu !== "number"
+        ) {
+            return res.status(400).json({ error: "Missing or invalid required fields" });
+        }
+
+        const rawPrice = await computePrice({
+            activitiesSchedule,
+            liczbaUczestnikow,
+            liczbaOpiekunow,
+            routeSchedule,
+            wybranyHotel,
+            chosenTransportSchedule,
+            standardTransportu
+        });
+
+        // Bezpieczne rzutowanie + zaokrąglenie w górę
+        const tripPrice = Math.ceil(Number(rawPrice) || 0);
+
+        const insurancePrice = 10;
+        return res.json({ tripPrice, insurancePrice });
+    } catch (err) {
+        next(err);
+    }
+});
+
+
+
+
 app.get("/searchCity", async (req, res) => {
     const { query } = req.query;
     if (!query) {
@@ -1282,8 +1404,8 @@ app.get("/place-offer", async (req, res) => {
         if (cleaned.length === 2 && deleteSecond) {
             cleaned = [cleaned[0]];
         }
-        
-        const wyniki = await analyzeOffersFromCleanedPages(cleaned[0].length < 500  ? [results[0]] : cleaned);
+
+        const wyniki = await analyzeOffersFromCleanedPages(cleaned[0].length < 500 ? [results[0]] : cleaned);
 
         console.log(JSON.stringify(wyniki, null, 2));
 
@@ -1555,8 +1677,10 @@ function calculateHotelScore(hotel, centerLat, centerLng) {
 
     const hotelLat = parseFloat(hotel.property.latitude);
     const hotelLng = parseFloat(hotel.property.longitude);
-    const price = hotel.property?.priceBreakdown?.grossPrice?.value || 0;
-
+    const price = Math.max(
+        Number(hotel?.property?.priceBreakdown?.grossPrice?.value) || 0,
+        Number(hotel?.property?.priceBreakdown?.strikethroughPrice?.value) || 0
+    );
     const distance = calculateDistance(centerLat, centerLng, hotelLat, hotelLng);
 
     // wzór: cena - (distance ^ 1.5) * 500
@@ -1587,6 +1711,7 @@ async function getHotels({
     const allHotels = [];
 
     try {
+        console.log("TEST4", room_qty, adults, arrival_date, departure_date,)
         for (let page = 1; page <= max_pages; page++) {
             const params = {
                 dest_id,
@@ -1705,53 +1830,29 @@ app.get("/findHotel", async (req, res) => {
 
         // 2️⃣ Pobierz osobno hotele dla uczniów i opiekunów
         console.log("👨‍🏫 Pobieram hotele dla opiekunów...");
-        const hotelsOpiekunowie = await getHotels({
+        const hotelsTab = await getHotels({
             dest_id,
             arrival_date,
             departure_date,
-            adults: opiekunowie,
-            room_qty: pokojeOpiekunowie,
+            adults: Number(opiekunowie) + Number(uczestnicy),
+            room_qty: 1,
             sort_by,
             stars,
             property_types,
             apartsAllowed,
             max_pages
         });
-
-        console.log("👩‍🎓 Pobieram hotele dla uczestników...");
-        const hotelsUczestnicy = await getHotels({
-            dest_id,
-            arrival_date,
-            departure_date,
-            adults: uczestnicy,
-            room_qty: 1, // zakładamy pokoje 2-osobowe
-            sort_by,
-            stars,
-            property_types,
-            apartsAllowed,
-            max_pages
-        });
-
-        console.log(
-            `📊 Wyniki: ${hotelsOpiekunowie.length} hoteli (opiekunowie), ${hotelsUczestnicy.length} (uczestnicy)`
-        );
-
-        // 3️⃣ Znajdź wspólne hotele (dostępne dla obu grup)
-        const wspolneHotele = hotelsOpiekunowie.filter(hotel =>
-            hotelsUczestnicy.some(u => u.property?.id === hotel.property?.id)
-        );
-
-        console.log(`✅ ${wspolneHotele.length} hoteli dostępnych dla całej grupy.`);
 
         // 4️⃣ Oblicz scoring dla każdego hotelu
-        const scoredHotels = wspolneHotele.map(h => ({
+        const scoredHotels = hotelsTab.map(h => ({
             ...h,
             score: calculateHotelScore(h, parseFloat(centerLat), parseFloat(centerLng))
         }));
 
-        const sortedHotels = scoredHotels
+        let sortedHotels = scoredHotels
             .filter(h => h.score !== null)
             .sort((a, b) => b.score - a.score);
+        
 
         res.json({
             success: true,

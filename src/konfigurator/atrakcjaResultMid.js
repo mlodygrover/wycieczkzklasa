@@ -10,7 +10,7 @@ export const AtrakcjaResultMidComp = ({ radioChosen, dayIndex, setModAct, atrakc
         if (atrakcja?.warianty && atrakcja.warianty.length > 0) {
             atrakcja.czasZwiedzania = atrakcja.warianty[0].czasZwiedzania || 60;
             atrakcja.cenaZwiedzania = atrakcja.warianty[0].cenaZwiedzania || 10;
-            console.log("TEST3", atrakcja)
+     
 
         }
         else {

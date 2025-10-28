@@ -22,6 +22,7 @@ import { Checkbox2 } from "./checkbox1";
 import { AlertsBox } from "./konfigurator/alertsBox";
 import { ChatBox } from "./konfigurator/chatBox";
 import { ChatBox2 } from "./konfigurator/chatBox2";
+import { CostSummary } from "./konfigurator/costSummary";
 
 const testResults = [
     { nazwa: "Poznań", region: "Wielkopolska", kraj: "Polska" },
@@ -43,12 +44,16 @@ const KonfiguratorMainMainbox = styled.div`
     justify-content: flex-start;
     position: relative;
     margin-top: 20px;
+    @media screen and (max-width: 1000px){
+        flex-direction: column;
+    }
 `
 const KonfiguratorMainMainboxLeft = styled.div`
 
     width: 300px;
     border-right: 1px solid lightgray;
     &.right{
+        
         border-right: none;
         border-left: 1px solid lightgray;
     }
@@ -65,7 +70,11 @@ const KonfiguratorMainMainboxLeft = styled.div`
     align-items: center;
     overflow-y: auto;
     @media screen and (max-width: 800px){
-        display: none;
+        width: 100%;
+        &.a{
+
+            display: none;
+        }
     }
     .mainboxLeftTitle{
         width: 90%;
@@ -593,13 +602,13 @@ export function timeToMinutes(timeString) {
     return hours * 60 + minutes;
 }
 export function toBookingDateFormat(dateInput) {
-    const date = new Date(dateInput);
-    const year = date.getUTCFullYear();
-    const month = String(date.getUTCMonth() + 1).padStart(2, "0");
-    const day = String(date.getUTCDate()).padStart(2, "0");
-    return `${year}-${month}-${day}`;
-}
+  const date = (dateInput instanceof Date) ? dateInput : new Date(dateInput);
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  const d = String(date.getDate()).padStart(2, "0");
 
+  return `${y}-${m}-${d}`;
+}
 
 
 export const KonfiguratorMain = ({ dataPrzyjazduInit, dataWyjazduInit, standardHoteluInit, standardTransportuInit, miejsceDoceloweInit, miejsceStartoweInit, liczbaUczestnikowInit, liczbaOpiekunówInit, pokojeOpiekunowieInit }) => {
@@ -1080,154 +1089,157 @@ export const KonfiguratorMain = ({ dataPrzyjazduInit, dataWyjazduInit, standardH
     }
 
     function verifyBaseActs(tab) {
-        if (!tab.length || !miejsceDocelowe || !miejsceStartowe) return tab;
-        const newTab = tab.map(day => [...day]);
-        for (let i = 0; i < tab.length; i++) {
+        if (!tab?.length || !miejsceDocelowe || !miejsceStartowe) return tab;
 
-            if (tab.length && i === 0) {
+        const newTab = structuredClone(tab);
+        const hotelIds = ["baseHotelIn", "baseHotelOut", "baseBookIn", "baseBookOut"];
+
+        for (let i = 0; i < newTab.length; i++) {
+            // 🔧 Aktualizuj istniejące baseHotel* i baseBook* jeśli występują
+            for (let j = 0; j < newTab[i].length; j++) {
+                const act = newTab[i][j];
+                if (hotelIds.includes(act.googleId)) {
+                    act.lokalizacja = {
+                        lat: wybranyHotel?.lat || wybranyHotel?.location?.lat || 52.2297,
+                        lng: wybranyHotel?.lng || wybranyHotel?.location?.lng || 21.0122,
+                    };
+                    act.adres = wybranyHotel?.adres || wybranyHotel?.nazwa || miejsceDocelowe?.nazwa || "";
+                }
+            }
+
+            // ================== 🔽 POZOSTAŁA LOGIKA Z TWOJEGO KODU 🔽 ==================
+
+            if (newTab.length && i === 0) {
                 let baseRouteToToAdd = true;
-                let baseBookInToAdd = tab.length > 1;
+                let baseBookInToAdd = newTab.length > 1;
                 let baseRouteToId = -1;
-                for (let j = 0; j < tab[i].length; j++) {
-                    if (tab[i][j]?.googleId == "baseRouteTo") {
+
+                for (let j = 0; j < newTab[i].length; j++) {
+                    if (newTab[i][j]?.googleId === "baseRouteTo") {
                         baseRouteToToAdd = false;
                         baseRouteToId = j;
                     }
-
-                    if (tab[i][j]?.googleId == "baseBookIn") {
+                    if (newTab[i][j]?.googleId === "baseBookIn") {
                         baseBookInToAdd = false;
                     }
-
                 }
+
                 if (!baseRouteToToAdd) {
-                    tab[i][baseRouteToId] = {
+                    newTab[i][baseRouteToId] = {
                         googleId: "baseRouteTo",
                         nazwa: "Wyjazd do miejsca docelowego",
                         adres: "",
                         czasZwiedzania: 0,
                         lokalizacja: {
-                            lat: miejsceStartowe?.location?.lat || 52.40567859999999,
-                            lng: miejsceStartowe?.location?.lng || 16.9312766
-                        }
-                    }
-
+                            lat: miejsceStartowe?.location?.lat || 52.4056786,
+                            lng: miejsceStartowe?.location?.lng || 16.9312766,
+                        },
+                    };
                 }
+
                 if (baseRouteToToAdd) {
-
-
                     if (baseBookInToAdd) {
-
-                        tab[i] = [
+                        newTab[i] = [
                             {
                                 googleId: "baseBookIn",
                                 nazwa: "Zameldowanie w miejscu noclegu",
-                                adres: "",
+                                adres: wybranyHotel?.adres || wybranyHotel?.nazwa || miejsceDocelowe?.nazwa,
                                 czasZwiedzania: 30,
                                 lokalizacja: {
-                                    lat: miejsceDocelowe?.location?.lat || 52.40567859999999,
-                                    lng: miejsceDocelowe?.location?.lng || 16.9312766
-                                }
+                                    lat: wybranyHotel?.lat || 52.4056785,
+                                    lng: wybranyHotel?.lng || 16.9312766,
+                                },
                             },
-                            ...tab[i],
-
-
+                            ...newTab[i],
                         ];
 
-                        tab[i] = [
+                        newTab[i] = [
                             {
                                 googleId: "baseRouteTo",
                                 nazwa: "Wyjazd do miejsca docelowego",
                                 adres: "",
                                 czasZwiedzania: 0,
                                 lokalizacja: {
-                                    lat: miejsceStartowe?.location?.lat || 52.40567859999999,
-                                    lng: miejsceStartowe?.location?.lng || 16.9312766
-                                }
+                                    lat: miejsceStartowe?.location?.lat || 52.4056786,
+                                    lng: miejsceStartowe?.location?.lng || 16.9312766,
+                                },
                             },
-                            ...tab[i]
+                            ...newTab[i],
                         ];
-
-
-                    }
-                    else if (tab.length) {
-                        tab[i] = [
+                    } else {
+                        newTab[i] = [
                             {
                                 googleId: "baseRouteTo",
                                 nazwa: "Wyjazd do miejsca docelowego",
                                 adres: "",
                                 czasZwiedzania: 0,
                                 lokalizacja: {
-                                    lat: miejsceStartowe?.location?.lat || 52.40567859999999,
-                                    lng: miejsceStartowe?.location?.lng || 16.9312766
-                                }
+                                    lat: miejsceStartowe?.location?.lat || 52.4056786,
+                                    lng: miejsceStartowe?.location?.lng || 16.9312766,
+                                },
                             },
-                            ...tab[i]
+                            ...newTab[i],
                         ];
                     }
-
-
                 }
 
                 if (!baseRouteToToAdd && baseBookInToAdd) {
-                    tab[i] = [
-                        tab[i][0],
+                    newTab[i] = [
+                        newTab[i][0],
                         {
                             googleId: "baseBookIn",
                             nazwa: "Zameldowanie w miejscu noclegu",
-                            adres: "",
+                            adres: wybranyHotel?.adres || wybranyHotel?.nazwa || miejsceDocelowe?.nazwa,
                             czasZwiedzania: 30,
                             lokalizacja: {
-                                lat: miejsceDocelowe?.location?.lat || 52.40567859999999,
-                                lng: miejsceDocelowe?.location?.lng || 16.9312766
-                            }
+                                lat: wybranyHotel?.lat || 52.4056785,
+                                lng: wybranyHotel?.lng || 16.9312766,
+                            },
                         },
-                        ...tab[i].slice(1) // bez drugiego parametru = od indeksu 1 do końca
+                        ...newTab[i].slice(1),
                     ];
                 }
-
-
-
             }
 
-            if (tab.length && i === tab.length - 1) {
+            if (newTab.length && i === newTab.length - 1) {
                 let baseRouteFromToAdd = true;
-                let baseBookOutToAdd = tab.length > 1;
+                let baseBookOutToAdd = newTab.length > 1;
                 let baseRouteFromId = -1;
 
-                for (let j = 0; j < tab[i].length; j++) {
-                    if (tab[i][j]?.googleId == "baseRouteFrom") { baseRouteFromToAdd = false; baseRouteFromId = j };
-                    if (tab[i][j]?.googleId == "baseBookOut") baseBookOutToAdd = false;
-
+                for (let j = 0; j < newTab[i].length; j++) {
+                    if (newTab[i][j]?.googleId === "baseRouteFrom") {
+                        baseRouteFromToAdd = false;
+                        baseRouteFromId = j;
+                    }
+                    if (newTab[i][j]?.googleId === "baseBookOut") baseBookOutToAdd = false;
                 }
+
                 if (!baseRouteFromToAdd) {
-                    tab[i][baseRouteFromId] = {
+                    newTab[i][baseRouteFromId] = {
                         googleId: "baseRouteFrom",
                         nazwa: "Powrót do domu",
                         adres: "",
                         czasZwiedzania: 0,
                         lokalizacja: {
-                            lat: miejsceStartowe?.location?.lat || 52.40567859999999,
-                            lng: miejsceStartowe?.location?.lng || 16.9312766
-                        }
-                    }
-
+                            lat: miejsceStartowe?.location?.lat || 52.4056786,
+                            lng: miejsceStartowe?.location?.lng || 16.9312766,
+                        },
+                    };
                 }
+
                 if (baseRouteFromToAdd) {
-
-
                     if (baseBookOutToAdd) {
-
-                        tab[i] = [
-                            ...tab[i],
+                        newTab[i] = [
+                            ...newTab[i],
                             {
                                 googleId: "baseBookOut",
                                 nazwa: "Wymeldowanie z miejsca noclegu",
-                                adres: "",
+                                adres: wybranyHotel?.adres || wybranyHotel?.nazwa || miejsceDocelowe?.nazwa,
                                 czasZwiedzania: 30,
                                 lokalizacja: {
-                                    lat: miejsceDocelowe?.location?.lat || 52.40567859999999,
-                                    lng: miejsceDocelowe?.location?.lng || 16.9312766
-                                }
+                                    lat: wybranyHotel?.lat || 52.4056786,
+                                    lng: wybranyHotel?.lng || 16.9312766,
+                                },
                             },
                             {
                                 googleId: "baseRouteFrom",
@@ -1235,121 +1247,81 @@ export const KonfiguratorMain = ({ dataPrzyjazduInit, dataWyjazduInit, standardH
                                 adres: "",
                                 czasZwiedzania: 0,
                                 lokalizacja: {
-                                    lat: miejsceStartowe?.location?.lat || 52.40567859999999,
-                                    lng: miejsceStartowe?.location?.lng || 16.9312766
-                                }
-                            }
-
+                                    lat: miejsceStartowe?.location?.lat || 52.4056786,
+                                    lng: miejsceStartowe?.location?.lng || 16.9312766,
+                                },
+                            },
                         ];
-
-                    }
-                    else if (tab.length) {
-
-                        tab[i] = [
-                            ...tab[i],
+                    } else {
+                        newTab[i] = [
+                            ...newTab[i],
                             {
                                 googleId: "baseRouteFrom",
                                 nazwa: "Powrót do domu",
                                 adres: "",
                                 czasZwiedzania: 0,
                                 lokalizacja: {
-                                    lat: miejsceStartowe?.location?.lat || 52.40567859999999,
-                                    lng: miejsceStartowe?.location?.lng || 16.9312766
-                                }
-                            }
-
+                                    lat: miejsceStartowe?.location?.lat || 52.4056786,
+                                    lng: miejsceStartowe?.location?.lng || 16.9312766,
+                                },
+                            },
                         ];
                     }
-
-
                 }
-
-                if (!baseRouteFromToAdd && baseBookOutToAdd) {
-                    tab[i] = [
-                        ...tab[i].slice(0, tab[i].length - 1),
-                        tab[i][0],
-                        {
-                            googleId: "baseBookOut",
-                            nazwa: "Wymeldowanie z miejsca noclegu",
-                            adres: "",
-                            czasZwiedzania: 30,
-                            lokalizacja: {
-                                lat: miejsceDocelowe?.location?.lat || 52.40567859999999,
-                                lng: miejsceDocelowe?.location?.lng || 16.9312766
-                            }
-                        },
-                        tab[i][tab[i].length] // bez drugiego parametru = od indeksu 1 do końca
-                    ];
-                }
-
-
             }
 
-            if (i < tab.length - 1) {
-                // Usuń ewentualne baseRouteFrom i baseBookOut
-                tab[i] = tab[i].filter(
-                    act => act.googleId !== "baseRouteFrom" && act.googleId !== "baseBookOut"
+            if (i < newTab.length - 1) {
+                newTab[i] = newTab[i].filter(
+                    (act) => act.googleId !== "baseRouteFrom" && act.googleId !== "baseBookOut"
                 );
 
-                // Dodaj baseHotelIn tylko jeśli jeszcze go nie ma
-                const hasHotelIn = tab[i].some(act => act.googleId === "baseHotelIn");
+                const hasHotelIn = newTab[i].some((act) => act.googleId === "baseHotelIn");
                 if (!hasHotelIn) {
-                    tab[i] = [
-                        ...tab[i],
-                        {
-                            googleId: "baseHotelIn",
-                            nazwa: "Powrót na nocleg",
-                            adres: wybranyHotel.adres,
-                            czasZwiedzania: 0,
-                            lokalizacja: {
-                                lat: miejsceDocelowe?.location?.lat || 52.40567859999999,
-                                lng: miejsceDocelowe?.location?.lng || 16.9312766
-                            }
-                        }
-                    ];
+                    newTab[i].push({
+                        googleId: "baseHotelIn",
+                        nazwa: "Powrót na nocleg",
+                        adres: wybranyHotel?.adres || wybranyHotel?.nazwa,
+                        czasZwiedzania: 0,
+                        lokalizacja: {
+                            lat: wybranyHotel?.lat || 52.4056786,
+                            lng: wybranyHotel?.lng || 16.9312766,
+                        },
+                    });
                 }
             }
+
             if (i > 0) {
-                tab[i] = tab[i].filter(
-                    act => act.googleId !== "baseRouteTo" && act.googleId !== "baseBookIn"
+                newTab[i] = newTab[i].filter(
+                    (act) => act.googleId !== "baseRouteTo" && act.googleId !== "baseBookIn"
                 );
 
-                // Dodaj baseHotelIn tylko jeśli jeszcze go nie ma
-                const hasHotelOut = tab[i].some(act => act.googleId === "baseHotelOut");
+                const hasHotelOut = newTab[i].some((act) => act.googleId === "baseHotelOut");
                 if (!hasHotelOut) {
-                    tab[i] = [
-
-                        {
-                            googleId: "baseHotelOut",
-                            nazwa: "Pobudka",
-                            adres: wybranyHotel.adres,
-                            czasZwiedzania: 0,
-                            lokalizacja: {
-                                lat: miejsceDocelowe?.location?.lat || 52.40567859999999,
-                                lng: miejsceDocelowe?.location?.lng || 16.9312766
-                            }
+                    newTab[i].unshift({
+                        googleId: "baseHotelOut",
+                        nazwa: "Pobudka",
+                        adres: wybranyHotel?.adres || wybranyHotel?.nazwa,
+                        czasZwiedzania: 0,
+                        lokalizacja: {
+                            lat: wybranyHotel?.lat || 52.4056786,
+                            lng: wybranyHotel?.lng || 16.9312766,
                         },
-                        ...tab[i],
-                    ];
+                    });
                 }
             }
-
-
         }
-        if (tab && tab.length > 1) {
-            for (let i = 0; i < tab.length; i++) {
-                if (tab[i][0].googleId != "baseRouteTO") {
-                }
-            }
 
-        }
-        return tab;
-
+        return newTab;
     }
+
     useEffect(() => {
         validateSchedule()
 
     }, [activitiesSchedule, timeSchedule])
+
+
+
+
 
     async function updateOffer({ googleId, link, delayMs = 1000 }) {
         if (!googleId || !link) return; // ⛔ required data missing
@@ -1488,7 +1460,6 @@ export const KonfiguratorMain = ({ dataPrzyjazduInit, dataWyjazduInit, standardH
             return tmpHours; // ustawiamy nową tablicę w stanie
         });
         dayIdx == activitiesSchedule.length - 1 && setStartHours(prev => {
-            console.log("TEST6", minimum(startTime, timeToMinutes(wybranyHotel.checkOut) - 10))
             const tmpHours = [...prev]; // tworzymy kopię poprzedniego stanu
             tmpHours[dayIdx] = minimum(startTime, timeToMinutes(wybranyHotel.checkOut) - 10); // modyfikujemy kopię
             return tmpHours; // ustawiamy nową tablicę w stanie
@@ -1641,11 +1612,13 @@ export const KonfiguratorMain = ({ dataPrzyjazduInit, dataWyjazduInit, standardH
         recalculate();
     }, [chosenTransportSchedule, startHours, activitiesSchedule]);
     useEffect(() => {
-        setActivitiesSchedule(prev => {
-            const updated = verifyBaseActs(structuredClone(prev)); // 🔹 pełna kopia
-            return updated;
-        });
-    }, [miejsceStartowe]);
+        const timer = setTimeout(() => {
+            console.log("Correcting hotel's informations.", wybranyHotel)
+            setActivitiesSchedule(prev => verifyBaseActs(structuredClone(prev)));
+        }, 10000); // 1 s
+
+        return () => clearTimeout(timer);
+    }, [miejsceStartowe, wybranyHotel]);
 
 
 
@@ -1670,6 +1643,65 @@ export const KonfiguratorMain = ({ dataPrzyjazduInit, dataWyjazduInit, standardH
         return `${day}/${month}/${year}`;
     }
     //temp temp temp
+    const [tripPrice, setTripPrice] = useState(0);
+    const [insurancePrice, setInsurancePrice] = useState(0);
+    useEffect(() => {
+        // Sprawdzenie kompletności danych
+        const hasAll =
+            Array.isArray(activitiesSchedule) &&
+            typeof liczbaUczestnikow === "number" &&
+            typeof liczbaOpiekunów === "number" &&
+            routeSchedule &&
+            wybranyHotel;
+
+        if (!hasAll) return;
+
+        const controller = new AbortController();
+
+        const timer = setTimeout(async () => {
+            console.log("TEST1", activitiesSchedule,
+                liczbaUczestnikow,
+                liczbaOpiekunów,
+                routeSchedule,
+                wybranyHotel,
+                chosenTransportSchedule,
+                standardTransportu)
+            try {
+                const { data } = await axios.post(
+                    "http://localhost:5006/computePrice",
+                    {
+                        activitiesSchedule,
+                        liczbaUczestnikow,
+                        liczbaOpiekunow: liczbaOpiekunów,
+                        routeSchedule,
+                        wybranyHotel,
+                        chosenTransportSchedule,
+                        standardTransportu
+                    },
+                    { signal: controller.signal }
+                );
+                console.log("CENY", data.tripPrice, data.insurancePrice)
+                setTripPrice(data?.tripPrice ?? 0);
+                setInsurancePrice(data?.insurancePrice ?? 0);
+            } catch (err) {
+                if (err.name !== "CanceledError" && err.name !== "AbortError") {
+                    console.error("❌ /computePrice error:", err?.message || err);
+                }
+            }
+        }, 1000); // debounce 1 s
+
+        return () => {
+            clearTimeout(timer);
+            controller.abort();
+        };
+    }, [
+        activitiesSchedule,
+        liczbaUczestnikow,
+        liczbaOpiekunów,
+        routeSchedule,
+        wybranyHotel,
+    ]);
+
     /*
     const googleIdTest = "ChIJibBLOT9bBEcRL9IL_IaJz2I";
     const linkTest = "https://fara.archpoznan.pl/pl/";
@@ -1793,7 +1825,7 @@ export const KonfiguratorMain = ({ dataPrzyjazduInit, dataWyjazduInit, standardH
                 console.log("✅ Wynik zapytania /findHotel:", response.data);
 
                 const winningHotel = Array.isArray(response.data.hotels)
-                    ? response.data.hotels[0]
+                    ? response.data.hotels[Math.min(response.data.hotels.length -1, 2)]
                     : response.data[0];
 
                 if (!winningHotel) {
@@ -1801,17 +1833,25 @@ export const KonfiguratorMain = ({ dataPrzyjazduInit, dataWyjazduInit, standardH
                     return;
                 }
 
+                const pb = winningHotel?.property?.priceBreakdown;
+
                 const hotelData = {
                     nazwa: winningHotel.property.name,
                     adres: winningHotel.property.address || "",
                     stars: winningHotel.property.accuratePropertyClass,
                     checkIn: winningHotel.property.checkin?.fromTime || "N/A",
                     checkOut: winningHotel.property.checkout?.untilTime || "N/A",
-                    cena: winningHotel.property.priceBreakdown?.grossPrice?.value || 0,
+                    cena:
+                        (Number(pb?.strikethroughPrice?.value) || 0) > 0
+                            ? Number(pb.strikethroughPrice.value)
+                            : ((Number(pb?.grossPrice?.value) || 0) > 0
+                                ? Number(pb.grossPrice.value)
+                                : 0),
                     lat: winningHotel.property.latitude,
                     lng: winningHotel.property.longitude,
                     cachedAt: new Date().toISOString(),
                 };
+
 
                 // 💾 Zapisz w localStorage
                 localStorage.setItem(key, JSON.stringify(hotelData));
@@ -1879,7 +1919,6 @@ export const KonfiguratorMain = ({ dataPrzyjazduInit, dataWyjazduInit, standardH
     }, []);
     const settingsRef = useRef(null);
 
-    //useEffect(() => { console.log("TEST2", activitiesSchedule, activitiesSchedule[wybranyDzien]) }, [activitiesSchedule])
 
     const [routeToPrint, setRouteToPrint] = useState([]);
     const [routeFromPrint, setRouteFromPrint] = useState([])
@@ -2026,7 +2065,7 @@ export const KonfiguratorMain = ({ dataPrzyjazduInit, dataWyjazduInit, standardH
             </KonfiguratorMainSettings>
 
             <KonfiguratorMainMainbox>
-                <KonfiguratorMainMainboxLeft>
+                <KonfiguratorMainMainboxLeft className="a">
                     <div className="mainboxLeftTitle">
                         Biblioteka atrakcji
 
@@ -2213,6 +2252,7 @@ export const KonfiguratorMain = ({ dataPrzyjazduInit, dataWyjazduInit, standardH
 
 
                     </SummaryInfoBox>
+                    <CostSummary tripPrice={tripPrice} insurancePrice={insurancePrice} liczbaOpiekunow={liczbaOpiekunów} liczbaUczestnikow={liczbaUczestnikow} />
                     <div className="mainboxLeftTitle" style={{ paddingTop: '10px', marginTop: '20px', borderTop: '1px solid #ccc' }}>
                         Podsumowanie dnia
                     </div>

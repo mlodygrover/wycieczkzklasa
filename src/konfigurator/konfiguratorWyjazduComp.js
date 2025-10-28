@@ -196,8 +196,7 @@ export function minutesToTime(totalMinutes) {
 
 
 export const KonfiguratorWyjazduComp = ({ changeStartHour, deleteActivity, startModifyingAct, setActivityPanelOpened, addActivity, onAttractionTimeChange, swapActivities, onTransportChange, timeSchedule, chosenTransportSchedule, loading, atrakcje, routeSchedule, activitesSchedule, liczbaDni, wybranyDzien, setWybranyDzien, checkOut }) => {
-    //useEffect(() => { console.log("TEST3", activitesSchedule, routeSchedule, timeSchedule, chosenTransportSchedule) }, [activitesSchedule, routeSchedule, timeSchedule, chosenTransportSchedule])
-
+  
     const [localWybranyDzien, setLocalWybranyDzien] = useState(wybranyDzien);
     const [scheduleLoading, setScheduleLoading] = useState(false);
     useEffect(() => {

@@ -3,7 +3,7 @@ import styled from 'styled-components';
 import axios from 'axios';
 
 const ChatBoxMainbox = styled.div`
-    width: 250px;
+    width: 80%;
     background-color: #fbfbfb;
     border-radius: 18px;
     display: flex;

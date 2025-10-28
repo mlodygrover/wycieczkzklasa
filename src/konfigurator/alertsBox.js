@@ -34,6 +34,10 @@ const AlertsOutbox = styled.div`
         font-size: 16px;
         text-align: center;
         cursor: pointer;    
+        @media screen and (max-width: 600px){
+            width: 100vw;
+            min-width: 150px;
+        }
         .wypelniacz{
             flex: 1;
         }
@@ -162,9 +166,6 @@ export const AlertsBox = ({ alertsTable, deleteAlert }) => {
             document.body.style.overflow = "auto";
         };
     }, []);
-    useEffect(() => {
-        console.log("TEST7", alertsTable)
-    }, [alertsTable])
     if (!alertsTable?.length) return null;
 
 

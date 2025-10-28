@@ -646,7 +646,6 @@ export const OwnAttraction = ({ miejsceDocelowe="Poznan", setModAct, modActIdx, 
             );
             if (!resp.ok) throw new Error("Błąd serwera");
             const data = await resp.json();
-            console.log("TEST6", data)
             setSearchingAdressResults(data);
         } catch (err) {
             console.error("Geocode error:", err);
@@ -658,14 +657,12 @@ export const OwnAttraction = ({ miejsceDocelowe="Poznan", setModAct, modActIdx, 
             setSearchingLocationResults([]);
             return;
         }
-        console.log("TEST20", encodeURIComponent(query + " " + miejsceDocelowe))
         try {
             const resp = await fetch(
                 `http://localhost:5006/searchPlaces?query=${encodeURIComponent(query + " " + miejsceDocelowe)}`
             );
             if (!resp.ok) throw new Error("Błąd serwera");
             const data = await resp.json();
-            console.log("TEST60", data)
             setSearchingLocationResults(data);
         } catch (err) {
             console.error("Geocode error:", err);
