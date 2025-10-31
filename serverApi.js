@@ -1880,7 +1880,8 @@ app.post("/chat-planner", async (req, res) => {
             history = [],               // [{role:'user'|'assistant', content:'...'}]
             activitiesSchedule = [],    // tablica dni -> tablica aktywności [{idGoogle, nazwa}]
             attractions = [],           // tablica atrakcji [{idGoogle, nazwa}]
-            miejsceDocelowe = null      // { nazwa, location:{lat,lng}, ... }
+            miejsceDocelowe = null,      // { nazwa, location:{lat,lng}, ... }
+            basicActivities
         } = req.body || {};
 
         if (!message || !miejsceDocelowe) {
@@ -1908,6 +1909,7 @@ Jesteś inteligentnym asystentem planowania szkolnego wyjazdu do miejsca "${miej
 Masz dostęp do:
 - "activitiesSchedule": obecny plan dni i atrakcji (googleId + nazwa), aktywnosci baseHotelIn, baseHotelOut, baseRouteTo, baseRouteFrom sa sztywno ustawione na poczatku i koncu dnia, baseBookIn oraz baseBookOut moga byc przesuwane w ciagu dnia uwzgledniajac dobe hotelowa
 - "attractions": dostępne atrakcje w miejscu docelowym (googleId + nazwa),
+- "basicActivities": aktywnosci podstawowe, pojawiajace sie w ciagu dnia wyjazdu turystycznego - obslugiwane podobnie do attractions
 - funkcji, które możesz zaproponować w odpowiedzi:
   addActivity(dayIndex, activity) - dodajesz nowa aktywnosc na koniec planu, przed powrotem na nocleg.
   swapActivities(dayIndex, actIndexA, actIndexB) - zamieniasz aktywnosci o podanych indeksach 
@@ -1924,7 +1926,7 @@ ZASADY:
        **commands** <komenda1>; <komenda2>; ...
 - Jeśli nie masz komend, zwróć: **commands** (pusta lista).
 - W komendach:
-   • Jeśli atrakcja pochodzi z bazy (jest w "attractions"), zwracaj tylko { googleId, nazwa, czasZwiedzania }.
+   • Jeśli atrakcja pochodzi z bazy (jest w "attractions" lub "basicActivities"), zwracaj tylko { googleId, nazwa, czasZwiedzania }.
    • Jeśli AI wymyśla nową atrakcję, użyj { googleId:"aiGenerated", nazwa, adres, czasZwiedzania }.
 - Jesli chcesz dodac jakas atrakcje, !!koniecznie sprawdz czy znajduje sie w tablicy atrakcji i przepisz jego id!!. Wymyslaj wlasne tylko w przypadku nieuniknionej koniecznosci.
 - Jeśli użytkownik pisze coś niezwiązanego z planowaniem wyjazdu lub używa wulgaryzmów — nie podawaj żadnych komend i odpowiedz stosownym komunikatem.
@@ -1944,6 +1946,7 @@ PRZYKŁAD WYJŚCIA (w komendach nie uzywaj spacji):
                     `KONTEKST:\n` +
                     `- Miejsce docelowe: ${miejsceDocelowe?.nazwa}\n` +
                     `- Atrakcje (skrót): ${JSON.stringify(slimAttractions)}\n` +
+                    `- Podstawowe aktywnosci: ${JSON.stringify(basicActivities)}\n` +
                     `- Obecny plan: ${JSON.stringify(slimSchedule)}\n\n` +
                     `WIADOMOŚĆ UŻYTKOWNIKA:\n${message}`
             }

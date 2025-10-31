@@ -52,7 +52,7 @@ const AddActivityPanelMainbox = styled.div.withConfig({
     }
 `;
 
-const AddActivityPanelNav = styled.div`
+export const AddActivityPanelNav = styled.div`
     margin: 10px 5px;
     display: flex;
     flex-direction: row;
@@ -62,7 +62,7 @@ const AddActivityPanelNav = styled.div`
     padding:4px 10px;
     border-bottom: 1px solid gray;
 `
-const AddActivityNavButton = styled.div`
+export const AddActivityNavButton = styled.div`
     width: 20px;
     height: 20px;
   
@@ -124,7 +124,7 @@ const AddActivityPanelBox = styled.div`
     }
 
 `
-const PanelBoxNav = styled.div`
+export const PanelBoxNav = styled.div`
     width: 100%;
     display: flex;
     height: 36px;
@@ -136,6 +136,16 @@ const PanelBoxNav = styled.div`
     gap: 2px;
     border-radius: 999px;
     background-color: #f6f6f6;
+    &.a{
+        width: 90%;
+        margin: 5px auto;
+        margin-top: 0px;
+        border-radius: 10px;
+        height: 35px;
+    }
+    &.a .panelBoxNavButton{
+        border-radius: 10px;
+    }
     .panelBoxNavButton{
         flex:1;
         cursor: pointer;

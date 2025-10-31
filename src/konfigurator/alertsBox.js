@@ -1,5 +1,6 @@
 import React, { useEffect } from "react";
 import styled from "styled-components";
+import { AddGuidePopup } from "../roots/addGuidePopup";
 
 const AlertsOutbox = styled.div`
         position: fixed;
@@ -219,7 +220,9 @@ export const AlertsBox = ({ alertsTable, deleteAlert }) => {
                                 </div>
                             </div>
                             :
-                            ""
+                            alert.type=="guidance" ? 
+                            <AddGuidePopup/>
+                            : "Błąd odczytu"
 
                 ))}
                 {/*alertsTable[0].type = "error" &&

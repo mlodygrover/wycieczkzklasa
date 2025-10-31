@@ -406,6 +406,7 @@ const AttractionResultFullMainbox = styled.div`
             align-items: center;
             justify-content: flex-start;
             gap: 6px;
+            text-align: left;
             .titlePic{
                 background-color: #22c55e;
                 padding: 3px;
@@ -584,10 +585,6 @@ export const AttractionResultFull = ({
 }) => {
     const [localTime, setLocalTime] = useState(attraction.czasZwiedzania === null ? 55 : attraction.czasZwiedzania);
     const [localStartTime, setLocalStartTime] = useState(timeToMinutes(time || "08:00"))
-
-    useEffect(() => {
-        attraction?.warianty && attraction?.warianty.length && console.log("TEST6", attraction.warianty)
-    }, [attraction])
     useEffect(() => {
         if (actIdx == 0) {
             // Debounce: aktualizujemy globalny stan dopiero po 300ms od ostatniej zmiany
@@ -678,7 +675,7 @@ export const AttractionResultFull = ({
                             :
                             <img src={attraction.icon} height={'100%'} style={{ margin: 'auto' }} />
                         }
-                        {!attraction.googleId?.includes("base") && (
+                        {!attraction.googleId?.includes("base") && !attraction.googleId?.includes("dAct_") &&(
                             <>
 
                                 <div className="mapOverlay">

@@ -17,6 +17,9 @@ const AttractionResultMedium = styled.div`
     align-items: stretch;
     justify-content: flex-start;
     padding-bottom: 10px;
+    &.baseVersion{
+        min-height: 120px;
+    }
     .attractionResultMediumTitleBox{
         margin-top:  5px;
         width: 100%;
@@ -198,6 +201,7 @@ const AttractionResultMediumComponent = ({
     wybranyDzien,
     addActivity,
     wariantResultsOpened,
+    baseVersion
 }) => {
 
 
@@ -235,7 +239,7 @@ const AttractionResultMediumComponent = ({
             atrakcja.czasZwiedzania = 60;
             atrakcja.cenaZwiedzania = 0;
         }
-        
+
 
     }, [atrakcja])
     const [selectedVariant, setSelectedVariant] = useState(null)
@@ -247,53 +251,58 @@ const AttractionResultMediumComponent = ({
         atrakcja.selectedVariant = idx;
     }
     return (
-        <AttractionResultMedium key={`${atrakcja.googleId}${atrakcja.cenaZwiedzania}${selectedVariant}`}>
+        <AttractionResultMedium key={`${atrakcja.googleId}${atrakcja.cenaZwiedzania}${selectedVariant}`} className={baseVersion ? "baseVersion" :"" }>
             <div className="attractionResultMediumTitleBox">
                 <div className="titleIconBox">
-                    <img src="../icons/color-castle.svg" width="20px" alt="Ikona atrakcji" />
+                   {baseVersion ? <img src="../icons/park-color.svg" width="20px" alt="Ikona atrakcji" />: <img src="../icons/color-castle.svg" width="20px" alt="Ikona atrakcji" />} 
                 </div>
                 <div className="titleTextBox">
                     <div className="attractionResultMediumTitle">{atrakcja.nazwa}</div>
                     <div className="attractionResultMediumSubtitle">{atrakcja.adres}</div>
                 </div>
             </div>
+            {!baseVersion &&
+                <div className="attractionResultMediumDetails">
+                    <div className="attractionResultMediumDetailRow">
+                        <div className="detailRowElement">
+                            <img src="../icons/icon-time.svg" width="20px" alt="Czas zwiedzania" />{" "}
+                            {atrakcja?.czasZwiedzania && minutesToStringTime(atrakcja.czasZwiedzania) || "1h 30min"}
+                        </div>
+                        {
 
-            <div className="attractionResultMediumDetails">
-                <div className="attractionResultMediumDetailRow">
-                    <div className="detailRowElement">
-                        <img src="../icons/icon-time.svg" width="20px" alt="Czas zwiedzania" />{" "}
-                        {atrakcja?.czasZwiedzania && minutesToStringTime(atrakcja.czasZwiedzania) || "1h 30min"}
+                            <div className="detailRowElement">
+                                <img src="../icons/icon-ticket.svg" width="20px" alt="Cena" />{" "}
+                                {atrakcja?.warianty.length == 0 ? "Dodaj aby obliczyć" : atrakcja.cenaZwiedzania == 0 ? "Bezpłatne" : atrakcja.cenaZwiedzania ? atrakcja.cenaZwiedzania + "zł /osoba" : ""}
+                            </div>
+                        }
+
                     </div>
-                    <div className="detailRowElement">
-                        <img src="../icons/icon-ticket.svg" width="20px" alt="Cena" />{" "}
-                        {atrakcja?.warianty.length == 0 ? "Dodaj aby obliczyć": atrakcja.cenaZwiedzania == 0 ? "Bezpłatne" : atrakcja.cenaZwiedzania ? atrakcja.cenaZwiedzania + "zł /osoba" : ""}
+
+                    <div className="attractionResultMediumDetailRow">
+                        <div className="detailRowElement">
+                            <img src="../icons/icon-stars.svg" width="20px" alt="Ocena" /> {atrakcja.ocena}{" "}
+                            <span>({atrakcja.liczbaOpinie})</span>
+                        </div>
+                        {atrakcja.stronaInternetowa &&
+                            <div className="detailRowElement b">
+                                <img src="../icons/link.svg" width="20px" alt="Link" />{" "}
+                                <a href={atrakcja?.stronaInternetowa} target="_blank" rel="noreferrer">
+                                    Witryna
+                                </a>
+                            </div>
+                        }
+                    </div>
+
+                    <div className="attractionResultMediumDetailRow">
+                        <div className="detailRowElement c">
+                            <img src="../icons/success.svg" width="20px" alt="Przewodnik" /> Dostępne z przewodnikiem
+                        </div>
                     </div>
                 </div>
-
-                <div className="attractionResultMediumDetailRow">
-                    <div className="detailRowElement">
-                        <img src="../icons/icon-stars.svg" width="20px" alt="Ocena" /> {atrakcja.ocena}{" "}
-                        <span>({atrakcja.liczbaOpinie})</span>
-                    </div>
-                    {atrakcja.stronaInternetowa &&
-                    <div className="detailRowElement b">
-                        <img src="../icons/link.svg" width="20px" alt="Link" />{" "}
-                        <a href={atrakcja?.stronaInternetowa} target="_blank" rel="noreferrer">
-                            Witryna
-                        </a>
-                    </div>
-                    }
-                </div>
-
-                <div className="attractionResultMediumDetailRow">
-                    <div className="detailRowElement c">
-                        <img src="../icons/success.svg" width="20px" alt="Przewodnik" /> Dostępne z przewodnikiem
-                    </div>
-                </div>
-            </div>
+            }
             {atrakcja?.warianty && atrakcja.warianty.length > 1 &&
-            <>
-                {/*
+                <>
+                    {/*
                 <div className={wariantsOpened ? "wariantButton opened" : "wariantButton"} onClick={() => setWariantsOpened(!wariantsOpened)} ref={wariantButtonRef}>
                     <img src="../icons/filterViolet.svg" height={'15px'}></img>{atrakcja.chosenWariant && !wariantsOpened ? atrakcja.chosenWariant : "Wybierz wariant"}
                     <div className={wariantsOpened ? "wariantsResults opened" : "wariantsResults"}>
@@ -305,10 +314,10 @@ const AttractionResultMediumComponent = ({
                         ))}
                     </div>
                 </div>*/}
-                <VariantButton variants={atrakcja.warianty} onSelect={setWariant} selectedVariantInit={selectedVariant}/>
+                    <VariantButton variants={atrakcja.warianty} onSelect={setWariant} selectedVariantInit={selectedVariant} />
                 </>
             }
-
+            <div style={{flex: 1}}/>
             <div
                 className="attractionResultMediumAddBox"
                 onClick={() => addActivity(wybranyDzien, atrakcja)}

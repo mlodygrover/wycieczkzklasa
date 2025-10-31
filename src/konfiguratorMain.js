@@ -14,7 +14,7 @@ import LeafletMap from "./roots/googleMapViewer";
 import { WyborUczestnikow } from "./konfigurator/wyborUczestnikow";
 import Radio1 from "./roots/radio1";
 import { KonfiguratorWyjazduComp, roznicaDni } from "./konfigurator/konfiguratorWyjazduComp";
-import { AddActivityPanel } from "./konfigurator/addActivityPanel";
+import { AddActivityNavButton, AddActivityPanel, AddActivityPanelNav, PanelBoxNav } from "./konfigurator/addActivityPanel";
 import RouteMap from "./routeMap";
 import { parseJSON } from "date-fns";
 import AttractionResultMediumComponent from "./attractionResultMediumComp";
@@ -32,6 +32,144 @@ const testResults = [
 
 
 ]
+const basicActivities = [
+    {
+        googleId: "dAct_przyjazdNaMiejsce",
+        nazwa: "Przyjazd / zbiórka w miejscu docelowym",
+        adres: "",
+        ocena: 0,
+        liczbaOpinie: 0,
+        cenaZwiedzania: 0,
+        czasZwiedzania: 45,
+    },
+    {
+        googleId: "dAct_zakwaterowanie",
+        nazwa: "Zakwaterowanie / przydział pokoi",
+        adres: "",
+        ocena: 0,
+        liczbaOpinie: 0,
+        cenaZwiedzania: 0,
+        czasZwiedzania: 45,
+    },
+    {
+        googleId: "dAct_spotkanieOrganizacyjne",
+        nazwa: "Spotkanie organizacyjne / omówienie planu dnia",
+        adres: "",
+        ocena: 0,
+        liczbaOpinie: 0,
+        cenaZwiedzania: 0,
+        czasZwiedzania: 45,
+    },
+    {
+        googleId: "dAct_przerwaSniadaniowa",
+        nazwa: "Przerwa śniadaniowa",
+        adres: "",
+        ocena: 0,
+        liczbaOpinie: 0,
+        cenaZwiedzania: 0,
+        czasZwiedzania: 45,
+    },
+    {
+        googleId: "dAct_przerwaObiadowa",
+        nazwa: "Przerwa obiadowa",
+        adres: "",
+        ocena: 0,
+        liczbaOpinie: 0,
+        cenaZwiedzania: 0,
+        czasZwiedzania: 45,
+    },
+    {
+        googleId: "dAct_przerwaKawiarniana",
+        nazwa: "Przerwa kawiarniana / na napoje",
+        adres: "",
+        ocena: 0,
+        liczbaOpinie: 0,
+        cenaZwiedzania: 0,
+        czasZwiedzania: 45,
+    },
+    {
+        googleId: "dAct_spacerOkolica",
+        nazwa: "Spacer po okolicy (bez wstępów)",
+        adres: "",
+        ocena: 0,
+        liczbaOpinie: 0,
+        cenaZwiedzania: 0,
+        czasZwiedzania: 45,
+    },
+    {
+        googleId: "dAct_czasWolnyCentrum",
+        nazwa: "Czas wolny w centrum miasta",
+        adres: "",
+        ocena: 0,
+        liczbaOpinie: 0,
+        cenaZwiedzania: 0,
+        czasZwiedzania: 45,
+    },
+    {
+        googleId: "dAct_sesjaZdjec",
+        nazwa: "Czas na zdjęcia / pamiątki",
+        adres: "",
+        ocena: 0,
+        liczbaOpinie: 0,
+        cenaZwiedzania: 0,
+        czasZwiedzania: 45,
+    },
+    {
+        googleId: "dAct_przejscieMiedzyPunktami",
+        nazwa: "Przejście piesze między punktami programu",
+        adres: "",
+        ocena: 0,
+        liczbaOpinie: 0,
+        cenaZwiedzania: 0,
+        czasZwiedzania: 45,
+    },
+    {
+        googleId: "dAct_czasNaToalete",
+        nazwa: "Czas na toaletę / odświeżenie",
+        adres: "",
+        ocena: 0,
+        liczbaOpinie: 0,
+        cenaZwiedzania: 0,
+        czasZwiedzania: 45,
+    },
+    {
+        googleId: "dAct_integracjaGrupowa",
+        nazwa: "Integracja grupowa / gry bezpłatne",
+        adres: "",
+        ocena: 0,
+        liczbaOpinie: 0,
+        cenaZwiedzania: 0,
+        czasZwiedzania: 45,
+    },
+    {
+        googleId: "dAct_wieczornyOdpoczynek",
+        nazwa: "Wieczorny odpoczynek w hotelu",
+        adres: "",
+        ocena: 0,
+        liczbaOpinie: 0,
+        cenaZwiedzania: 0,
+        czasZwiedzania: 45,
+    },
+    {
+        googleId: "dAct_wykwaterowanie",
+        nazwa: "Wykwaterowanie / zdanie pokoi",
+        adres: "",
+        ocena: 0,
+        liczbaOpinie: 0,
+        cenaZwiedzania: 0,
+        czasZwiedzania: 45,
+    },
+    {
+        googleId: "dAct_podsumowanieWyjazdu",
+        nazwa: "Podsumowanie wyjazdu / informacja przed wyjazdem",
+        adres: "",
+        ocena: 0,
+        liczbaOpinie: 0,
+        cenaZwiedzania: 0,
+        czasZwiedzania: 45,
+    }
+];
+
 const namesTransportTab = ["Transport zbiorowy", "Wynajęty autokar", "Własny"]
 const namesHotelsTab = ["Ośrodki kolonijne", "Hotele 2/3 gwiazdkowe", "Hotele premium", "Własny"]
 const KonfiguratorMainMainbox = styled.div`
@@ -57,6 +195,20 @@ const KonfiguratorMainMainboxLeft = styled.div`
         border-right: none;
         border-left: 1px solid lightgray;
     }
+    .listBox {
+        width: 100%;
+        margin: 0 auto;
+        display: flex;
+        flex-direction: column;
+        gap: 5px;
+        align-items: center;
+        justify-content: flex-start;
+    }
+
+    .listBox--hidden {
+        display: none;
+    }
+
     .googleLogoDiv{
     margin-top: 5px;
         width: 90%;
@@ -602,12 +754,12 @@ export function timeToMinutes(timeString) {
     return hours * 60 + minutes;
 }
 export function toBookingDateFormat(dateInput) {
-  const date = (dateInput instanceof Date) ? dateInput : new Date(dateInput);
-  const y = date.getFullYear();
-  const m = String(date.getMonth() + 1).padStart(2, "0");
-  const d = String(date.getDate()).padStart(2, "0");
+    const date = (dateInput instanceof Date) ? dateInput : new Date(dateInput);
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, "0");
+    const d = String(date.getDate()).padStart(2, "0");
 
-  return `${y}-${m}-${d}`;
+    return `${y}-${m}-${d}`;
 }
 
 
@@ -918,7 +1070,13 @@ export const KonfiguratorMain = ({ dataPrzyjazduInit, dataWyjazduInit, standardH
             { id: "mainError", type, content }
         ]));
     }
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            addAlert("guidance", "");
+        }, 5); // 5 ms debounce
 
+        return () => clearTimeout(timer);
+    }, []);
     function addRouteAlert(dayIdx) {
         dayIdx != 0 && setAlertsTable(prev => {
             if (prev.some(alert => alert.id === "routeFromFull")) return prev;
@@ -978,7 +1136,9 @@ export const KonfiguratorMain = ({ dataPrzyjazduInit, dataWyjazduInit, standardH
             for (let actIdx = 0; actIdx < day.length - 1; actIdx++) {
                 let current = day[actIdx];
                 let next = day[actIdx + 1];
-
+                if (next?.googleId?.includes("dAct_")) {
+                    next.lokalizacja = current.lokalizacja;
+                }
                 const sameLocation =
                     current?.lokalizacja?.lat === next?.lokalizacja?.lat &&
                     current?.lokalizacja?.lng === next?.lokalizacja?.lng;
@@ -1349,8 +1509,10 @@ export const KonfiguratorMain = ({ dataPrzyjazduInit, dataWyjazduInit, standardH
     function addActivity(dayIndex, activity, botAuthor = false) {
         if (konfiguratorLoading) return;
         if (activity?.googleId?.includes("base")) return;
-
-        const needsAlert = !activity?.warianty?.length && !botAuthor;
+        if (!activity?.lokalizacja) {
+            activity.lokalizacja = activitiesSchedule[dayIndex][activitiesSchedule[dayIndex].length > 1 ? activitiesSchedule[dayIndex].length - 2 : activitiesSchedule[dayIndex].length - 1].lokalizacja
+        }
+        const needsAlert = !activity?.warianty?.length && !botAuthor && !activity?.googleId.includes("dAct_");
 
         if (!activity?.warianty?.length && activity?.stronaInternetowa) {
             console.log("Aktualizuje oferte dla ", activity.nazwa);
@@ -1378,7 +1540,6 @@ export const KonfiguratorMain = ({ dataPrzyjazduInit, dataWyjazduInit, standardH
                     ...activity,
                     czasZwiedzania: activity?.czasZwiedzania || 60,
                 };
-                console.log("TEST5", newActivity)
                 if (last?.googleId === "baseRouteFrom" || last?.googleId === "baseHotelIn") {
                     newDay.splice(newDay.length - 1, 0, newActivity);
                 } else {
@@ -1659,13 +1820,7 @@ export const KonfiguratorMain = ({ dataPrzyjazduInit, dataWyjazduInit, standardH
         const controller = new AbortController();
 
         const timer = setTimeout(async () => {
-            console.log("TEST1", activitiesSchedule,
-                liczbaUczestnikow,
-                liczbaOpiekunów,
-                routeSchedule,
-                wybranyHotel,
-                chosenTransportSchedule,
-                standardTransportu)
+
             try {
                 const { data } = await axios.post(
                     "http://localhost:5006/computePrice",
@@ -1680,7 +1835,6 @@ export const KonfiguratorMain = ({ dataPrzyjazduInit, dataWyjazduInit, standardH
                     },
                     { signal: controller.signal }
                 );
-                console.log("CENY", data.tripPrice, data.insurancePrice)
                 setTripPrice(data?.tripPrice ?? 0);
                 setInsurancePrice(data?.insurancePrice ?? 0);
             } catch (err) {
@@ -1825,7 +1979,7 @@ export const KonfiguratorMain = ({ dataPrzyjazduInit, dataWyjazduInit, standardH
                 console.log("✅ Wynik zapytania /findHotel:", response.data);
 
                 const winningHotel = Array.isArray(response.data.hotels)
-                    ? response.data.hotels[Math.min(response.data.hotels.length -1, 2)]
+                    ? response.data.hotels[Math.min(response.data.hotels.length - 1, 2)]
                     : response.data[0];
 
                 if (!winningHotel) {
@@ -2070,51 +2224,102 @@ export const KonfiguratorMain = ({ dataPrzyjazduInit, dataWyjazduInit, standardH
                         Biblioteka atrakcji
 
                     </div>
+                    <PanelBoxNav className="a">
 
+                        {[
+                            { id: 0, icon: "../icons/castle.svg", label: "Podstawowe" },
+                            { id: 1, icon: "../icons/park.svg", label: "Parki" },
+                        ].map(option => (
+                            <label
+                                key={option.id}
+                                className={radioChosen === option.id ? "panelBoxNavButton chosen" : "panelBoxNavButton"}
+                            >
+                                <input
+                                    type="radio"
+                                    name="navChoice"
+                                    value={option.id}
+                                    checked={radioChosen === option.id}
+                                    onChange={() => setRadioChosen(option.id)}
+                                    style={{ display: "none" }} // ukrywamy natywny wygląd radio
+                                />
+                                <img src={option.icon} width="25px" alt={option.label} />
+                            </label>
+                        ))}
+                    </PanelBoxNav>
                     <div className="mainboxLeftInput">
                         <img src="../icons/search-gray.svg" width={'20px'} />
-                        <input type="text" placeholder="Wyszukaj atrakcje..." value={attractionsSearching} onChange={(e) => setAttractionsSearching(e.target.value)} />
+                        <input type="text" placeholder="Wyszukaj aktywność..." value={attractionsSearching} onChange={(e) => setAttractionsSearching(e.target.value)} />
                     </div>
-                    <div className="mainboxLeftFilterButtons">
-                        <div className={filtersLeftOpened ? "mainboxLeftFilterButton opened" : "mainboxLeftFilterButton"}>
-                            <div className="mainboxLeftFilterHeader" onClick={() => setFiltersLeftOpened(!filtersLeftOpened)}>
-                                <img src="../icons/arrow-down.svg" height="15px" alt="arrow" /> Wybierz
+
+
+
+                    <div className={radioChosen === 0 ? "listBox" : "listBox listBox--hidden"}>
+                        <div className="mainboxLeftFilterButtons">
+                            <div className={filtersLeftOpened ? "mainboxLeftFilterButton opened" : "mainboxLeftFilterButton"}>
+                                <div className="mainboxLeftFilterHeader" onClick={() => setFiltersLeftOpened(!filtersLeftOpened)}>
+                                    <img src="../icons/arrow-down.svg" height="15px" alt="arrow" /> Wybierz
+                                </div>
+
+                                <div className="mainboxLeftFilterResults" onClick={(e) => e.stopPropagation()}>
+                                    <div className="mainboxLeftFilterResult">
+                                        <Checkbox2 /> Muzeum
+                                    </div>
+                                    <div className="mainboxLeftFilterResult">
+                                        <Checkbox2 /> Park
+                                    </div>
+                                    <div className="mainboxLeftFilterResult">
+                                        <Checkbox2 /> Zamek
+                                    </div>
+                                </div>
                             </div>
 
-                            <div className="mainboxLeftFilterResults" onClick={(e) => e.stopPropagation()}>
-                                <div className="mainboxLeftFilterResult">
-                                    <Checkbox2 /> Muzeum
-                                </div>
-                                <div className="mainboxLeftFilterResult">
-                                    <Checkbox2 /> Park
-                                </div>
-                                <div className="mainboxLeftFilterResult">
-                                    <Checkbox2 /> Zamek
-                                </div>
+                            <div className="mainboxLeftFilterButton">
+
                             </div>
                         </div>
-
-                        <div className="mainboxLeftFilterButton">
-
+                        <div className="googleLogoDiv">
+                            <img src="googlelogo.svg" />
                         </div>
+                        {atrakcje
+                            .filter(atrakcja =>
+                                atrakcja.nazwa.toLowerCase().includes(attractionsSearching.toLowerCase()) ||
+                                atrakcja.adres.toLowerCase().includes(attractionsSearching.toLowerCase())
+                            )
+                            .toSorted((a, b) => (b.liczbaOpinie * b.ocena || 0) - (a.liczbaOpinie * a.ocena || 0))
+                            .map((atrakcja, idx) => (
+                                <AttractionResultMediumComponent
+                                    key={`${atrakcja.googleId}${idx}`}
+                                    atrakcja={atrakcja}
+                                    wybranyDzien={wybranyDzien}
+                                    addActivity={addActivity}
+                                />
+                            ))}
                     </div>
-                    <div className="googleLogoDiv">
-                        <img src="googlelogo.svg" />
+                    <div className={radioChosen === 1 ? "listBox" : "listBox listBox--hidden"}>
+                        {basicActivities
+                            .filter(atrakcja => {
+                                const search = attractionsSearching.toLowerCase();
+                                const name = (atrakcja.nazwa || "").toLowerCase();
+                                const address = (atrakcja.adres || "").toLowerCase();
+                                return name.includes(search) || address.includes(search);
+                            })
+                            .toSorted((a, b) =>
+                                (a.nazwa || "").localeCompare(b.nazwa || "", "pl", { sensitivity: "base" })
+                            )
+                            .map((atrakcja, idx) => (
+                                <AttractionResultMediumComponent
+                                    key={`${atrakcja.googleId}${idx}`}
+                                    atrakcja={atrakcja}
+                                    wybranyDzien={wybranyDzien}
+                                    addActivity={addActivity}
+                                    baseVersion={true}
+                                />
+                            ))}
                     </div>
 
-                    <>
 
-                        {
-                            atrakcje
-                                .filter(atrakcja => atrakcja.nazwa.toLowerCase().includes(attractionsSearching.toLowerCase()) || atrakcja.adres.toLowerCase().includes(attractionsSearching.toLowerCase()))
-                                .toSorted((a, b) => (b.liczbaOpinie * b.ocena || 0) - (a.liczbaOpinie * a.ocena || 0))
-                                .map((atrakcja, idx) => (
-                                    <AttractionResultMediumComponent key={`${atrakcja.googleId}${idx}`} atrakcja={atrakcja} wybranyDzien={wybranyDzien} addActivity={addActivity} />
 
-                                ))
 
-                        }
-                    </>
                 </KonfiguratorMainMainboxLeft>
 
                 {/*
@@ -2140,7 +2345,7 @@ export const KonfiguratorMain = ({ dataPrzyjazduInit, dataWyjazduInit, standardH
                 </KonfiguratorMainMainboxRight>
                 <KonfiguratorMainMainboxLeft className="right">
 
-                    <ChatBox2 activitiesSchedule={activitiesSchedule} miejsceDocelowe={miejsceDocelowe} attractions={atrakcje} addActivity={addActivity} swapActivities={swapActivities} changeActivity={changeActivity} deleteActivity={deleteActivity} />
+                    <ChatBox2 activitiesSchedule={activitiesSchedule} basicActivities={basicActivities} miejsceDocelowe={miejsceDocelowe} attractions={atrakcje} addActivity={addActivity} swapActivities={swapActivities} changeActivity={changeActivity} deleteActivity={deleteActivity} />
                     <div className="mainboxLeftTitle">
                         Podsumowanie wyjazdu
                     </div>
@@ -2266,8 +2471,10 @@ export const KonfiguratorMain = ({ dataPrzyjazduInit, dataWyjazduInit, standardH
                 </KonfiguratorMainMainboxLeft>
 
             </KonfiguratorMainMainbox>
-            {alertsTable && alertsTable.length &&
+            {alertsTable && alertsTable.length ?
                 <AlertsBox key={alertsTable} alertsTable={alertsTable} deleteAlert={deleteAlert} />
+                :
+                null
             }
         </>
 

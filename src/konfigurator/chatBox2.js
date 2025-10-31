@@ -366,7 +366,7 @@ function parseArguments(command) {
     return [functionName, ...parsedArgs];
 }
 
-export const ChatBox2 = ({ activitiesSchedule, attractions, miejsceDocelowe, addActivity, deleteActivity, swapActivities, changeActivity }) => {
+export const ChatBox2 = ({ basicActivities, activitiesSchedule, attractions, miejsceDocelowe, addActivity, deleteActivity, swapActivities, changeActivity }) => {
     const [messages, setMessages] = useState([
         {
             id: '1',
@@ -446,6 +446,7 @@ export const ChatBox2 = ({ activitiesSchedule, attractions, miejsceDocelowe, add
                 activitiesSchedule: extractActivitiesSchedule(activitiesSchedule),
                 attractions: extractAttractions(attractions),
                 miejsceDocelowe,
+                basicActivities
             };
 
             const response = await axios.post("http://localhost:5006/chat-planner", payload);
@@ -472,9 +473,14 @@ export const ChatBox2 = ({ activitiesSchedule, attractions, miejsceDocelowe, add
                     if (cmdTab[0] === "addActivity") {
                         const dayIdx = cmdTab[1];
                         const baseAttr = cmdTab[2];
-
+                        let foundAttr;
                         // Znajdź atrakcję w bazie po ID (jeśli istnieje)
-                        const foundAttr = attractions.find(a => a.googleId === baseAttr.googleId);
+                        if (baseAttr.googleId.includes("dAct_")) {
+                            foundAttr = basicActivities.find(a => a.googleId === baseAttr.googleId);
+                        }
+                        else {
+                            foundAttr = attractions.find(a => a.googleId === baseAttr.googleId);
+                        }
 
                         let attrToAdd;
 
@@ -501,9 +507,15 @@ export const ChatBox2 = ({ activitiesSchedule, attractions, miejsceDocelowe, add
                     else if (cmdTab[0] === "changeActivity") {
                         const baseAttr = cmdTab[3];
 
-                        // Znajdź atrakcję w bazie po ID (jeśli istnieje)
-                        const foundAttr = attractions.find(a => a.googleId === baseAttr.googleId);
 
+                        // Znajdź atrakcję w bazie po ID (jeśli istnieje)
+                        let foundAttr;
+                        if (baseAttr.googleId.includes("dAct_")) {
+                            foundAttr = basicActivities.find(a => a.googleId === baseAttr.googleId);
+                        }
+                        else {
+                            foundAttr = attractions.find(a => a.googleId === baseAttr.googleId);
+                        }
                         let attrToAdd;
 
                         if (foundAttr) {
@@ -522,7 +534,7 @@ export const ChatBox2 = ({ activitiesSchedule, attractions, miejsceDocelowe, add
                         }
                         changeActivity(cmdTab[1], cmdTab[2], attrToAdd)
                     }
-                    else if(cmdTab[0] === "deleteActivity") {
+                    else if (cmdTab[0] === "deleteActivity") {
                         deleteActivity(cmdTab[1], cmdTab[2]);
 
                     }

@@ -32,7 +32,22 @@ const MainButton = styled.button`
   font-weight: 500;
 
   &.schedule{
-  
+    background: white;
+    border: 1px solid #e0e0e0;
+    box-shadow: none;
+    color: #707070;
+
+    &::before {
+      
+      background: #ddefff;
+      transition: opacity 0.3s ease;
+    }
+    &:hover{
+      background: #ddefff;
+      border: 1px solid #667eea;
+      box-shadow: none;
+      transform: translateY(0);
+    }
     @media screen and (max-width: 1000px){
       display: none;
     }
@@ -149,9 +164,6 @@ const VariantButton = ({ variants, placeholder = "Wybierz wariant", onSelect, se
   const [isOpen, setIsOpen] = useState(false);
   const [selectedVariant, setSelectedVariant] = useState(selectedVariantInit);
   const containerRef = useRef(null);
-  useEffect(() => {
-    source && console.log("TEST7", selectedVariantInit);
-  }, [])
 
   useEffect(() => {
     const handleClickOutside = (event) => {

@@ -29,6 +29,11 @@ import { AttractionsList } from './roots/attractionsListTest.js';
 import { AddActivityButton } from './roots/addnewactivity.js';
 import { AddActivityPanel } from './konfigurator/addActivityPanel.js';
 import WikipediaPhoto from './wikipediaPhoto.js';
+import { HomePage } from './homepage.js';
+import VideoHeroWithCard from './lglass_test.js';
+import LoginPage from './loginPage.js';
+import { FeaturesSection } from './brandTiles.js';
+import DestinationsSlider from './destinationsSlider.js';
 
 const teksty = [
   { tyt: "Połącz twój pomysł z naszym doświadczeniem", tekst: "Dzięki konfiguratorowi wycieczek WycieczkaZKlasą, zrealizuj swój pomysł na wyjazd, nie martwiąc się niczym poza pasjonującym programem wyjazdu!" },
@@ -37,19 +42,54 @@ const teksty = [
   { tyt: "Połącz twój pomysł z naszym doświadczeniem", tekst: "Dzięki konfiguratorowi wycieczek WycieczkaZKlasą, zrealizuj swój pomysł na wyjazd, nie martwiąc się niczym poza pasjonującym programem wyjazdu!" },
 
 ]
+const exampleTrips = [
+  {
+    id: 1,
+    title: "Poznań",
+    location: "Polska",
+    duration: "4 dni / 3 noce",
+    price: "700zł",
+    badge: "Oferta specjalna",
+    image: "../miasta/poznan.jpg",
+    author: "Jan Wiczyński"
+  },
+  {
+    id: 2,
+    title: "Poznań",
+    location: "Polska",
+    duration: "5 dni / 4 noce",
+    price: "820zł",
+    badge: "Bestseller",
+    image: "../miasta/poznan1.jpg"
+  },
+  {
+    id: 3,
+    title: "Kraków",
+    location: "Polska",
+    duration: "5 dni / 4 noce",
+    price: "820zł",
+    badge: "Bestseller",
+    image: "../miasta/krakow1.jpg"
+  }
+
+];
+
 const miasta = [{ nazwa: "Poznań", czas: "3" }, { nazwa: "Poznań", czas: "3" }, { nazwa: "Poznań", czas: "4" }, { nazwa: "Poznań", czas: "5" }, { nazwa: "Poznań", czas: "6" },];
 function App() {
   return (
     <>
       <div className="App">
         <MenuRadio />
-        {/*
-          
+        <HomePage trips={exampleTrips} />
+        <FeaturesSection/>
+        <DestinationsSlider/>
+        {/*     
+            <LoginPage/>
         <KreatorWyjazdu />
         <KonfiguratorWyjazdu />
         
         
-        */}
+        
         <KonfiguratorMain miejsceDoceloweInit={{
           idGoogle: "ChIJvZz0W9c0JkcR8E13wKgL4Ks",
           location: {
@@ -57,7 +97,7 @@ function App() {
             lng: 16.9252
           }
         }} />
-        
+        */}
 
         {/* 
             <KreatorWyjazdu />
