@@ -16,7 +16,8 @@ import {
 const FeaturesStyles = () => (
   <style>{`
     .features-section {
-      width: 100%;
+      width: 90%;
+      max-width: 1600px;
       min-height: 100vh;
       background: #ffffff;
       padding: 5rem 2rem;
@@ -24,27 +25,30 @@ const FeaturesStyles = () => (
     }
 
     .features-container {
-      max-width: 1400px;
       width: 100%;
       margin: 0 auto;
     }
 
     .features-header {
       text-align: center;
-      margin-bottom: 4rem;
+      margin-bottom: 10px;
     }
 
     .features-badge {
-      display: inline-flex;
+      width: 220px;
       align-items: center;
       gap: 0.5rem;
-      padding: 0.5rem 1.25rem;
       background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
       border: 1px solid #bbf7d0;
-      border-radius: 2rem;
       color: #047857;
-      font-size: 0.875rem;
+      font-size: 14px;
       font-weight: 600;
+      height: 30px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 10px;
+
     }
     
     .features-badge svg {
@@ -59,6 +63,7 @@ const FeaturesStyles = () => (
       margin-bottom: 1px;
       letter-spacing: -0.02em;
       text-align: left;
+      margin-top: 0;
     }
     
     @media (max-width: 768px) {

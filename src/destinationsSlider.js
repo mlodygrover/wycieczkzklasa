@@ -73,43 +73,37 @@ const destinations = [
 const GlobalStyles = () => (
     <style>{`
     .section {
-      box-sizing: border-box;
       width: 90%;
+      max-width: 1600px;
       min-height: 100vh;
-      background: linear-gradient(180deg, #f9fafb 0%, #ffffff 100%);
+      background: #ffffff;
       position: relative;
-      overflow: hidden;
-      display: flex;
-      align-items: center;
     }
 
     .container {
-      max-width: 1600px;
-      width: 100%;
+       width: 100%;
       margin: 0 auto;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: flex-start;
     }
 
     .header {
-      text-align: center;
-      margin-bottom: 4rem;
+    text-align: center;
+      margin-bottom: 10px;
     }
 
     .badge {
-      display: inline-flex;
+      width: 220px;
       align-items: center;
       gap: 0.5rem;
-      padding: 0.5rem 1.25rem;
       background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
       border: 1px solid #bbf7d0;
-      border-radius: 2rem;
       color: #047857;
-      font-size: 0.875rem;
+      font-size: 14px;
       font-weight: 600;
-      margin-bottom: 1.5rem;
+      height: 30px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 10px;
     }
     
     .badge svg {
@@ -118,11 +112,13 @@ const GlobalStyles = () => (
     }
 
     .title {
-      font-size: 3.5rem;
+       font-size: 3.5rem;
       font-weight: 800;
       color: #0a0a0a;
-      margin-bottom: 1rem;
+      margin-bottom: 1px;
       letter-spacing: -0.02em;
+      text-align: left;
+      margin-top: 0;
     }
     
     @media (max-width: 768px) {
@@ -134,8 +130,8 @@ const GlobalStyles = () => (
     .subtitle {
       font-size: 1.25rem;
       color: #6b7280;
-      max-width: 700px;
       margin: 0 auto;
+      text-align: left;
     }
     
     .slider-area {
