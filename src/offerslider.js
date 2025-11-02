@@ -280,7 +280,7 @@ const NavigationContainer = styled.div`
   align-items: center;
   gap: 1rem;
   z-index: 10;
-  width: 250px;
+  min-width: 250px;
   justify-content: space-between;
 `;
 

@@ -74,10 +74,9 @@ const GlobalStyles = () => (
     <style>{`
     .section {
       box-sizing: border-box;
-      width: 100%;
+      width: 90%;
       min-height: 100vh;
       background: linear-gradient(180deg, #f9fafb 0%, #ffffff 100%);
-      padding: 5rem 0;
       position: relative;
       overflow: hidden;
       display: flex;

@@ -34,6 +34,7 @@ import VideoHeroWithCard from './lglass_test.js';
 import LoginPage from './loginPage.js';
 import { FeaturesSection } from './brandTiles.js';
 import DestinationsSlider from './destinationsSlider.js';
+import { TeacherOfferBanner } from './teacherBanner.js';
 
 const teksty = [
   { tyt: "Połącz twój pomysł z naszym doświadczeniem", tekst: "Dzięki konfiguratorowi wycieczek WycieczkaZKlasą, zrealizuj swój pomysł na wyjazd, nie martwiąc się niczym poza pasjonującym programem wyjazdu!" },
@@ -51,6 +52,36 @@ const exampleTrips = [
     price: "700zł",
     badge: "Oferta specjalna",
     image: "../miasta/poznan.jpg",
+    author: "Jan Wiczyński"
+  },
+  {
+    id: 3,
+    title: "Poznań",
+    location: "Polska",
+    duration: "4 dni / 3 noce",
+    price: "700zł",
+    badge: "Oferta specjalna",
+    image: "../miasta/poznan2.jpg",
+    author: "Jan Wiczyński"
+  },
+  {
+    id: 4,
+    title: "Poznań",
+    location: "Polska",
+    duration: "4 dni / 3 noce",
+    price: "700zł",
+    badge: "Oferta specjalna",
+    image: "../miasta/poznan3.jpg",
+    author: "Jan Wiczyński"
+  },
+  {
+    id: 5,
+    title: "Poznań",
+    location: "Polska",
+    duration: "4 dni / 3 noce",
+    price: "700zł",
+    badge: "Oferta specjalna",
+    image: "../miasta/poznan3.jpg",
     author: "Jan Wiczyński"
   },
   {
@@ -75,28 +106,31 @@ const exampleTrips = [
 ];
 
 const miasta = [{ nazwa: "Poznań", czas: "3" }, { nazwa: "Poznań", czas: "3" }, { nazwa: "Poznań", czas: "4" }, { nazwa: "Poznań", czas: "5" }, { nazwa: "Poznań", czas: "6" },];
+
 function App() {
   return (
     <>
       <div className="App">
-        <MenuRadio />
         <HomePage trips={exampleTrips} />
-        <FeaturesSection/>
-        <DestinationsSlider/>
-        {/*     
-            <LoginPage/>
-        <KreatorWyjazdu />
-        <KonfiguratorWyjazdu />
-        
-        
-        
-        <KonfiguratorMain miejsceDoceloweInit={{
+        <MenuRadio />
+        <FeaturesSection />
+        <DestinationsSlider />
+        <TeacherOfferBanner/>
+
+        {/* 
+       <KonfiguratorMain miejsceDoceloweInit={{
           idGoogle: "ChIJvZz0W9c0JkcR8E13wKgL4Ks",
           location: {
             lat: 52.4064,
             lng: 16.9252
           }
         }} />
+            
+        <KreatorWyjazdu />
+        <LoginPage/>
+        
+        <KonfiguratorWyjazdu />
+        
         */}
 
         {/* 
