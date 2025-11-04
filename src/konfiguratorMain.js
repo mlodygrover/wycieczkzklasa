@@ -1555,7 +1555,7 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
 
     useEffect(() => {
         validateSchedule()
-        console.log("TEST1", activitiesSchedule, timeSchedule, routeSchedule, chosenTransportSchedule)
+        //console.log("TEST1", activitiesSchedule, timeSchedule, routeSchedule, chosenTransportSchedule)
     }, [activitiesSchedule, timeSchedule])
 
 
@@ -2182,10 +2182,6 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
     const [chosenFilters, setChosenFilters] = useState([])
     return (
         <>
-
-            <TopKreatorSlider />
-
-
             <KonfiguratorMainSettings ref={settingsRef} className={settingsOpened ? "opened" : "closed"}>
                 <div className="iconEditBox" onClick={() => setSettingsOpened(!settingsOpened)}>
                     <img src="../icons/filter.svg" height={'60%'} />

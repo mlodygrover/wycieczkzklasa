@@ -11,6 +11,9 @@ const BarWrap = styled(motion.header)`
   z-index: 1100;
   width: 100%;
   padding: 20px 0;
+  @media screen and (min-width: 1000px){
+    display: none;
+  }
 `;
 
 /* ===== Width container ===== */
@@ -93,7 +96,8 @@ const MobileToggle = styled(motion.button)`
   svg {
     width: 22px;
     height: 22px;
-    color: #ffffff;                 /* base for difference blend */
+    color: #00000076;                 /* base for difference blend */
+    text-shadow: 0 0 10px red;
     mix-blend-mode: difference;     /* key: invert vs background dynamically */
     pointer-events: none;
   }
@@ -315,6 +319,7 @@ export function LiquidMenuBar() {
                         }}
                         transition={{ duration: 0.2 }}
                     >
+                        
                         {/* < 1000 px: zamiast kart pokazujemy tylko przycisk */}
                         <MobileToggle
                             onClick={() => setMobileOpen(true)}

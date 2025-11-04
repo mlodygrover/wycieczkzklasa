@@ -1,6 +1,8 @@
 import logo from './logo.svg';
 import './App.css';
 import React from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
+
 import styled from 'styled-components';
 import { Slider, CitiesList, SearchInput, MenuRadio, Footer, RadioStars, WyjazdFormularz } from './components';
 import { CityResult } from './roots/cityresult';
@@ -37,6 +39,8 @@ import DestinationsSlider from './destinationsSlider.js';
 import { TeacherOfferBanner } from './teacherBanner.js';
 import { LiquidMenuBar } from './luquidMenuBar.js';
 import PageFooter from './pageFooter.js';
+import { TravelMenuGlass } from './travelMenuGlass.js';
+import { TravelMenuUnified } from './unifiedMenu.js';
 
 const teksty = [
   { tyt: "Połącz twój pomysł z naszym doświadczeniem", tekst: "Dzięki konfiguratorowi wycieczek WycieczkaZKlasą, zrealizuj swój pomysł na wyjazd, nie martwiąc się niczym poza pasjonującym programem wyjazdu!" },
@@ -108,25 +112,63 @@ const exampleTrips = [
 ];
 
 const miasta = [{ nazwa: "Poznań", czas: "3" }, { nazwa: "Poznań", czas: "3" }, { nazwa: "Poznań", czas: "4" }, { nazwa: "Poznań", czas: "5" }, { nazwa: "Poznań", czas: "6" },];
+// A small wrapper that can read the route location:
+function Menus() {
+  const location = useLocation();
+  // treat only the exact "/" as glass; everything else is white
+  const isHome = location.pathname === '/' || location.pathname === '';
+  const variant = isHome ? 'glass' : 'white';
 
+  return (
+    <>
+      <LiquidMenuBar />
+      <TravelMenuUnified variant={variant} isLoggedIn={true} />
+    </>
+  );
+}
 function App() {
   return (
     <>
       <div className="App">
+
+        <Router>
+          {/* Global/top elements present on all pages */}
+          <Menus />
+
+          {/* Page content controlled by routes */}
+          <Routes>
+            {/* Home page at "/" */}
+            <Route
+              path="/"
+              element={<HomePage trips={exampleTrips} />}
+            />
+
+            {/* Configurator at "/konfigurator" */}
+            <Route
+              path="/konfigurator"
+              element={
+                <KonfiguratorMain
+                  miejsceDoceloweInit={{
+                    idGoogle: "ChIJvZz0W9c0JkcR8E13wKgL4Ks",
+                    location: { lat: 52.4064, lng: 16.9252 }
+                  }}
+                />
+              }
+            />
+
+            {/* Optional: redirect unknown routes to home */}
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+
+          {/* Global footer */}
+          <PageFooter />
+        </Router>
+
+
+        {/*  
+        <TravelMenuGlass/>
         
         
-        <KonfiguratorMain miejsceDoceloweInit={{
-          idGoogle: "ChIJvZz0W9c0JkcR8E13wKgL4Ks",
-          location: {
-            lat: 52.4064,
-            lng: 16.9252
-          }
-        }} />
-        {/* 
-        <LiquidMenuBar/>
-           <HomePage trips={exampleTrips} />
-        
-        <PageFooter/>
 
        
             
