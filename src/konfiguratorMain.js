@@ -23,6 +23,7 @@ import { AlertsBox } from "./konfigurator/alertsBox";
 import { ChatBox } from "./konfigurator/chatBox";
 import { ChatBox2 } from "./konfigurator/chatBox2";
 import { CostSummary } from "./konfigurator/costSummary";
+import { time } from "framer-motion";
 
 const testResults = [
     { nazwa: "Poznań", region: "Wielkopolska", kraj: "Polska" },
@@ -763,7 +764,7 @@ export function toBookingDateFormat(dateInput) {
 }
 
 
-export const KonfiguratorMain = ({ dataPrzyjazduInit, dataWyjazduInit, standardHoteluInit, standardTransportuInit, miejsceDoceloweInit, miejsceStartoweInit, liczbaUczestnikowInit, liczbaOpiekunówInit, pokojeOpiekunowieInit }) => {
+export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportScheduleInit, dataPrzyjazduInit, dataWyjazduInit, standardHoteluInit, standardTransportuInit, miejsceDoceloweInit, miejsceStartoweInit, liczbaUczestnikowInit, liczbaOpiekunówInit, pokojeOpiekunowieInit }) => {
 
     //dane poczatkowe
     const [dataPrzyjazdu, setDataPrzyjazdu] = useState(() => {
@@ -977,23 +978,101 @@ export const KonfiguratorMain = ({ dataPrzyjazduInit, dataWyjazduInit, standardH
 
 
     //szukanie hotelu
-    const [wybranyHotel, setWybranyHotel] = useState({ stars: 3, nazwa: "Ibis Budget", adres: "Koszalińska 45", checkIn: '14:00', checkOut: '11:00' })
+    const [wybranyHotel, setWybranyHotel] = useState({ stars: 3, nazwa: "Ibis Budget", adres: "Koszalińska 45", checkIn: '14:00', checkOut: '11:00', cena: 100 })
 
 
     //planWyjazdu
-    const [preActivitiesSchedule, setPreActivitiesSchedule] = useState([])
-    const [activitiesSchedule, setActivitiesSchedule] = useState([])
-    const [preRouteSchedule, setPreRouteSchedule] = useState([])
     const [routeSchedule, setRouteSchedule] = useState([])
-    const [preTimeSchedule, setPreTimeSchedule] = useState([])
     const [timeSchedule, setTimeSchedule] = useState([])
-    const [preChosenTransportSchedule, setPreChosenTransportSchedule] = useState([])
-    const [chosenTransportSchedule, setChosenTransportSchedule] = useState([])
+    const [activitiesSchedule, setActivitiesSchedule] = useState(() => {
+        if (activitiesScheduleInit != null) return activitiesScheduleInit;
+        try {
+            const raw = localStorage.getItem("activitiesSchedule");
+            return raw ? JSON.parse(raw) : [];
+        } catch {
+            return [];
+        }
+    });
+
+    const [chosenTransportSchedule, setChosenTransportSchedule] = useState(() => {
+        if (chosenTransportScheduleInit != null) return chosenTransportScheduleInit;
+        try {
+            const raw = localStorage.getItem("chosenTransport");
+            return raw ? JSON.parse(raw) : [];
+        } catch {
+            return [];
+        }
+    });
+    const [startHours, setStartHours] = useState(() => {
+        try {
+            const raw = localStorage.getItem("startHours");
+            const parsed = raw ? JSON.parse(raw) : null;
+            // jeśli w storage jest poprawna tablica liczb, przyjmij ją
+            if (Array.isArray(parsed) && parsed.every(v => Number.isFinite(v))) {
+                return parsed;
+            }
+        } catch { }
+        // fallback: 480 dla każdego dnia (zależnie od istniejącego activitiesSchedule)
+        return Array.from({ length: (Array.isArray(activitiesSchedule) ? activitiesSchedule.length : 0) }, () => 480);
+    });
+
+
+    /*
+    
+        useState(() =>
+        (activitiesSchedule ?? []).map(() => [])
+    
+    );
+    */
+    useEffect(() => {
+        // Guard: browser only
+        if (!chosenTransportSchedule.length) return;
+
+        // Shape checks
+        const isValid =
+            Array.isArray(activitiesSchedule) &&
+            Array.isArray(chosenTransportSchedule) &&
+            activitiesSchedule.length === chosenTransportSchedule.length &&
+            activitiesSchedule.every((dayActs, i) =>
+                Array.isArray(dayActs) &&
+                Array.isArray(chosenTransportSchedule[i]) &&
+                // for N activities in a day there are max(N-1, 0) routes
+                chosenTransportSchedule[i].length === Math.max(0, dayActs.length - 1)
+            );
+
+        if (!isValid) return;
+
+        // Persist both only when valid
+        try {
+            localStorage.setItem(
+                "activitiesSchedule",
+                JSON.stringify(activitiesSchedule)
+            );
+            localStorage.setItem(
+                "chosenTransport",
+                JSON.stringify(chosenTransportSchedule)
+            );
+        } catch (err) {
+            // optional: send to your logger
+            console.warn("localStorage write failed:", err);
+        }
+    }, [activitiesSchedule, chosenTransportSchedule]);
+    useEffect(() => {
+        // zapisuj tylko, gdy długości się zgadzają
+        if (
+            Array.isArray(activitiesSchedule) &&
+            Array.isArray(startHours) &&
+            activitiesSchedule.length === startHours.length
+        ) {
+            try {
+                localStorage.setItem("startHours", JSON.stringify(startHours));
+            } catch (err) {
+                console.warn("localStorage write failed (startHours):", err);
+            }
+        }
+    }, [activitiesSchedule, startHours]);
 
     const [liczbaDni, setLiczbaDni] = useState(0)
-    const [startHours, setStartHours] = useState(
-        Array.from({ length: liczbaDni }, () => 480)
-    );
     const [wybranyDzien, setWybranyDzien] = useState(0)
     const [konfiguratorLoading, setKonfiguratorLoading] = useState(false);
     const [lastDaySwap, setLastDaySwap] = useState(-1)
@@ -1126,8 +1205,8 @@ export const KonfiguratorMain = ({ dataPrzyjazduInit, dataWyjazduInit, standardH
         // ⏱️ odblokowanie po 1 sekundzie
 
         const activitiesScheduleLocal = structuredClone(activitiesScheduleProps)
-        const tabRoutesTmp = Array.from({ length: liczbaDni }, () => []);
-        const tabTimeScheduleTmp = Array.from({ length: liczbaDni }, (_, i) => [startHours[i]]);
+        const tabRoutesTmp = Array.from({ length: activitiesSchedule.length }, () => []);
+        const tabTimeScheduleTmp = Array.from({ length: activitiesSchedule.length }, (_, i) => [startHours[i] || 480]);
 
         // 🔹 Pętla po dniach
         for (let dayIdx = 0; dayIdx < activitiesScheduleLocal.length; dayIdx++) {
@@ -1476,7 +1555,7 @@ export const KonfiguratorMain = ({ dataPrzyjazduInit, dataWyjazduInit, standardH
 
     useEffect(() => {
         validateSchedule()
-
+        console.log("TEST1", activitiesSchedule, timeSchedule, routeSchedule, chosenTransportSchedule)
     }, [activitiesSchedule, timeSchedule])
 
 

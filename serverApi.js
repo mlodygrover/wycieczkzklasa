@@ -21,16 +21,30 @@ const PORT = 5006;
 app.use(cors());
 app.use(express.json());
 
-function computeTransitCost(transitRoute) {
-    if (!Array.isArray(transitRoute) || transitRoute.length === 0) return 0;
-    let localSum = 0;
+function computeTransitCost(transitRoute, czas = 0) {
+    const CAP = 150;     // maksymalna opłata
+    const UNIT = 4;      // jednostka taryfowa (np. co 4 min)
+
+    const costFromDuration = (minutes) => {
+        const m = Math.max(0, Number(minutes) || 0);
+        if (m === 0) return 0;
+        return Math.min(Math.ceil(m / UNIT), CAP);
+    };
+
+    // Brak szczegółów trasy – licz z całkowitego czasu przejazdu
+    if (!Array.isArray(transitRoute) || transitRoute.length === 0) {
+        return costFromDuration(czas);
+    }
+
+    // Sumuj po segmentach TRANSIT
+    let total = 0;
     for (const seg of transitRoute) {
         if (seg?.type === 'TRANSIT') {
             const dur = Number(seg.durationMinutes) || 0;
-            localSum += dur > 45 ? Math.min(Math.ceil(dur / 4), 150) : 4 ; // przykład taryfy
+            total += dur > 45 ? costFromDuration(dur) : 4; // minimalna opłata dla krótkich odcinków
         }
     }
-    return localSum;
+    return total;
 }
 
 async function computePrice({
@@ -42,7 +56,7 @@ async function computePrice({
     standardTransportu,
     chosenTransportSchedule
 }) {
-    if(liczbaUczestnikow ==0)return 0;
+    if (liczbaUczestnikow == 0) return 0;
     // 1) suma aktywności
     let sumaAktywnosci = 0;
     for (let i = 0; i < activitiesSchedule.length; i++) {
@@ -58,7 +72,7 @@ async function computePrice({
 
     // 3) wariant “tylko hotel + aktywności” (np. standardTransportu == 2)
     if (standardTransportu === 2) {
-        return  aktywnosciPerUczestnik + perPerson(hotelPrice);
+        return aktywnosciPerUczestnik + perPerson(hotelPrice);
     }
 
     // 4) przejazdy
@@ -66,7 +80,7 @@ async function computePrice({
     const dni = Array.isArray(activitiesSchedule) ? activitiesSchedule.length : 0;
     // autokar: stawka dzienna × liczba dni
     if (standardTransportu === 1) {
-        
+
         sumaPrzejazdow += dni * 2500 / (liczbaUczestnikow); // przykładowa stawka
     }
 
@@ -77,22 +91,23 @@ async function computePrice({
             for (let j = 0; j < (row?.length || 0); j++) {
                 if (row[j] === 1) {
                     const tr = routeSchedule[i]?.[j]?.transitRoute;
-                    sumaPrzejazdow += computeTransitCost(tr);
+                    const czas = routeSchedule[i]?.[j]?.czasy[2];
+                    sumaPrzejazdow += computeTransitCost(tr, czas);
                 }
-                else if(standardTransportu === 0 && row[j] === 2){
+                else if (standardTransportu === 0 && row[j] === 2) {
                     sumaPrzejazdow += Math.ceil((250 * routeSchedule[i][j]?.czasy[2] / 60) / liczbaUczestnikow)
-                    console.log("TEST2",  Math.ceil((250 * routeSchedule[i][j]?.czasy[2] / 60) / liczbaUczestnikow), (250 * routeSchedule[i][j]?.czasy[2] / 60))
+                    console.log("TEST2", Math.ceil((250 * routeSchedule[i][j]?.czasy[2] / 60) / liczbaUczestnikow), (250 * routeSchedule[i][j]?.czasy[2] / 60))
                 }
             }
         }
     }
-    
+
     let przejazdyPerUczestnik = Math.ceil(sumaPrzejazdow * (liczbaOpiekunow + liczbaUczestnikow) / (liczbaUczestnikow))
-    console.log("Podzial ceny", sumaAktywnosci, aktywnosciPerUczestnik, hotelPrice, perPerson(hotelPrice), sumaPrzejazdow, przejazdyPerUczestnik, )
+    // console.log("Podzial ceny", sumaAktywnosci, aktywnosciPerUczestnik, hotelPrice, perPerson(hotelPrice), sumaPrzejazdow, przejazdyPerUczestnik, )
     const nettoResult = aktywnosciPerUczestnik + przejazdyPerUczestnik + perPerson(hotelPrice);
-    const bruttoResult = Math.ceil(Math.max(50 + (dni - 1) * 35, nettoResult*1/10)) * 123 / 100 + nettoResult;
+    const bruttoResult = Math.ceil(Math.max(50 + (dni - 1) * 35, nettoResult * 1 / 10)) * 123 / 100 + nettoResult;
     // 5) wynik per osoba
-    return bruttoResult 
+    return bruttoResult
 }
 
 
@@ -800,7 +815,7 @@ async function getTransitRoute(fromLat, fromLng, toLat, toLng) {
 
         // ✅ Ograniczenie szybkości zapytań dzięki kolejce
         const { data } = await googleQueue.add(() => axios.get(url));
-
+        console.log("Directions status:", data?.status, data?.error_message);
         if (!data.routes?.length) {
             console.warn("⚠️ Brak wyników Google Directions API dla transit.");
             return null;
@@ -1519,12 +1534,18 @@ app.get("/routeSummary", async (req, res) => {
 
         // 2. Jeśli nie istnieje lub przeterminowana → pobierz nowe dane
         console.log("🔄 Pobieram nowe dane tras...");
-        const [driving, walking, transit] = await Promise.all([
-            getOSRMRoute("driving", fromLat, fromLng, toLat, toLng),
-            getOSRMRoute("walking", fromLat, fromLng, toLat, toLng),
-            getTransitRoute(fromLat, fromLng, toLat, toLng),
-        ]);
+        const drivingPromise = getOSRMRoute("driving", fromLat, fromLng, toLat, toLng);
+        const walkingPromise = getOSRMRoute("walking", fromLat, fromLng, toLat, toLng);
 
+        const transitPromise = getTransitRoute(fromLat, fromLng, toLat, toLng)
+            .catch(() => null)                       // w razie błędu traktuj jak brak
+            .then(res => res ? res : getOSRMRoute("driving", fromLat, fromLng, toLat, toLng));
+
+        const [driving, walking, transit] = await Promise.all([
+            drivingPromise,
+            walkingPromise,
+            transitPromise,
+        ]);
         // 3. Zapisz lub zaktualizuj wpis w bazie
         const newRoute = {
             fromLat: parseFloat(fromLat),
@@ -1852,7 +1873,7 @@ app.get("/findHotel", async (req, res) => {
         let sortedHotels = scoredHotels
             .filter(h => h.score !== null)
             .sort((a, b) => b.score - a.score);
-        
+
 
         res.json({
             success: true,

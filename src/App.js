@@ -114,20 +114,21 @@ function App() {
     <>
       <div className="App">
         
-        <HomePage trips={exampleTrips} />
-        <LiquidMenuBar/>
-        <PageFooter/>
-        {/* 
         
-
-
-       <KonfiguratorMain miejsceDoceloweInit={{
+        <KonfiguratorMain miejsceDoceloweInit={{
           idGoogle: "ChIJvZz0W9c0JkcR8E13wKgL4Ks",
           location: {
             lat: 52.4064,
             lng: 16.9252
           }
         }} />
+        {/* 
+        <LiquidMenuBar/>
+           <HomePage trips={exampleTrips} />
+        
+        <PageFooter/>
+
+       
             
         <KreatorWyjazdu />
         <LoginPage/>
