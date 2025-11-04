@@ -35,6 +35,8 @@ import LoginPage from './loginPage.js';
 import { FeaturesSection } from './brandTiles.js';
 import DestinationsSlider from './destinationsSlider.js';
 import { TeacherOfferBanner } from './teacherBanner.js';
+import { LiquidMenuBar } from './luquidMenuBar.js';
+import PageFooter from './pageFooter.js';
 
 const teksty = [
   { tyt: "Połącz twój pomysł z naszym doświadczeniem", tekst: "Dzięki konfiguratorowi wycieczek WycieczkaZKlasą, zrealizuj swój pomysł na wyjazd, nie martwiąc się niczym poza pasjonującym programem wyjazdu!" },
@@ -111,13 +113,14 @@ function App() {
   return (
     <>
       <div className="App">
+        
         <HomePage trips={exampleTrips} />
-        <MenuRadio />
-        <FeaturesSection />
-        <DestinationsSlider />
-        <TeacherOfferBanner/>
-
+        <LiquidMenuBar/>
+        <PageFooter/>
         {/* 
+        
+
+
        <KonfiguratorMain miejsceDoceloweInit={{
           idGoogle: "ChIJvZz0W9c0JkcR8E13wKgL4Ks",
           location: {

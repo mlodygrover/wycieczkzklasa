@@ -8,8 +8,12 @@ import { ChevronLeft, ChevronRight, MapPin, Calendar, User } from 'lucide-react'
 const SliderContainer = styled.div`
   position: relative;
   width: 100%;
+  min-height: 700px;
   height: 100vh;
   overflow: hidden;
+  @media (max-width: 640px) {
+  height: 90vh;
+  }
 `;
 
 const BackgroundImage = styled(motion.div)`
@@ -28,7 +32,7 @@ const BackgroundImage = styled(motion.div)`
   transition: none; /* Animacja 'background-position' nie będzie już działać */
 
   @media (max-width: 640px) {
-    filter: blur(8px) brightness(0.7);
+    filter: brightness(0.7);
   }
 `;
 
@@ -116,7 +120,7 @@ const MainSlideContainer = styled(motion.div)`
   overflow: hidden;
   cursor: grab;
   perspective: 1000px;
-
+  touch-action: none;
   &:active {
     cursor: grabbing;
   }
@@ -136,6 +140,7 @@ const SlideBackground = styled.div`
   background-image: ${props => `url(${props.$image})`};
   background-size: cover;
   background-position: center;
+  touch-action: none;
 `;
 
 const GlassOverlay = styled.div`
@@ -146,6 +151,7 @@ const GlassOverlay = styled.div`
   -webkit-backdrop-filter: blur(40px) saturate(180%);
   border: 1px solid rgba(255, 255, 255, 0.2);
   /* OPTYMALIZACJA: Wyłączamy najcięższy efekt na mobilkach */
+  touch-action: none;
   @media (max-width: 640px) {
     backdrop-filter: none;
     -webkit-backdrop-filter: none;
@@ -158,6 +164,7 @@ const GlassGradient = styled.div`
   position: absolute;
   inset: 0;
   background: linear-gradient(to bottom right, rgba(255, 255, 255, 0.2), rgba(255, 255, 255, 0.05), transparent);
+  touch-action: none;
 `;
 
 // --- POPRAWKA LAYOUTU TREŚCI ---
@@ -168,6 +175,7 @@ const SlideContent = styled.div`
   flex-direction: column;
   padding: 2rem;
   box-sizing: border-box;
+  touch-action: none;
   @media (max-width: 640px) {
     padding: 1.5rem;
   }
@@ -177,7 +185,7 @@ const SlideInfo = styled(motion.div)`
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
-  
+  touch-action: none;
   /* DODANE: Te 4 linie to sedno poprawki */
   flex-grow: 1; /* Wypełnij dostępną przestrzeń nad stopką */
   justify-content: flex-end; /* Wypchnij treść do dołu (do stopki) */
@@ -237,7 +245,7 @@ const SlideFooter = styled(motion.div)`
   margin-top: 1rem;
   padding-top: 1rem;
   border-top: 1px solid rgba(255, 255, 255, 0.2);
-  
+  gap: 10px;
   /* DODANE: Zapobiega kurczeniu się stopki */
   flex-shrink: 0;
 `;

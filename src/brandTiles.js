@@ -12,16 +12,14 @@ import {
   Zap
 } from 'lucide-react';
 
-// Wszystkie style w tym komponencie mają prefiks `features-`
 const FeaturesStyles = () => (
   <style>{`
     .features-section {
       width: 90%;
       max-width: 1600px;
       min-height: 100vh;
-      background: #ffffff;
-      padding: 5rem 2rem;
       position: relative;
+      margin-top: 20px;
     }
 
     .features-container {
@@ -48,7 +46,6 @@ const FeaturesStyles = () => (
       align-items: center;
       justify-content: center;
       border-radius: 10px;
-
     }
     
     .features-badge svg {
@@ -103,7 +100,6 @@ const FeaturesStyles = () => (
       }
     }
 
-    /* Element siatki */
     .features-grid-item {
       grid-column: span 1;
       grid-row: span 1;
@@ -125,9 +121,12 @@ const FeaturesStyles = () => (
         grid-column: span 1;
         grid-row: span 1;
       }
+      /* HIDE GREEN STAT CARDS ON MOBILE */
+      .features-grid-item--green {
+        display: none !important;
+      }
     }
 
-    /* Karta ze zdjęciem */
     .features-image-card {
       width: 100%;
       height: 100%;
@@ -169,7 +168,6 @@ const FeaturesStyles = () => (
       opacity: 0.95;
     }
 
-    /* Biała karta (kroki) */
     .features-white-card {
       width: 100%;
       height: 100%;
@@ -201,10 +199,6 @@ const FeaturesStyles = () => (
       transition: transform 0.4s ease;
     }
 
-    .features-white-card:hover::before {
-      transform: scaleX(1);
-    }
-
     .features-step-number {
       width: 48px;
       height: 48px;
@@ -233,7 +227,6 @@ const FeaturesStyles = () => (
       line-height: 1.6;
     }
 
-    /* Zielona karta statystyczna */
     .features-green-card {
       width: 100%;
       height: 100%;
@@ -264,10 +257,6 @@ const FeaturesStyles = () => (
       background: radial-gradient(circle, rgba(255, 255, 255, 0.15) 0%, transparent 60%);
       opacity: 0;
       transition: opacity 0.4s ease;
-    }
-
-    .features-green-card:hover::before {
-      opacity: 1;
     }
 
     .features-green-card-number {
@@ -338,7 +327,7 @@ export function FeaturesSection() {
               <div className="features-step-number">1</div>
               <h3 className="features-white-card-title">Wybierz cel</h3>
               <p className="features-white-card-description">
-                Przeglądaj tysiące destynacji z całego świata
+                Wybierz dowolne miejsce z mapy
               </p>
             </div>
           </div>
@@ -355,7 +344,7 @@ export function FeaturesSection() {
             </div>
           </div>
           
-          <div className="features-grid-item">
+          <div className="features-grid-item features-grid-item--green">
             <div className="features-green-card">
               <div className="features-green-card-number">5 min</div>
               <div className="features-green-card-label">Średni czas</div>
@@ -379,14 +368,14 @@ export function FeaturesSection() {
           <div className="features-grid-item">
             <div className="features-white-card">
               <div className="features-step-number">2</div>
-              <h3 className="features-white-card-title">Personalizuj</h3>
+              <h3 className="features-white-card-title">Liczą się twoje oczekiwania</h3>
               <p className="features-white-card-description">
-                Dostosuj budżet, daty i preferencje
+                Wybierz atrakcje, które Cię interesują, termin, formy transportu, standard zakwaterowania.
               </p>
             </div>
           </div>
           
-          <div className="features-grid-item">
+          <div className="features-grid-item features-grid-item--green">
             <div className="features-green-card">
               <div className="features-green-card-number">500+</div>
               <div className="features-green-card-label">Partnerów</div>
@@ -422,14 +411,14 @@ export function FeaturesSection() {
           <div className="features-grid-item">
             <div className="features-white-card">
               <div className="features-step-number">3</div>
-              <h3 className="features-white-card-title">Porównaj oferty</h3>
+              <h3 className="features-white-card-title">Brak weny?</h3>
               <p className="features-white-card-description">
-                Najlepsze ceny z setek źródeł w jednym miejscu
+                Nasz asystent AI zaproponuje Ci idealne uzupełnienia planu wyjazdu na podstawie Twoich preferencji.
               </p>
             </div>
           </div>
           
-          <div className="features-grid-item">
+          <div className="features-grid-item features-grid-item--green">
             <div className="features-green-card">
               <div className="features-green-card-number">98%</div>
               <div className="features-green-card-label">Zadowolenia</div>
@@ -438,7 +427,7 @@ export function FeaturesSection() {
           </div>
           
           {/* Row 4 */}
-          <div className="features-grid-item">
+          <div className="features-grid-item features-grid-item--green">
             <div className="features-green-card">
               <div className="features-green-card-number">24/7</div>
               <div className="features-green-card-label">Wsparcie</div>
@@ -458,16 +447,7 @@ export function FeaturesSection() {
             </div>
           </div>
           
-          <div className="features-grid-item">
-            <div className="features-white-card">
-              <div className="features-step-number">4</div>
-              <h3 className="features-white-card-title">Zarezerwuj</h3>
-              <p className="features-white-card-description">
-                Bezpieczna płatność i natychmiastowe potwierdzenie
-              </p>
-            </div>
-          </div>
-          
+       
           <div className="features-grid-item">
             <div 
               className="features-image-card" 
@@ -479,41 +459,18 @@ export function FeaturesSection() {
               </div>
             </div>
           </div>
-          
-          {/* Row 5 */}
-          <div className="features-grid-item">
-            <div 
-              className="features-image-card" 
-              style={{ backgroundImage: `url(https://images.unsplash.com/photo-1746900830074-baf6ddf20bca?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=1080)` }}
-            >
-              <div className="features-image-overlay">
-                <h3 className="features-image-title">Rejsy morskie</h3>
-                <p className="features-image-description">Luksus na pełnym morzu</p>
-              </div>
+             <div className="features-grid-item">
+            <div className="features-white-card">
+              <div className="features-step-number">4</div>
+              <h3 className="features-white-card-title">Zrealizuj</h3>
+              <p className="features-white-card-description">
+                Bezpieczna płatność i natychmiastowe potwierdzenie - możliwosć rozdzielenia płatności na uczestników.
+              </p>
             </div>
           </div>
           
-          <div className="features-grid-item">
-            <div className="features-green-card">
-              <div className="features-icon-wrapper" style={{ background: 'rgba(255, 255, 255, 0.2)', marginBottom: '1rem' }}>
-                <Shield style={{ color: 'white' }} />
-              </div>
-              <div className="features-green-card-label">100% bezpieczne</div>
-              <div className="features-green-card-description">SSL i szyfrowanie danych</div>
-            </div>
-          </div>
           
-          <div className="features-grid-item features-grid-item--span-2">
-            <div 
-              className="features-image-card" 
-              style={{ backgroundImage: `url(https://images.unsplash.com/photo-1566721328889-7c554f483ba1?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=1080)` }}
-            >
-              <div className="features-image-overlay">
-                <h3 className="features-image-title">Backpacking</h3>
-                <p className="features-image-description">Prawdziwe podróże dla odkrywców</p>
-              </div>
-            </div>
-          </div>
+
         </div>
       </div>
     </section>

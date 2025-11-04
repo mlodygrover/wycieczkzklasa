@@ -1,10 +1,6 @@
-import React from 'react'; // Usunięto useState
 import styled, { keyframes } from 'styled-components';
-// Zmieniono importy ikon, aby pasowały do nowej zawartości
-import { Sparkles, ArrowRight, Calendar, MapPin } from 'lucide-react';
+import { Sparkles, Edit3, Plus, MapPin } from 'lucide-react';
 import { ComponentHeader } from './destinationsSlider';
-
-// --- STYLOWANE KOMPONENTY POBRANE 1:1 Z ConfiguratorCTA ---
 
 const kenBurns = keyframes`
   0% {
@@ -19,15 +15,14 @@ const kenBurns = keyframes`
 `;
 
 const Section = styled.section`
- width: 90%;
-    max-width: 1600px;
-  background: #ffffff;
-  display: flex;
-  align-items: flex-start;
-  justify-content: center;
-  flex-direction: column;
-  margin-top: 50px;
-  
+      width: 90%;
+      max-width: 1600px;
+      backgrrgba(32, 9, 9, 1)ffffff;
+      display: flex;
+      align-items: flex-start;
+      justify-content: center;
+      flex-direction: column;
+      margin-top: 50px;
 `;
 
 const Container = styled.div`
@@ -36,29 +31,30 @@ const Container = styled.div`
   position: relative;
   border-radius: 2rem;
   overflow: hidden;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
+  /* DODANE LINIE: */
   display: flex;
   align-items: center;
 
+  
   @media (max-width: 768px) {
     justify-content: center; 
     min-height: 700px;
   }
+
 `;
 
 const BackgroundImage = styled.div`
   position: absolute;
   inset: 0;
   z-index: 1;
-  border-radius: inherit;
+  /* DODANE LINIE: */
+  border-radius: inherit; /* Dziedziczy '2rem' z <Container> */
   overflow: hidden;
-
   &::before {
     content: '';
     position: absolute;
     inset: 0;
-    /* ZMIANA: Użycie propa $image zamiast hardcodowanego URL */
-    background-image: url(${props => props.$image});
+    background-image: url('https://images.unsplash.com/photo-1488646953014-85cb44e25828?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=1920');
     background-size: cover;
     background-position: center;
     animation: ${kenBurns} 20s ease-in-out infinite;
@@ -68,7 +64,6 @@ const BackgroundImage = styled.div`
     content: '';
     position: absolute;
     inset: 0;
-    /* ZMIANA: Użycie gradientu z ConfiguratorCTA */
     background: linear-gradient(
       to right, 
       rgba(0, 0, 0, 0.6) 0%, 
@@ -76,15 +71,6 @@ const BackgroundImage = styled.div`
       transparent 100%
     );
     z-index: 2;
-    
-    /* Dodanie media query dla gradientu na mobilnych (z oryginału) */
-    @media (max-width: 768px) {
-      background: linear-gradient(
-        to bottom,
-        rgba(0, 0, 0, 0.3) 0%,
-        rgba(0, 0, 0, 0.7) 60%
-      );
-    }
   }
 `;
 
@@ -93,13 +79,12 @@ const Content = styled.div`
   z-index: 3;
   box-sizing: border-box;
   display: flex;
-  padding: 20px; /* Padding z ConfiguratorCTA */
-  
+  padding: 20px;
   @media screen and (max-width: 768px) {
     align-items: center;
     justify-content: center;
-    width: 100%; /* Dodano dla pewności na mobilnych */
-  }
+    }
+ 
 `;
 
 const GlassCard = styled.div`
@@ -108,16 +93,16 @@ const GlassCard = styled.div`
   -webkit-backdrop-filter: blur(20px) saturate(180%);
   border: 1px solid rgba(255, 255, 255, 0.3);
   border-radius: 1.5rem;
-  max-width: 480px; /* Styl z ConfiguratorCTA */
+  max-width: 480px;
   width: 100%;
   box-shadow: 
     0 8px 32px rgba(0, 0, 0, 0.1),
     inset 0 1px 0 rgba(255, 255, 255, 0.4);
   position: relative;
   overflow: hidden;
-  padding: 15px 20px; /* Padding z ConfiguratorCTA */
-
+  padding: 15px 20px;
   @media (max-width: 768px) {
+    
     max-width: 90%;
   }
   
@@ -142,11 +127,11 @@ const Badge = styled.div`
   align-items: center;
   gap: 0.5rem;
   padding: 0.375rem 0.875rem;
-  background: rgba(255, 255, 255, 0.25); /* Styl tła z ConfiguratorCTA */
+  background: rgba(255, 255, 255, 0.25);
   backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.3); /* Styl ramki z ConfiguratorCTA */
+  border: 1px solid rgba(255, 255, 255, 0.3);
   border-radius: 2rem;
-  color: white; /* Styl koloru z ConfiguratorCTA */
+  color: white;
   font-size: 0.8125rem;
   font-weight: 600;
   margin-bottom: 1rem;
@@ -154,17 +139,11 @@ const Badge = styled.div`
   svg {
     width: 14px;
     height: 14px;
-    /* ZMIANA: Użycie koloru białego, aby pasował do tła */
-    color: white; 
-  }
-  
-  span {
-    color: white; /* ZMIANA: Użycie koloru białego */
   }
 `;
 
 const Title = styled.h2`
-  font-size: 2rem; /* Rozmiar z ConfiguratorCTA */
+  font-size: 2rem;
   font-weight: 800;
   color: white;
   margin-bottom: 0.75rem;
@@ -178,7 +157,7 @@ const Title = styled.h2`
 `;
 
 const Description = styled.p`
-  font-size: 0.9375rem; /* Rozmiar z ConfiguratorCTA */
+  font-size: 0.9375rem;
   color: rgba(255, 255, 255, 0.95);
   margin-bottom: 1.5rem;
   line-height: 1.5;
@@ -191,13 +170,13 @@ const Description = styled.p`
 
 const ButtonGroup = styled.div`
   display: flex;
-  flex-direction: column; /* Układ kolumnowy z ConfiguratorCTA */
+  flex-direction: column;
   gap: 0.75rem;
 `;
 
 const CTAButton = styled.button`
-  padding: 0.5rem 1.25rem; /* Padding z ConfiguratorCTA */
-  border-radius: 0.75rem; /* Radius z ConfiguratorCTA */
+  padding: 0.5rem 1.25rem;
+  border-radius: 0.75rem;
   font-weight: 600;
   font-size: 0.9375rem;
   cursor: pointer;
@@ -210,7 +189,6 @@ const CTAButton = styled.button`
   overflow: hidden;
   
   ${props => props.$primary ? `
-    /* Styl primary z ConfiguratorCTA */
     background: rgba(4, 120, 87, 0.5);
     backdrop-filter: blur(15px) saturate(180%);
     -webkit-backdrop-filter: blur(15px) saturate(180%);
@@ -233,7 +211,6 @@ const CTAButton = styled.button`
       }
     }
   ` : `
-    /* Styl secondary z ConfiguratorCTA */
     background: rgba(0, 23, 194, 0.36);
     backdrop-filter: blur(15px);
     -webkit-backdrop-filter: blur(15px);
@@ -278,7 +255,6 @@ const FeatureItem = styled.div`
   color: rgba(255, 255, 255, 0.9);
   font-size: 0.8125rem;
   
-  /* Zastępuje ikonę CheckCircle stylizowanym '✓' z ConfiguratorCTA */
   &::before {
     content: '✓';
     display: flex;
@@ -292,77 +268,57 @@ const FeatureItem = styled.div`
     border: 1px solid rgba(255, 255, 255, 0.3);
     font-weight: 700;
     font-size: 0.6875rem;
-    /* Dodano dla wyrównania */
-    flex-shrink: 0;
   }
 `;
 
-// --- PRZEBUDOWANY KOMPONENT BANNERU ---
-
-export function TeacherOfferBanner({
-    teacherImage = "https://images.unsplash.com/photo-1759868937821-acc700095191?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxwcm9mZXNzaW9uYWwlMjB0ZWFjaGVyJTIwc21pbGluZ3xlbnwxfHx8fDE3NjIwMzYzMzB8MA&ixlib=rb-4.1.0&q=80&w=1080",
-    onLearnMore = () => { },
-    onContact = () => { }
-}) {
-
-    // Usunięto 'useState' i 'isHovered'
-
+export default function ConfiguratorCTA() {
     return (
         <Section>
             <ComponentHeader>
                 <div className="destinationSlider-badge">
                     <MapPin />
-                    Współpraca ze szkołami
+                    Odkryj nasz konfigurator
                 </div>
-                <h2 className="destinationSlider-title">System współpracy otwarty na szkoły!</h2>
+                <h2 className="destinationSlider-title">To nigdy nie było takie proste</h2>
                 <p className="destinationSlider-subtitle">
-                    Odkryj, jak nasza platforma może ułatwić organizację wycieczek klasowych i przynieść korzyści Twojej szkole.
+                    Nie liczy się nic więcej niż Twój pomysł. Z pomocą naszego konfiguratora stworzysz wyjazd perfekcyjnie dopasowany do swoich oczekiwań. 
                 </p>
             </ComponentHeader>
             <Container>
-                {/* Użycie propa $image do przekazania obrazu */}
-                <BackgroundImage $image={teacherImage} />
-
-                {/* Usunięto FloatingIcons */}
+                <BackgroundImage />
 
                 <Content>
                     <GlassCard>
                         <Badge>
                             <Sparkles />
-                            {/* Zmieniono span dla spójności ze stylem badge */}
-                            <span>Specjalna Oferta</span>
+                            Zacznij planować
                         </Badge>
 
-                        <Title>
-                            Nauczyciele, Zarabiajcie Organizując Wycieczki!
-                        </Title>
+                        <Title>Stwórz swoją wymarzoną podróż</Title>
 
                         <Description>
-                            Nasza platforma ułatwia organizację wycieczek klasowych, a Ty jako opiekun otrzymujesz atrakcyjną gratyfikację finansową.
+                            Skorzystaj z naszego inteligentnego konfiguratora, aby zaplanować idealny wyjazd
+                            dopasowany do Twoich potrzeb i budżetu.
                         </Description>
 
-                        {/* Usunięto BenefitsList i HighlightBox */}
-
                         <ButtonGroup>
-                            <CTAButton $primary onClick={onLearnMore}>
-                                <ArrowRight />
-                                <span>Dowiedz się więcej</span>
+                            <CTAButton $primary>
+                                <Plus />
+                                <span>Stwórz od podstaw</span>
                             </CTAButton>
 
-                            <CTAButton onClick={onContact}>
-                                <Calendar />
-                                <span>Umów konsultację</span>
+                            <CTAButton>
+                                <Edit3 />
+                                <span>Modyfikuj gotowy plan</span>
                             </CTAButton>
                         </ButtonGroup>
 
-                        {/* Lista przeniesiona tutaj i ostylowana jako FeaturesList */}
                         <FeaturesList>
-                            <FeatureItem>Prosty system zarządzania grupą i płatnościami</FeatureItem>
-                            <FeatureItem>Bezpłatna ubezpieczenie dla opiekunów</FeatureItem>
-                            <FeatureItem>Dedykowany konsultant na każdym etapie</FeatureItem>
-                            <FeatureItem>Materiały edukacyjne i gotowe programy wycieczek</FeatureItem>
+                            <FeatureItem>Porównanie cen</FeatureItem>
+                            <FeatureItem>Elastyczne daty</FeatureItem>
+                            <FeatureItem>Bezpieczne płatności</FeatureItem>
+                            <FeatureItem>Wsparcie 24/7</FeatureItem>
                         </FeaturesList>
-
                     </GlassCard>
                 </Content>
             </Container>

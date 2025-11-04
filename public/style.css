@@ -4,11 +4,19 @@ body {
     padding: 0;
     overflow-x: hidden;
     overflow-x: clip !important;
-    overscroll-behavior: none;
 }
-html{
 
-    overscroll-behavior: none;
+html {
+
+}
+
+body::-webkit-scrollbar {
+    display: none;
+}
+
+body {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
 }
 
 .App {
@@ -30,15 +38,19 @@ html{
     gap: 50px;
     background-color: #ffa500;
 }
-.leaflet-bottom.leaflet-right{
+
+.leaflet-bottom.leaflet-right {
     display: none;
 }
-.leaflet-top.leaflet-left{
+
+.leaflet-top.leaflet-left {
     display: none;
 }
+
 #serce:hover {
     fill: black;
 }
+
 .IP-body {
 
     width: 200px;
@@ -1720,11 +1732,14 @@ input[type=range]::-webkit-slider-runnable-track {
 
 
 }
-.test1, .test2{
+
+.test1,
+.test2 {
     color: black;
     padding: 20px;
     font-size: 24px;
 }
-.test2{
+
+.test2 {
     font-family: 'Roboto', sans-serif;
 }
