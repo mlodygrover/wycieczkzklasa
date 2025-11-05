@@ -2182,6 +2182,8 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
     const [chosenFilters, setChosenFilters] = useState([])
     return (
         <>
+            <TopKreatorSlider />
+            
             <KonfiguratorMainSettings ref={settingsRef} className={settingsOpened ? "opened" : "closed"}>
                 <div className="iconEditBox" onClick={() => setSettingsOpened(!settingsOpened)}>
                     <img src="../icons/filter.svg" height={'60%'} />
@@ -2292,8 +2294,10 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
                     </div>}
                 </SettingsButton>
             </KonfiguratorMainSettings>
-
+            
+            
             <KonfiguratorMainMainbox>
+
                 <KonfiguratorMainMainboxLeft className="a">
                     <div className="mainboxLeftTitle">
                         Biblioteka atrakcji
@@ -2397,17 +2401,6 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
 
                 </KonfiguratorMainMainboxLeft>
 
-                {/*
-
-                    zielona granica
-                    zielona granicazielona granica
-                    zielona granica
-                    zielona granica
-                    zielona granica
-                    zielona granica
-
-                */}
-
                 <KonfiguratorMainMainboxRight>
                     <KonfiguratorWyjazduComp changeActivity={changeActivity} checkOut={timeToMinutes(wybranyHotel?.checkOut) || 720} changeStartHour={changeStartHour} deleteActivity={deleteActivity} startModifyingAct={startModifyingAct} setActivityPanelOpened={setActivityPanelOpened} onAttractionTimeChange={changeActivityTime} swapActivities={swapActivities} onTransportChange={changeChosenTransport} timeSchedule={timeSchedule} routeSchedule={routeSchedule} chosenTransportSchedule={chosenTransportSchedule} loading={konfiguratorLoading} activitesSchedule={activitiesSchedule} liczbaDni={liczbaDni} key={`schedule-${liczbaDni}-${konfiguratorLoading}-${timeSchedule}`} wybranyDzien={wybranyDzien} setWybranyDzien={setWybranyDzien} addActivity={addActivity} />
                     {activityPanelOpened &&
@@ -2418,6 +2411,7 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
                         </AddAttractionWrapper>
                     }
                 </KonfiguratorMainMainboxRight>
+                
                 <KonfiguratorMainMainboxLeft className="right">
 
                     <ChatBox2 activitiesSchedule={activitiesSchedule} basicActivities={basicActivities} miejsceDocelowe={miejsceDocelowe} attractions={atrakcje} addActivity={addActivity} swapActivities={swapActivities} changeActivity={changeActivity} deleteActivity={deleteActivity} />
@@ -2546,6 +2540,7 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
                 </KonfiguratorMainMainboxLeft>
 
             </KonfiguratorMainMainbox>
+
             {alertsTable && alertsTable.length ?
                 <AlertsBox key={alertsTable} alertsTable={alertsTable} deleteAlert={deleteAlert} />
                 :

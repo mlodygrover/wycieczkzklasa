@@ -156,7 +156,7 @@ const DropdownMenu = styled.div`
   position: absolute; top: calc(100% + 0.5rem); right: 0;
   background: ${props => (props.$variant === 'glass' ? 'rgba(255, 255, 255, 0.95)' : '#ffffff')};
   backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
-  border-radius: 0.75rem; border: 1px solid ${props => (props.$variant === 'glass' ? 'rgba(255, 255, 255, 0.5)' : '#e5e7eb')};
+  border-radius: 0.75rem; 
   box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15); min-width: 16rem; overflow: hidden;
   animation: ${slideDown} 0.2s ease-out; z-index: 1000;
 `;

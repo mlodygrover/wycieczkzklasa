@@ -63,6 +63,7 @@ const KonfiguratorWyjazduCompMainbox = styled.div`
         padding-bottom: 10px;
         border-bottom: 1px solid lightgray;
         margin-bottom: 10px;
+        box-sizing: border-box;
         @media screen and (max-width: 800px){
             padding-left: 15px;
         }
@@ -209,6 +210,7 @@ export const KonfiguratorWyjazduComp = ({ changeActivity, changeStartHour, delet
     }, [localWybranyDzien, activitesSchedule]);
     return (
         <KonfiguratorWyjazduCompMainbox>
+           
             <div className="konifuguratorMainboxTitle">
                 Plan dnia
             </div>
@@ -353,7 +355,6 @@ export const KonfiguratorWyjazduComp = ({ changeActivity, changeStartHour, delet
 
 
             </KonfiguratorWyjazduBottom>
-
         </KonfiguratorWyjazduCompMainbox >
 
     )

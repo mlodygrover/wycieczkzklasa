@@ -6,7 +6,7 @@ const AlertsOutbox = styled.div`
         position: fixed;
         top: 0;
         left: 0;
-        width: 100vw;
+        width: 100%;
         min-height: 100vh;
         background-color: rgba(12, 3, 59, 0.31);
         z-index: 501;
@@ -36,7 +36,7 @@ const AlertsOutbox = styled.div`
         text-align: center;
         cursor: pointer;    
         @media screen and (max-width: 600px){
-            width: 100vw;
+            width: 100%;
             min-width: 150px;
         }
         .wypelniacz{
