@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import styled, { keyframes } from 'styled-components';
 import { Menu, X, Compass, User, ChevronDown, Settings, Heart, LogOut, Bell } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import useUserStore, { fetchMe, clearUser } from './usercontent';
 
 const slideDown = keyframes`
   from { opacity: 0; transform: translateY(-10px); }
@@ -10,9 +11,8 @@ const slideDown = keyframes`
 
 const Nav = styled.nav`
   width: 100%;
-  position: fixed;            /* fixed for hide/show on scroll */
-  top: 0;
-  left: 0;
+  position: fixed;
+  top: 0; left: 0;
   z-index: 1002;
 
   background: ${props =>
@@ -28,15 +28,11 @@ const Nav = styled.nav`
   transition: transform .32s ease, opacity .32s ease, background .2s ease;
   will-change: transform, opacity, background;
 
-  @media screen and (max-width: 1000px){
-    display: none;
-  }
+  
 `;
 
 const Container = styled.div`
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: 0 1rem;
+  max-width: 1280px; margin: 0 auto; padding: 0 1rem;
   @media (min-width: 640px) { padding: 0 1.5rem; }
   @media (min-width: 1024px) { padding: 0 2rem; }
 `;
@@ -46,7 +42,7 @@ const NavContent = styled.div`
 `;
 
 const Logo = styled.div`
-  display: flex; align-items: center; gap: 0.5rem;
+  display: flex; align-items: center; gap: 0.5rem; cursor: pointer;
 `;
 
 const LogoIcon = styled.div`
@@ -63,16 +59,15 @@ const LogoText = styled.span`
 
 const DesktopMenu = styled.div`
   display: none; align-items: center; gap: 2rem;
-  @media (min-width: 768px) { display: flex; }
+  @media (min-width: 1000px) { display: flex; }
 `;
 
 const MenuLink = styled.a`
-  font-weight: 500;
-  font-size: 18px;
+  font-weight: 500; font-size: 18px;
   color: ${props => (props.$variant === 'glass' ? '#ffffff' : '#000000')};
   transition: all 0.2s; position: relative; padding: 0.25rem 0; text-decoration: none;
   text-shadow: ${props => (props.$variant === 'glass' ? '0 2px 4px rgba(0, 0, 0, 0.48)' : 'none')};
-  &:hover { color: ${props => (props.$variant === 'glass' ? '#e1e1e1ff;' : '#2d5f5d')}; }
+  &:hover { color: ${props => (props.$variant === 'glass' ? '#e1e1e1ff' : '#2d5f5d')}; }
   &::after {
     content: ''; position: absolute; bottom: 0; left: 0; width: 0; height: 2px;
     background-color: #2d5f5d; transition: width 0.3s;
@@ -83,7 +78,7 @@ const MenuLink = styled.a`
 
 const AuthSection = styled.div`
   display: none; position: relative;
-  @media (min-width: 768px) { display: flex; align-items: center; gap: 0.75rem; }
+  @media (min-width: 1000px) { display: flex; align-items: center; gap: 0.75rem; }
 `;
 
 const AuthButton = styled.button`
@@ -121,7 +116,7 @@ const UserProfileButton = styled.button`
         props.$variant === 'glass'
             ? 'linear-gradient(135deg, rgba(45, 95, 93, 0.8) 0%, rgba(61, 127, 125, 0.8) 100%)'
             : 'linear-gradient(135deg, #2d5f5d 0%, #3d7f7d 100%)'};
-  color: #ffffff; padding: 0.5rem 1.25rem; border-radius: 2rem;
+  color: #ffffff; padding: 0.5rem 1.25rem; border-radius: 10px;
   border: 1px solid ${props => (props.$variant === 'glass' ? 'rgba(255, 255, 255, 0.3)' : 'rgba(255, 255, 255, 0.2)')};
   cursor: pointer; transition: all 0.3s;
   backdrop-filter: ${props => (props.$variant === 'glass' ? 'blur(10px)' : 'none')};
@@ -184,10 +179,14 @@ const DropdownItemDanger = styled(DropdownItem)`
 `;
 
 const MobileMenuButton = styled.button`
-  display: block; background: none; border: none; cursor: pointer; transition: color 0.2s;
-  color: ${props => (props.$variant === 'glass' ? '#ffffff' : '#000000')};
+  display: flex; background: none; border: none; cursor: pointer; transition: color 0.2s;
+  background-color: red;
+  padding: 5px;
+  border-radius: 5px;
+  background-color: #37373736;
+  color: ${props => (props.$variant === 'glass' ? 'white' : '#000000')};
   &:hover { color: ${props => (props.$variant === 'glass' ? '#b8e6e4' : '#2d5f5d')}; }
-  @media (min-width: 768px) { display: none; }
+  @media (min-width: 1000px) { display: none; }
 `;
 
 const MobileMenu = styled.div`
@@ -196,7 +195,7 @@ const MobileMenu = styled.div`
   background: ${props => (props.$variant === 'glass' ? 'rgba(255, 255, 255, 0.15)' : '#ffffff')};
   backdrop-filter: ${props => (props.$variant === 'glass' ? 'blur(12px)' : 'none')};
   -webkit-backdrop-filter: ${props => (props.$variant === 'glass' ? 'blur(12px)' : 'none')};
-  @media (min-width: 768px) { display: none; }
+  @media (min-width: 1000px) { display: none; }
 `;
 
 const MobileMenuContent = styled.div`
@@ -217,11 +216,9 @@ const MobileAuthButton = styled.button`
   padding: 0.625rem 1rem; border-radius: 0.5rem;
   border: 1px solid ${props => (props.$variant === 'glass' ? 'rgba(255,255,255,0.3)' : '#e5e7eb')};
   cursor: pointer; transition: all 0.2s;
-  backdrop-filter: ${props => (props.$variant === 'glass' ? 'blur(8px)' : 'none')};
-  -webkit-backdrop-filter: ${props => (props.$variant === 'glass' ? 'blur(8px)' : 'none')};
   &:hover {
     background-color: ${props => (props.$variant === 'glass' ? 'rgba(255,255,255,0.2)' : '#f9fafb')};
-    border-color: ${props => (props.$variant === 'glass' ? 'rgba(255,255,255,0.5)' : '#2d5f5d')};
+    border-color: ${props => (props.$variant === 'glass' ? 'rgba(255, 255, 255, 0.5)' : '#2d5f5d')};
     color: ${props => (props.$variant === 'glass' ? '#ffffff' : '#2d5f5d')};
   }
 `;
@@ -257,7 +254,7 @@ const MobileUserActions = styled.div` display: flex; flex-direction: column; gap
 
 const MobileActionButton = styled.button`
   width: 100%; display: flex; align-items: center; gap: 0.75rem; padding: 0.75rem;
-  background: rgba(255, 255, 255, 0.1); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+  background: rgba(255, 255, 255, 0.1); backdrop-filter: blur(8px);
   border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 0.5rem; color: #ffffff; cursor: pointer; transition: all 0.2s;
   &:hover { background: rgba(255, 255, 255, 0.2); }
 `;
@@ -266,8 +263,15 @@ const MobileLogoutButton = styled(MobileActionButton)`
   background: rgba(220, 38, 38, 0.2); border-color: rgba(220, 38, 38, 0.4); color: #fecaca;
   &:hover { background: rgba(220, 38, 38, 0.3); }
 `;
+const AvatarImg = styled.img`
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+  border-radius: 50%;
+`;
 
-export function TravelMenuUnified({ variant = 'white', isLoggedIn = false }) {
+export function TravelMenuUnified({ variant = 'white' }) {
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const [isProfileOpen, setIsProfileOpen] = useState(false);
 
@@ -277,11 +281,19 @@ export function TravelMenuUnified({ variant = 'white', isLoggedIn = false }) {
 
     const profileRef = useRef(null);
 
-    // hide-on-scroll logic
-    const lastYRef = useRef(0);
-    const tickingRef = useRef(false);
-    const downAccumRef = useRef(0);
+    // globalny user ze store
+    const { user, loading } = useUserStore();
+    const isLoggedIn = !!user;
 
+    // ewentualny lazy fetch profilu (opcjonalnie — jeżeli nie robisz tego wyżej w drzewie)
+    useEffect(() => {
+        // Jeżeli jeszcze nie pobieraliśmy i nie ma usera, spróbuj pobrać
+        if (!user && !loading) {
+            fetchMe().catch(() => { });
+        }
+    }, [user, loading]);
+
+    // klik poza dropdownem profilu
     useEffect(() => {
         function handleClickOutside(event) {
             if (profileRef.current && !profileRef.current.contains(event.target)) {
@@ -292,11 +304,16 @@ export function TravelMenuUnified({ variant = 'white', isLoggedIn = false }) {
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, [isProfileOpen]);
 
+    // hide-on-scroll
+    const lastYRef = useRef(0);
+    const tickingRef = useRef(false);
+    const downAccumRef = useRef(0);
+
     useEffect(() => {
         lastYRef.current = typeof window !== 'undefined' ? window.scrollY : 0;
 
-        const SENSITIVITY = 6;   // minimal delta to react
-        const HIDE_AFTER = 140;  // accumulated downward scroll before hiding
+        const SENSITIVITY = 6;
+        const HIDE_AFTER = 140;
 
         const update = () => {
             const y = window.scrollY || 0;
@@ -308,11 +325,9 @@ export function TravelMenuUnified({ variant = 'white', isLoggedIn = false }) {
 
             if (!anyMenuOpen && Math.abs(diff) >= SENSITIVITY) {
                 if (diff > 0) {
-                    // scrolling down
                     downAccumRef.current += diff;
                     if (downAccumRef.current >= HIDE_AFTER) setHiddenByScroll(true);
                 } else if (diff < 0) {
-                    // scrolling up
                     setHiddenByScroll(false);
                     downAccumRef.current = 0;
                 }
@@ -338,7 +353,7 @@ export function TravelMenuUnified({ variant = 'white', isLoggedIn = false }) {
         return () => window.removeEventListener('scroll', onScroll);
     }, [isMenuOpen, isProfileOpen]);
 
-    // ensure bar visible whenever a menu opens
+    // pokaż pasek, gdy otwieramy menu
     useEffect(() => {
         if (isMenuOpen || isProfileOpen) setHiddenByScroll(false);
     }, [isMenuOpen, isProfileOpen]);
@@ -346,6 +361,25 @@ export function TravelMenuUnified({ variant = 'white', isLoggedIn = false }) {
     const barHidden = hiddenByScroll;
     const navigate = useNavigate();
     const goHome = () => navigate('/', { replace: false });
+
+    const displayName =
+        user?.username || (user?.email ? user.email.split('@')[0] : 'Użytkownik');
+    const displayEmail = user?.email || '';
+
+    const handleLogout = async () => {
+        try {
+            await fetch('http://localhost:5007/auth/logout', {
+                method: 'POST',
+                credentials: 'include',
+            });
+        } catch (_) {
+            // nawet jeśli request się nie powiedzie, czyścimy front
+        } finally {
+            clearUser();
+            navigate('/login', { replace: true });
+        }
+    };
+
     return (
         <Nav $variant={variant} $hidden={barHidden} $scrolled={scrolled}>
             <Container>
@@ -362,109 +396,147 @@ export function TravelMenuUnified({ variant = 'white', isLoggedIn = false }) {
                             }
                         }}>
                         <LogoIcon $variant={variant}>
-                        <Compass size={24} color="#ffffff" />
-                    </LogoIcon>
-                    <LogoText $variant={variant} >TravelApp</LogoText>
-                </Logo>
+                            <Compass size={24} color="#ffffff" />
+                        </LogoIcon>
+                        <LogoText $variant={variant}>TravelApp</LogoText>
+                    </Logo>
 
-                <DesktopMenu>
-                    <MenuLink href="#odkrywaj" $variant={variant}>Odkrywaj</MenuLink>
-                    <MenuLink href="#destynacje" $variant={variant}>Dla szkół</MenuLink>
-                    <MenuLink href="#wycieczki" $variant={variant}>Dla przedsiębiorców</MenuLink>
-                    <MenuLink href="#o-nas" $variant={variant}>O nas</MenuLink>
-                    <MenuLink href="#kontakt" $variant={variant}>Kontakt</MenuLink>
-                </DesktopMenu>
+                    <DesktopMenu>
+                        <MenuLink href="#odkrywaj" $variant={variant}>Odkrywaj</MenuLink>
 
-                <AuthSection ref={profileRef}>
-                    {isLoggedIn ? (
-                        <>
-                            <UserProfileButton
-                                $variant={variant}
-                                onClick={() => setIsProfileOpen(!isProfileOpen)}
-                            >
-                                <UserAvatar><User size={18} color="#2d5f5d" /></UserAvatar>
-                                <UserInfo>
-                                    <UserName>Jan Kowalski</UserName>
-                                    <UserBadge>Premium</UserBadge>
-                                </UserInfo>
-                                <NotificationBadge>3</NotificationBadge>
-                                <ChevronDown
-                                    size={16}
-                                    style={{ transform: isProfileOpen ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform .3s' }}
-                                />
-                            </UserProfileButton>
+                        <MenuLink href="/konfigurator" $variant={variant}>Konfigurator</MenuLink>
+                        <MenuLink href="#destynacje" $variant={variant}>Dla szkół</MenuLink>
+                        <MenuLink href="#wycieczki" $variant={variant}>Dla przedsiębiorców</MenuLink>
+                        <MenuLink href="#kontakt" $variant={variant}>Kontakt</MenuLink>
+                    </DesktopMenu>
 
-                            {isProfileOpen && (
-                                <DropdownMenu $variant={variant}>
-                                    <DropdownHeader>
-                                        <DropdownUserName>Jan Kowalski</DropdownUserName>
-                                        <DropdownUserEmail>jan.kowalski@email.com</DropdownUserEmail>
-                                    </DropdownHeader>
+                    <AuthSection ref={profileRef}>
+                        {isLoggedIn ? (
+                            <>
+                                <UserProfileButton
+                                    $variant={variant}
+                                    onClick={() => setIsProfileOpen(!isProfileOpen)}
+                                >
+                                    <UserAvatar>
+                                        {user?.profilePic ? (
+                                            <AvatarImg
+                                                src={user.profilePic}
+                                                alt={`${displayName} – zdjęcie profilowe`}
+                                                referrerPolicy="no-referrer"
+                                                onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.style.display = 'none'; }}
+                                            />
+                                        ) : (
+                                            <User size={18} color="#2d5f5d" />
+                                        )}
+                                    </UserAvatar>
+                                    <UserInfo>
+                                        <UserName>{displayName}</UserName>
+                                        <UserBadge>Użytkownik</UserBadge>
+                                    </UserInfo>
+                                    {/* Przykładowy badge powiadomień – schowaj, jeśli go nie używasz */}
+                                    {/* <NotificationBadge>3</NotificationBadge> */}
+                                    <ChevronDown
+                                        size={16}
+                                        style={{ transform: isProfileOpen ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform .3s' }}
+                                    />
+                                </UserProfileButton>
 
-                                    <DropdownItem $variant={variant}><User size={18} />Mój profil</DropdownItem>
-                                    <DropdownItem $variant={variant}><Heart size={18} />Ulubione</DropdownItem>
-                                    <DropdownItem $variant={variant}>
-                                        <Bell size={18} />Powiadomienia
-                                        <NotificationBadge style={{ marginLeft: 'auto' }}>3</NotificationBadge>
-                                    </DropdownItem>
-                                    <DropdownItem $variant={variant}><Settings size={18} />Ustawienia</DropdownItem>
-                                    <DropdownDivider />
-                                    <DropdownItemDanger $variant={variant}><LogOut size={18} />Wyloguj się</DropdownItemDanger>
-                                </DropdownMenu>
-                            )}
-                        </>
-                    ) : (
-                        <>
-                            <AuthButton $variant={variant}>Logowanie</AuthButton>
-                            <AuthButtonPrimary>Rejestracja</AuthButtonPrimary>
-                        </>
-                    )}
-                </AuthSection>
+                                {isProfileOpen && (
+                                    <DropdownMenu $variant={variant}>
+                                        <DropdownHeader>
+                                            <DropdownUserName>{displayName}</DropdownUserName>
+                                            {displayEmail && <DropdownUserEmail>{displayEmail}</DropdownUserEmail>}
+                                        </DropdownHeader>
 
-                <MobileMenuButton onClick={() => setIsMenuOpen(!isMenuOpen)} $variant={variant}>
-                    {isMenuOpen ? <X size={24} /> : <Menu size={24} />}
-                </MobileMenuButton>
-            </NavContent>
-        </Container>
+                                        <DropdownItem $variant={variant}><User size={18} />Mój profil</DropdownItem>
+                                        <DropdownItem $variant={variant}><Heart size={18} />Ulubione</DropdownItem>
+                                        <DropdownItem $variant={variant}>
+                                            <Bell size={18} />Powiadomienia
+                                            {/* <NotificationBadge style={{ marginLeft: 'auto' }}>3</NotificationBadge> */}
+                                        </DropdownItem>
+                                        <DropdownItem $variant={variant}><Settings size={18} />Ustawienia</DropdownItem>
+                                        <DropdownDivider />
+                                        <DropdownItemDanger $variant={variant} onClick={handleLogout}>
+                                            <LogOut size={18} />Wyloguj się
+                                        </DropdownItemDanger>
+                                    </DropdownMenu>
+                                )}
+                            </>
+                        ) : (
+                            <>
+                                <AuthButton $variant={variant} onClick={() => navigate('/login')}>Logowanie</AuthButton>
+                                <AuthButtonPrimary onClick={() => navigate('/register')}>Rejestracja</AuthButtonPrimary>
+                            </>
+                        )}
+                    </AuthSection>
 
-            {
-        isMenuOpen && (
-            <MobileMenu $variant={variant}>
-                <MobileMenuContent>
-                    <MobileMenuLink href="#odkrywaj" $variant={variant} onClick={() => setIsMenuOpen(false)}>Odkrywaj</MobileMenuLink>
-                    <MobileMenuLink href="#destynacje" $variant={variant} onClick={() => setIsMenuOpen(false)}>Destynacje</MobileMenuLink>
-                    <MobileMenuLink href="#wycieczki" $variant={variant} onClick={() => setIsMenuOpen(false)}>Wycieczki</MobileMenuLink>
-                    <MobileMenuLink href="#o-nas" $variant={variant} onClick={() => setIsMenuOpen(false)}>O nas</MobileMenuLink>
-                    <MobileMenuLink href="#kontakt" $variant={variant} onClick={() => setIsMenuOpen(false)}>Kontakt</MobileMenuLink>
+                    <MobileMenuButton onClick={() => setIsMenuOpen(!isMenuOpen)} $variant={variant}>
+                        {isMenuOpen ? <X size={24} /> : <Menu size={24} />}
+                    </MobileMenuButton>
+                </NavContent>
+            </Container>
 
-                    {isLoggedIn ? (
-                        <MobileUserCard $variant={variant}>
-                            <MobileUserHeader>
-                                <MobileUserAvatar><User size={24} color="#2d5f5d" /></MobileUserAvatar>
-                                <MobileUserInfo>
-                                    <MobileUserName>Jan Kowalski</MobileUserName>
-                                    <MobileUserEmail>jan.kowalski@email.com</MobileUserEmail>
-                                </MobileUserInfo>
-                                <NotificationBadge>3</NotificationBadge>
-                            </MobileUserHeader>
+            {isMenuOpen && (
+                <MobileMenu $variant={variant}>
+                    <MobileMenuContent>
+                        <MobileMenuLink href="#odkrywaj" $variant={variant} onClick={() => setIsMenuOpen(false)}>Odkrywaj</MobileMenuLink>
+                        <MobileMenuLink href="#destynacje" $variant={variant} onClick={() => setIsMenuOpen(false)}>Destynacje</MobileMenuLink>
+                        <MobileMenuLink href="#wycieczki" $variant={variant} onClick={() => setIsMenuOpen(false)}>Wycieczki</MobileMenuLink>
+                        <MobileMenuLink href="#o-nas" $variant={variant} onClick={() => setIsMenuOpen(false)}>O nas</MobileMenuLink>
+                        <MobileMenuLink href="#kontakt" $variant={variant} onClick={() => setIsMenuOpen(false)}>Kontakt</MobileMenuLink>
 
-                            <MobileUserActions>
-                                <MobileActionButton><User size={18} />Mój profil</MobileActionButton>
-                                <MobileActionButton><Heart size={18} />Ulubione</MobileActionButton>
-                                <MobileActionButton><Settings size={18} />Ustawienia</MobileActionButton>
-                                <MobileLogoutButton><LogOut size={18} />Wyloguj się</MobileLogoutButton>
-                            </MobileUserActions>
-                        </MobileUserCard>
-                    ) : (
-                        <MobileAuthButtons>
-                            <MobileAuthButton $variant={variant}>Logowanie</MobileAuthButton>
-                            <MobileAuthButtonPrimary>Rejestracja</MobileAuthButtonPrimary>
-                        </MobileAuthButtons>
-                    )}
-                </MobileMenuContent>
-            </MobileMenu>
-        )
-    }
-        </Nav >
+                        {isLoggedIn ? (
+                            <MobileUserCard $variant={variant}>
+                                <MobileUserHeader>
+
+                                    <MobileUserAvatar>
+                                        {user?.profilePic ? (
+                                            <AvatarImg
+                                                src={user.profilePic}
+                                                alt={`${displayName} – zdjęcie profilowe`}
+                                                referrerPolicy="no-referrer"
+                                                onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.style.display = 'none'; }}
+                                            />
+                                        ) : (
+                                            <User size={24} color="#2d5f5d" />
+                                        )}
+                                    </MobileUserAvatar>
+
+                                    <MobileUserInfo>
+                                        <MobileUserName>{displayName}</MobileUserName>
+                                        {displayEmail && <MobileUserEmail>{displayEmail}</MobileUserEmail>}
+                                    </MobileUserInfo>
+                                    {/* <NotificationBadge>3</NotificationBadge> */}
+                                </MobileUserHeader>
+
+                                <MobileUserActions>
+                                    <MobileActionButton onClick={() => { setIsMenuOpen(false); navigate('/profile'); }}>
+                                        <User size={18} />Mój profil
+                                    </MobileActionButton>
+                                    <MobileActionButton onClick={() => { setIsMenuOpen(false); navigate('/favorites'); }}>
+                                        <Heart size={18} />Ulubione
+                                    </MobileActionButton>
+                                    <MobileActionButton onClick={() => { setIsMenuOpen(false); navigate('/settings'); }}>
+                                        <Settings size={18} />Ustawienia
+                                    </MobileActionButton>
+                                    <MobileLogoutButton onClick={handleLogout}>
+                                        <LogOut size={18} />Wyloguj się
+                                    </MobileLogoutButton>
+                                </MobileUserActions>
+                            </MobileUserCard>
+                        ) : (
+                            <MobileAuthButtons>
+                                <MobileAuthButton $variant={variant} onClick={() => { setIsMenuOpen(false); navigate('/login'); }}>
+                                    Logowanie
+                                </MobileAuthButton>
+                                <MobileAuthButtonPrimary onClick={() => { setIsMenuOpen(false); navigate('/register'); }}>
+                                    Rejestracja
+                                </MobileAuthButtonPrimary>
+                            </MobileAuthButtons>
+                        )}
+                    </MobileMenuContent>
+                </MobileMenu>
+            )}
+        </Nav>
     );
 }

@@ -1,6 +1,6 @@
 import logo from './logo.svg';
 import './App.css';
-import React from 'react';
+import React, { useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 
 import styled from 'styled-components';
@@ -42,13 +42,16 @@ import PageFooter from './pageFooter.js';
 import { TravelMenuGlass } from './travelMenuGlass.js';
 import { TravelMenuUnified } from './unifiedMenu.js';
 
+import { initAuth } from './usercontent'; // <-- ważne: hydratacja sesji
+import UserProfile from './userProfile.js';
+
 const teksty = [
   { tyt: "Połącz twój pomysł z naszym doświadczeniem", tekst: "Dzięki konfiguratorowi wycieczek WycieczkaZKlasą, zrealizuj swój pomysł na wyjazd, nie martwiąc się niczym poza pasjonującym programem wyjazdu!" },
   { tyt: (<>Z naszym pilotem,<br /> lub z naszym pilotem?</>), tekst: "Wyjazd z pilotem czy bez niego? – to Twój wybór. Nie zostawimy Cię jednak samego, ponieważ nasza mobilna aplikacja poprowadzi Cię, w razie konieczności, przez każdy etap wyjazdu." },
   { tyt: "Połącz twój pomysł z naszym doświadczeniem", tekst: "Dzięki konfiguratorowi wycieczek WycieczkaZKlasą, zrealizuj swój pomysł na wyjazd, nie martwiąc się niczym poza pasjonującym programem wyjazdu!" },
   { tyt: "Połącz twój pomysł z naszym doświadczeniem", tekst: "Dzięki konfiguratorowi wycieczek WycieczkaZKlasą, zrealizuj swój pomysł na wyjazd, nie martwiąc się niczym poza pasjonującym programem wyjazdu!" },
+];
 
-]
 const exampleTrips = [
   {
     id: 1,
@@ -108,42 +111,57 @@ const exampleTrips = [
     badge: "Bestseller",
     image: "../miasta/krakow1.jpg"
   }
-
 ];
 
-const miasta = [{ nazwa: "Poznań", czas: "3" }, { nazwa: "Poznań", czas: "3" }, { nazwa: "Poznań", czas: "4" }, { nazwa: "Poznań", czas: "5" }, { nazwa: "Poznań", czas: "6" },];
-// A small wrapper that can read the route location:
+const miasta = [
+  { nazwa: "Poznań", czas: "3" }, { nazwa: "Poznań", czas: "3" }, { nazwa: "Poznań", czas: "4" },
+  { nazwa: "Poznań", czas: "5" }, { nazwa: "Poznań", czas: "6" },
+];
+
 function Menus() {
   const location = useLocation();
-  // treat only the exact "/" as glass; everything else is white
   const isHome = location.pathname === '/' || location.pathname === '';
+  const isLogin = location.pathname === "/login";
   const variant = isHome ? 'glass' : 'white';
 
   return (
     <>
-      <LiquidMenuBar />
-      <TravelMenuUnified variant={variant} isLoggedIn={true} />
+      {!isLogin ? (
+        <>
+
+          {/* TravelMenuUnified sam czyta user ze store – nie przekazujemy isLoggedIn <LiquidMenuBar />*/}
+          <TravelMenuUnified variant={variant} />
+        </>
+      ) : null}
     </>
   );
 }
+function IfFooter() {
+  const location = useLocation();
+  const isHome = location.pathname === '/login' ;
+
+  return (
+    <>
+      {
+        isHome ? null: <PageFooter /> 
+      }</>
+  )
+}
+
 function App() {
+  useEffect(() => {
+    // Jednorazowe sprawdzenie istniejącej sesji (cookie) i hydratacja store
+    initAuth();
+  }, []);
+
   return (
     <>
       <div className="App">
-
         <Router>
-          {/* Global/top elements present on all pages */}
           <Menus />
-
-          {/* Page content controlled by routes */}
           <Routes>
-            {/* Home page at "/" */}
-            <Route
-              path="/"
-              element={<HomePage trips={exampleTrips} />}
-            />
-
-            {/* Configurator at "/konfigurator" */}
+            <Route path="/" element={<HomePage trips={exampleTrips} />} />
+            <Route path="/login" element={<LoginPage />} />
             <Route
               path="/konfigurator"
               element={
@@ -155,113 +173,12 @@ function App() {
                 />
               }
             />
-
-            {/* Optional: redirect unknown routes to home */}
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
 
-          {/* Global footer */}
-          <PageFooter />
+          <IfFooter />
         </Router>
-
-
-        {/*  
-        <TravelMenuGlass/>
-        
-        
-
-       
-            
-        <KreatorWyjazdu />
-        <LoginPage/>
-        
-        <KonfiguratorWyjazdu />
-        
-        */}
-
-        {/* 
-            <KreatorWyjazdu />
-        <Slider />
-        <CitiesList />
-        <SearchInput miasta={miasta} />
-        <CitiesList tyt="Najpopularniejsze kierunki" />
-
-        <div className='infotiles'>
-
-          <InfoTile tekst={teksty[0]} />
-          <InfoTile wariant="b" tekst={teksty[1]} />
-          <InfoTile wariant="c" tekst={teksty[0]} />
-          <InfoTile wariant="d" tekst={teksty[0]} />
-
-        </div>
-        <SlideKonfiguracja />
-        <Footer />
-          
-      <div class="blob">Treść&nbsp;…</div>
-<WasabiUploadTest/>
-<AttractionImageSearch/>
-      <TestRequestow/>
-      
-
-        
-        <MenuRadio />
-        <KreatorWyjazdu />
-
-        <Slider />
-        <CitiesList />
-        <SearchInput miasta={miasta} />
-        <CitiesList tyt="Najpopularniejsze kierunki" />
-
-        <div className='infotiles'>
-
-          <InfoTile tekst={teksty[0]} />
-          <InfoTile wariant="b" tekst={teksty[1]} />
-          <InfoTile wariant="c" tekst={teksty[0]} />
-          <InfoTile wariant="d" tekst={teksty[0]} />
-
-        </div>
-        <SlideKonfiguracja />
-        <Footer />
-<AttractionImageSearch/>
-
-<DodawaniePanel/> 
-
-        <ChromeTabs />
-     
-     
-     <TopKreatorSlider/>
-     
-     
-      <WyjazdFormularz/>
-            <FormularzBottom/>
-
-       <HotelsSearch/>
-
-     
-       
-      <Slider/>
-      <CitiesList/>
-      <SearchInput miasta={miasta}/>
-      <CitiesList tyt="Najpopularniejsze kierunki"/>
-    
-      <div className='infotiles'>
-      
-      <InfoTile  tekst={teksty[0]}/>
-      <InfoTile wariant="b" tekst={teksty[1]}/>
-      <InfoTile wariant="c" tekst={teksty[0]}/>
-      <InfoTile wariant="d" tekst={teksty[0]}/>
-
       </div>
-      <SlideKonfiguracja/>
-      <Footer/>
-    
-      
-      
-      
-      
-    */}
-      </div>
-
     </>
   );
 }

@@ -87,7 +87,6 @@ const MenuLink = styled.a`
   padding: 0.25rem 0;
   text-decoration: none;
   text-shadow: 0 2px 4px rgba(0, 0, 0, 0.68);
-  text-border: 2px solid red;
   font-weight: 500;
   font-size: 18px;
   &:hover {
