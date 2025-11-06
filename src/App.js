@@ -44,6 +44,7 @@ import { TravelMenuUnified } from './unifiedMenu.js';
 
 import { initAuth } from './usercontent'; // <-- ważne: hydratacja sesji
 import UserProfile from './userProfile.js';
+import { ProfilePage } from './profilePage.js';
 
 const teksty = [
   { tyt: "Połącz twój pomysł z naszym doświadczeniem", tekst: "Dzięki konfiguratorowi wycieczek WycieczkaZKlasą, zrealizuj swój pomysł na wyjazd, nie martwiąc się niczym poza pasjonującym programem wyjazdu!" },
@@ -159,8 +160,10 @@ function App() {
       <div className="App">
         <Router>
           <Menus />
+          
           <Routes>
             <Route path="/" element={<HomePage trips={exampleTrips} />} />
+            <Route path="/profil" element={<ProfilePage/>} />
             <Route path="/login" element={<LoginPage />} />
             <Route
               path="/konfigurator"

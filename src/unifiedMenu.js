@@ -38,7 +38,7 @@ const Container = styled.div`
 `;
 
 const NavContent = styled.div`
-  display: flex; justify-content: space-between; align-items: center; height: 5rem;
+  display: flex; justify-content: space-between; align-items: center; height: 80px;
 `;
 
 const Logo = styled.div`
@@ -183,7 +183,7 @@ const MobileMenuButton = styled.button`
   background-color: red;
   padding: 5px;
   border-radius: 5px;
-  background-color: #37373736;
+  background-color: ${props => (props.$variant === 'glass' ? "#37373736" : '#ffffffff')};
   color: ${props => (props.$variant === 'glass' ? 'white' : '#000000')};
   &:hover { color: ${props => (props.$variant === 'glass' ? '#b8e6e4' : '#2d5f5d')}; }
   @media (min-width: 1000px) { display: none; }
@@ -448,7 +448,22 @@ export function TravelMenuUnified({ variant = 'white' }) {
                                             {displayEmail && <DropdownUserEmail>{displayEmail}</DropdownUserEmail>}
                                         </DropdownHeader>
 
-                                        <DropdownItem $variant={variant}><User size={18} />Mój profil</DropdownItem>
+                                        <DropdownItem
+                                            role="menuitem"
+                                            onKeyDown={(e) => {
+                                                if (e.key === "Enter" || e.key === " ") {
+                                                    e.preventDefault();
+                                                    setIsProfileOpen(false);
+                                                    navigate("/profil");
+                                                }
+                                            }}
+                                            onClick={() => {
+                                                setIsProfileOpen(false);
+                                                navigate("/profil");
+                                            }}
+                                        >
+                                            <User size={18} /> Mój profil
+                                        </DropdownItem>
                                         <DropdownItem $variant={variant}><Heart size={18} />Ulubione</DropdownItem>
                                         <DropdownItem $variant={variant}>
                                             <Bell size={18} />Powiadomienia
@@ -510,7 +525,7 @@ export function TravelMenuUnified({ variant = 'white' }) {
                                 </MobileUserHeader>
 
                                 <MobileUserActions>
-                                    <MobileActionButton onClick={() => { setIsMenuOpen(false); navigate('/profile'); }}>
+                                    <MobileActionButton onClick={() => { setIsMenuOpen(false); navigate('/profil'); }}>
                                         <User size={18} />Mój profil
                                     </MobileActionButton>
                                     <MobileActionButton onClick={() => { setIsMenuOpen(false); navigate('/favorites'); }}>
