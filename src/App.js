@@ -45,6 +45,8 @@ import { TravelMenuUnified } from './unifiedMenu.js';
 import { initAuth } from './usercontent'; // <-- ważne: hydratacja sesji
 import UserProfile from './userProfile.js';
 import { ProfilePage } from './profilePage.js';
+import TripPlansPicker from './tripPlansPickerTest.js';
+import KonfiguratorLoader from './konfiguratorLoader.js';
 
 const teksty = [
   { tyt: "Połącz twój pomysł z naszym doświadczeniem", tekst: "Dzięki konfiguratorowi wycieczek WycieczkaZKlasą, zrealizuj swój pomysł na wyjazd, nie martwiąc się niczym poza pasjonującym programem wyjazdu!" },
@@ -162,18 +164,14 @@ function App() {
           <Menus />
           
           <Routes>
-            <Route path="/" element={<HomePage trips={exampleTrips} />} />
+
+            <Route path="/" element={<><HomePage trips={exampleTrips} /><TripPlansPicker/></>} />
             <Route path="/profil" element={<ProfilePage/>} />
             <Route path="/login" element={<LoginPage />} />
             <Route
               path="/konfigurator"
               element={
-                <KonfiguratorMain
-                  miejsceDoceloweInit={{
-                    idGoogle: "ChIJvZz0W9c0JkcR8E13wKgL4Ks",
-                    location: { lat: 52.4064, lng: 16.9252 }
-                  }}
-                />
+                <KonfiguratorLoader/>
               }
             />
             <Route path="*" element={<Navigate to="/" replace />} />

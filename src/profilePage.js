@@ -2,6 +2,7 @@ import React, { useMemo, useState } from "react";
 import styled from "styled-components";
 import useUserStore from "./usercontent";
 import TripsSection from "./tripsSection";
+import { SummaryTrips } from "./summaryTripCard";
 
 
 // sampleTrips.js
@@ -39,29 +40,39 @@ export const trips = {
                 'https://images.unsplash.com/photo-1510951459752-aac634df6e86?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=1080'
         }
     ],
-
-    completed: [
+    sketched: [
         {
-            id: 4,
-            title: 'Lato w Grecji',
-            destination: 'Santorini, Grecja',
-            date: '1–14 Lip 2025',
-            days: 14,
-            status: 'completed',
+            id: 1,
+            title: 'Wycieczka do Paryża',
+            destination: 'Paryż, Francja',
+            date: '15–22 Gru 2025',
+            days: 7,
+            status: 'sketch',
             image:
-                'https://images.unsplash.com/photo-1613395877344-13d4a8e0d49e?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=1080'
+                'https://images.unsplash.com/photo-1431274172761-fca41d930114?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=1080'
         },
         {
-            id: 5,
-            title: 'City break Barcelona',
-            destination: 'Barcelona, Hiszpania',
-            date: '15–18 Sie 2025',
-            days: 3,
-            status: 'completed',
+            id: 2,
+            title: 'Weekend w Krakowie',
+            destination: 'Kraków, Polska',
+            date: '10–12 Sty 2026',
+            days: 2,
+            status: 'sketch',
             image:
-                'https://images.unsplash.com/photo-1593368858664-a7fe556ab936?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=1080'
+                'https://images.unsplash.com/photo-1640258650329-789ea328e77f?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=1080'
+        },
+        {
+            id: 3,
+            title: 'Wyjazd na narty',
+            destination: 'Zakopane, Polska',
+            date: '20–27 Sty 2026',
+            days: 7,
+            status: 'sketch',
+            image:
+                'https://images.unsplash.com/photo-1510951459752-aac634df6e86?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=1080'
         }
     ],
+    completed: [],
 
     pending: [
         {
@@ -258,7 +269,7 @@ const Meta = styled.div`
 
 const TabsContainer = styled.div`
   width: 90%;
-  max-width: 1400px;
+  max-width: 1600px;
   display: flex;
   gap: 0.5rem;
   border-bottom: 1px solid #e5e7eb;
@@ -348,7 +359,14 @@ const Tab = styled.button`
   }
 `;
 
-
+const SectionTitle = styled.div`
+    width: 90%;
+    max-width: 1600px;
+    text-align: left;
+    font-size: 34px;
+    font-weight: 700;
+    margin: 5px auto;
+`
 /* -------------------- Pomocnicze -------------------- */
 
 function getInitials(nameOrEmail = "") {
@@ -454,10 +472,28 @@ export const ProfilePage = () => {
 
             {/* Sekcje treści dla zakładek – wstaw tu swoje komponenty */}
             {activeTab === "overview" && (
-                <>
+                <>  
+                    <SectionTitle>
+                        Stworzone wyjazdy
+                    </SectionTitle>
+                    <SummaryTrips tripsLocal={trips.sketched}/>
+                    <SectionTitle>
+                        Wyjazdy zaplanowane
+                    </SectionTitle>
+                    <SummaryTrips tripsLocal={trips.planned}/>
+                    <SectionTitle>
+                        Wyjazdy oczekujące zatwierdzenia
+                    </SectionTitle>
+                    <SummaryTrips tripsLocal={trips.pending}/>
+                    <SectionTitle>
+                        Wyjazdy zrealizowane
+                    </SectionTitle>
+                    <SummaryTrips tripsLocal={trips.completed}/>
+                    {/*
                     <TripsSection title="Zaplanowane wyjazdy" trips={trips.planned} />
                     <TripsSection title="Zrealizowane wyjazdy" trips={trips.completed} />
                     <TripsSection title="Oczekujące potwierdzenia" trips={trips.pending} />
+                    */}
                 </>
             )}
 

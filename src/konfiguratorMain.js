@@ -985,8 +985,10 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
     const [routeSchedule, setRouteSchedule] = useState([])
     const [timeSchedule, setTimeSchedule] = useState([])
     const [activitiesSchedule, setActivitiesSchedule] = useState(() => {
+        console.log("TEST4", activitiesScheduleInit)
         if (activitiesScheduleInit != null) return activitiesScheduleInit;
         try {
+
             const raw = localStorage.getItem("activitiesSchedule");
             return raw ? JSON.parse(raw) : [];
         } catch {
@@ -1039,7 +1041,6 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
                 // for N activities in a day there are max(N-1, 0) routes
                 chosenTransportSchedule[i].length === Math.max(0, dayActs.length - 1)
             );
-
         if (!isValid) return;
 
         // Persist both only when valid
@@ -1787,17 +1788,15 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
             updated = updated.map((dayTransports, dayIdx) => {
                 const targetLen = activitiesSchedule[dayIdx].length;
                 const diff = targetLen - dayTransports.length - 1;
-
                 if (diff > 0) {
                     // dodaj brakujące elementy (np. zera)
                     return [...dayTransports, ...Array(diff).fill(standardTransportu == 0 ? 1 : 2)];
                 } else if (diff < 0) {
                     // usuń nadmiar
-                    return dayTransports.slice(0, targetLen);
+                    return dayTransports.slice(0, targetLen + diff);
                 }
                 return dayTransports;
             });
-
             return updated;
         });
     }, [activitiesSchedule]);
@@ -1885,6 +1884,7 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
     //temp temp temp
     const [tripPrice, setTripPrice] = useState(0);
     const [insurancePrice, setInsurancePrice] = useState(0);
+    const [computingPrice, setComputingPrice] = useState(false)
     useEffect(() => {
         // Sprawdzenie kompletności danych
         const hasAll =
@@ -1895,7 +1895,7 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
             wybranyHotel;
 
         if (!hasAll) return;
-
+        setComputingPrice(true)
         const controller = new AbortController();
 
         const timer = setTimeout(async () => {
@@ -1922,7 +1922,7 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
                 }
             }
         }, 1000); // debounce 1 s
-
+        setComputingPrice(false)
         return () => {
             clearTimeout(timer);
             controller.abort();
@@ -1934,6 +1934,9 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
         routeSchedule,
         wybranyHotel,
     ]);
+    useEffect(() => {
+        console.log(activitiesSchedule)
+    }, [])
 
     /*
     const googleIdTest = "ChIJibBLOT9bBEcRL9IL_IaJz2I";
@@ -2183,7 +2186,7 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
     return (
         <>
             <TopKreatorSlider />
-            
+
             <KonfiguratorMainSettings ref={settingsRef} className={settingsOpened ? "opened" : "closed"}>
                 <div className="iconEditBox" onClick={() => setSettingsOpened(!settingsOpened)}>
                     <img src="../icons/filter.svg" height={'60%'} />
@@ -2294,8 +2297,8 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
                     </div>}
                 </SettingsButton>
             </KonfiguratorMainSettings>
-            
-            
+
+
             <KonfiguratorMainMainbox>
 
                 <KonfiguratorMainMainboxLeft className="a">
@@ -2402,7 +2405,7 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
                 </KonfiguratorMainMainboxLeft>
 
                 <KonfiguratorMainMainboxRight>
-                    <KonfiguratorWyjazduComp changeActivity={changeActivity} checkOut={timeToMinutes(wybranyHotel?.checkOut) || 720} changeStartHour={changeStartHour} deleteActivity={deleteActivity} startModifyingAct={startModifyingAct} setActivityPanelOpened={setActivityPanelOpened} onAttractionTimeChange={changeActivityTime} swapActivities={swapActivities} onTransportChange={changeChosenTransport} timeSchedule={timeSchedule} routeSchedule={routeSchedule} chosenTransportSchedule={chosenTransportSchedule} loading={konfiguratorLoading} activitesSchedule={activitiesSchedule} liczbaDni={liczbaDni} key={`schedule-${liczbaDni}-${konfiguratorLoading}-${timeSchedule}`} wybranyDzien={wybranyDzien} setWybranyDzien={setWybranyDzien} addActivity={addActivity} />
+                    <KonfiguratorWyjazduComp computedPrice={tripPrice + insurancePrice} computingPrice={computingPrice} miejsceDocelowe={miejsceDocelowe} changeActivity={changeActivity} checkOut={timeToMinutes(wybranyHotel?.checkOut) || 720} changeStartHour={changeStartHour} deleteActivity={deleteActivity} startModifyingAct={startModifyingAct} setActivityPanelOpened={setActivityPanelOpened} onAttractionTimeChange={changeActivityTime} swapActivities={swapActivities} onTransportChange={changeChosenTransport} timeSchedule={timeSchedule} routeSchedule={routeSchedule} chosenTransportSchedule={chosenTransportSchedule} loading={konfiguratorLoading} activitiesSchedule={activitiesSchedule} liczbaDni={liczbaDni} key={`schedule-${liczbaDni}-${konfiguratorLoading}-${timeSchedule}`} wybranyDzien={wybranyDzien} setWybranyDzien={setWybranyDzien} addActivity={addActivity} />
                     {activityPanelOpened &&
                         <AddAttractionWrapper>
                             <AddActivityPanelContainer>
@@ -2411,7 +2414,7 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
                         </AddAttractionWrapper>
                     }
                 </KonfiguratorMainMainboxRight>
-                
+
                 <KonfiguratorMainMainboxLeft className="right">
 
                     <ChatBox2 activitiesSchedule={activitiesSchedule} basicActivities={basicActivities} miejsceDocelowe={miejsceDocelowe} attractions={atrakcje} addActivity={addActivity} swapActivities={swapActivities} changeActivity={changeActivity} deleteActivity={deleteActivity} />
