@@ -404,7 +404,7 @@ export function TravelMenuUnified({ variant = 'white' }) {
                     <DesktopMenu>
                         <MenuLink href="#odkrywaj" $variant={variant}>Odkrywaj</MenuLink>
 
-                        <MenuLink href="/konfigurator" $variant={variant}>Konfigurator</MenuLink>
+                        <MenuLink href="/konfigurator-lounge" $variant={variant}>Konfigurator</MenuLink>
                         <MenuLink href="#destynacje" $variant={variant}>Dla szkół</MenuLink>
                         <MenuLink href="#wycieczki" $variant={variant}>Dla przedsiębiorców</MenuLink>
                         <MenuLink href="#kontakt" $variant={variant}>Kontakt</MenuLink>
@@ -495,6 +495,7 @@ export function TravelMenuUnified({ variant = 'white' }) {
                 <MobileMenu $variant={variant}>
                     <MobileMenuContent>
                         <MobileMenuLink href="#odkrywaj" $variant={variant} onClick={() => setIsMenuOpen(false)}>Odkrywaj</MobileMenuLink>
+                        <MobileMenuLink href="/konfigurator-lounge" $variant={variant} onClick={() => setIsMenuOpen(false)}>Konfigurator</MobileMenuLink>
                         <MobileMenuLink href="#destynacje" $variant={variant} onClick={() => setIsMenuOpen(false)}>Destynacje</MobileMenuLink>
                         <MobileMenuLink href="#wycieczki" $variant={variant} onClick={() => setIsMenuOpen(false)}>Wycieczki</MobileMenuLink>
                         <MobileMenuLink href="#o-nas" $variant={variant} onClick={() => setIsMenuOpen(false)}>O nas</MobileMenuLink>

@@ -176,12 +176,8 @@ export const KonfiguratorWyjazduComp = ({
     const [scheduleLoading, setScheduleLoading] = useState(false);
 
     useEffect(() => {
-        if (activitiesSchedule.length <= localWybranyDzien) {
-            setScheduleLoading(true);
-            return;
-        }
-        setScheduleLoading(false);
-        setWybranyDzien(localWybranyDzien);
+        setWybranyDzien(Math.min(localWybranyDzien, activitiesSchedule.length - 1));
+        console.log("TEST3", wybranyDzien, localWybranyDzien, activitiesSchedule.length - 1, Math.min(localWybranyDzien, activitiesSchedule.length - 1)) 
     }, [localWybranyDzien, activitiesSchedule, setWybranyDzien]);
 
     // Zapis – minimalnie jak wcześniej (bez zmian w kontrakcie)
@@ -258,7 +254,9 @@ export const KonfiguratorWyjazduComp = ({
         }
     };
 
-
+    useEffect(() => {
+        console.log("TEST2", activitiesSchedule)
+    }, [activitiesSchedule])
     return (
         <KonfiguratorWyjazduCompMainbox>
             <div className="konifuguratorMainboxTitle">
@@ -339,15 +337,17 @@ export const KonfiguratorWyjazduComp = ({
                                     <Droppable droppableId="activities-list">
                                         {(provided) => (
                                             <DroppableBox ref={provided.innerRef} {...provided.droppableProps}>
-                                                {activitiesSchedule.length === liczbaDni &&
-                                                    activitiesSchedule[wybranyDzien].map((atrakcja, idx) => {
+                                                {liczbaDni > 0 && activitiesSchedule.length === liczbaDni && wybranyDzien < liczbaDni &&
+                                                    activitiesSchedule[Math.min(wybranyDzien, activitiesSchedule.length - 1)].map((atrakcja, idx) => {
                                                         const routeAbove = idx > 0 ? (
                                                             <RouteResult
                                                                 key={`route-${idx}`}
-                                                                routes={routeSchedule[wybranyDzien][idx - 1]}
+                                                                routes={routeSchedule[Math.min(wybranyDzien, activitiesSchedule.length - 1)][idx - 1]}
                                                                 onTransportChange={onTransportChange}
                                                                 dayIdx={wybranyDzien}
                                                                 actIdx={idx - 1}
+
+
                                                                 chosenTransport={
                                                                     chosenTransportSchedule[wybranyDzien].length >= idx
                                                                         ? chosenTransportSchedule[wybranyDzien][idx - 1]
@@ -356,7 +356,7 @@ export const KonfiguratorWyjazduComp = ({
                                                             />
                                                         ) : null;
 
-                                                        const lastIdx = activitiesSchedule[wybranyDzien].length - 1;
+                                                        const lastIdx = activitiesSchedule[Math.min(wybranyDzien, activitiesSchedule.length - 1)].length - 1;
 
                                                         return (
                                                             <React.Fragment key={`${atrakcja.googleId}${idx}` || idx}>
@@ -389,7 +389,7 @@ export const KonfiguratorWyjazduComp = ({
                                                                         >
                                                                             <AttractionResultFull
                                                                                 onAttractionTimeChange={onAttractionTimeChange}
-                                                                                lastIdx={activitiesSchedule[wybranyDzien].length - 1}
+                                                                                lastIdx={Math.min(wybranyDzien, activitiesSchedule.length - 1)}
                                                                                 dayIdx={wybranyDzien}
                                                                                 actIdx={idx}
                                                                                 swapActivities={swapActivities}

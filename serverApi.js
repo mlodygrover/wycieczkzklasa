@@ -105,7 +105,8 @@ async function computePrice({
     let przejazdyPerUczestnik = Math.ceil(sumaPrzejazdow * (liczbaOpiekunow + liczbaUczestnikow) / (liczbaUczestnikow))
     // console.log("Podzial ceny", sumaAktywnosci, aktywnosciPerUczestnik, hotelPrice, perPerson(hotelPrice), sumaPrzejazdow, przejazdyPerUczestnik, )
     const nettoResult = aktywnosciPerUczestnik + przejazdyPerUczestnik + perPerson(hotelPrice);
-    const bruttoResult = Math.ceil(Math.max(50 + (dni - 1) * 35, nettoResult * 1 / 10)) * 123 / 100 + nettoResult;
+    console.log("Calkowita cena netto per osoba:", aktywnosciPerUczestnik, przejazdyPerUczestnik, perPerson(hotelPrice), Math.ceil(Math.max(50 + (dni - 1) * 35, Math.min(nettoResult * 1 / 10, 200))) * 123 / 100)
+    const bruttoResult = Math.ceil(Math.min(Math.max(50 + (dni - 1) * 35, nettoResult * 1 / 10)),nettoResult * 2 / 10  ) * 123 / 100 + nettoResult;
     // 5) wynik per osoba
     return bruttoResult
 }
@@ -157,6 +158,71 @@ app.post("/computePrice", async (req, res, next) => {
 
 
 
+app.get("/searchCityNew", async (req, res) => {
+  const { query } = req.query;
+  if (!query) {
+    return res.status(400).json({ error: "Brak parametru 'query'" });
+  }
+
+  try {
+    const response = await axios.get("https://nominatim.openstreetmap.org/search", {
+      params: {
+        q: query,
+        format: "json",
+        addressdetails: 1,
+        limit: 15,
+        countrycodes: "pl",
+        "accept-language": "pl",
+        autocomplete: 1,
+        dedupe: 1
+      },
+    });
+
+    const uniqueMap = new Map();
+
+    response.data.forEach((place) => {
+      const addr = place.address || {};
+      const nazwa =
+        addr.city ||
+        addr.town ||
+        addr.village ||
+        addr.hamlet ||
+        (place.display_name ? place.display_name.split(",")[0] : "");
+
+      if (!nazwa) return;
+
+      const wojewodztwo = addr.state || "";
+      const kraj = addr.country || "";
+      const key = `${nazwa}-${wojewodztwo}-${kraj}`;
+
+      if (!uniqueMap.has(key)) {
+        let priority = 5;
+        if (addr.city) priority = 1;
+        else if (addr.town) priority = 2;
+        else if (addr.village) priority = 3;
+        else if (addr.hamlet) priority = 4;
+
+        uniqueMap.set(key, {
+          id: place.place_id,
+          nazwa,
+          wojewodztwo,
+          kraj,
+          priority,
+          location: {
+            lat: place.lat ? Number(place.lat) : null,
+            lng: place.lon ? Number(place.lon) : null, // UWAGA: lng, nie lon
+          },
+        });
+      }
+    });
+
+    const results = Array.from(uniqueMap.values()).sort((a, b) => a.priority - b.priority);
+    res.json(results);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Błąd serwera" });
+  }
+});
 
 app.get("/searchCity", async (req, res) => {
     const { query } = req.query;

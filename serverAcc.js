@@ -516,6 +516,51 @@ app.get('/api/users/:userId/name', async (req, res) => {
         return res.status(500).json({ error: 'ServerError' });
     }
 });
+// GET /api/trip-plans/:tripId/by-author/:userId
+// Gdy userId ∈ authors → zwraca plan; inaczej → null.
+app.get('/api/trip-plans/:tripId/by-author/:userId', async (req, res) => {
+  try {
+    const { tripId, userId } = req.params;
+
+    // Walidacja identyfikatorów
+    if (!mongoose.Types.ObjectId.isValid(tripId)) {
+      return res.status(400).json({ error: 'InvalidObjectId', which: 'tripId' });
+    }
+    if (!mongoose.Types.ObjectId.isValid(userId)) {
+      return res.status(400).json({ error: 'InvalidObjectId', which: 'userId' });
+    }
+
+    // Jedno zapytanie: plan o danym _id, którego authors zawiera userId
+    const doc = await TripPlan.findOne({
+      _id: new mongoose.Types.ObjectId(tripId),
+      authors: new mongoose.Types.ObjectId(userId),
+    }).lean();
+
+    // Brak uprawnień lub brak planu → zwróć null (200)
+    if (!doc) {
+      return res.json(null);
+    }
+
+    // Spójny format odpowiedzi jak w innych endpointach
+    const aoa = unpackDays(doc.activitiesSchedule);
+    const price = (typeof doc.computedPrice === 'number')
+      ? doc.computedPrice
+      : computePriceFromAoA(aoa);
+
+    return res.json({
+      _id: doc._id,
+      createdAt: doc.createdAt,
+      updatedAt: doc.updatedAt,
+      authors: doc.authors,
+      miejsceDocelowe: doc.miejsceDocelowe,
+      activitiesSchedule: aoa,
+      computedPrice: num(price),
+    });
+  } catch (err) {
+    console.error('GET /api/trip-plans/:tripId/by-author/:userId error:', err);
+    return res.status(500).json({ error: 'ServerError' });
+  }
+});
 
 
 const port = process.env.PORT || 5007;

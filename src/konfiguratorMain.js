@@ -1,7 +1,7 @@
-import { useEffect, useState, useCallback, use, useRef } from "react"
+import { useEffect, useState, useCallback, use, useRef } from "react";
 import axios from "axios";
 import debounce from "lodash.debounce";
-import styled from "styled-components"
+import styled from "styled-components";
 import { AttractionResultSmall, minutesToStringTime } from "./roots/attractionResults";
 import TopKreatorSlider from "./roots/topKreatorSlider";
 import { DataWybor, MapaBox, MapaResultBox, PopupResult, SearchBox } from "./konfiguratorWyjazdu";
@@ -24,6 +24,9 @@ import { ChatBox } from "./konfigurator/chatBox";
 import { ChatBox2 } from "./konfigurator/chatBox2";
 import { CostSummary } from "./konfigurator/costSummary";
 import { time } from "framer-motion";
+
+// === user store (global auth) ===
+import useUserStore, { fetchMe } from "./usercontent";
 
 const testResults = [
     { nazwa: "Poznań", region: "Wielkopolska", kraj: "Polska" },
@@ -764,82 +767,332 @@ export function toBookingDateFormat(dateInput) {
 }
 
 
+// ===== URL PARAM HELPERS (no libs) =====
+const readURL = () => new URL(window.location.href);
+const commitURL = (url) => window.history.replaceState({}, "", url.toString());
+
+const getNum = (v, def = null) => {
+    if (v == null) return def;
+    const n = Number(v);
+    return Number.isFinite(n) ? n : def;
+};
+const getInt = (v, def = null) => {
+    if (v == null) return def;
+    const n = parseInt(v, 10);
+    return Number.isFinite(n) ? n : def;
+};
+
+// Dates in YYYY-MM-DD
+const getDateFromParam = (v) => {
+    if (!v) return null;
+    const d = new Date(v);
+    return isNaN(d) ? null : d;
+};
+const setDateParam = (url, key, date) => {
+    if (!date) { url.searchParams.delete(key); return; }
+    const d = new Date(date);
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    url.searchParams.set(key, `${y}-${m}-${day}`);
+};
+
+// START PLACE ONLY (destination remains as-is)
+const readStartFromParams = () => {
+    const p = readURL().searchParams;
+    const name = p.get("startName");
+    if (!name) return null;
+    const lat = getNum(p.get("startLat"));
+    const lng = getNum(p.get("startLng"));
+    return {
+        nazwa: name || undefined,
+        kraj: p.get("startCountry") || undefined,
+        wojewodztwo: p.get("startRegion") || undefined,
+        googleId: p.get("startGoogleId") || undefined,
+        id: getInt(p.get("startId")),
+        location: (lat != null && lng != null) ? { lat, lng } : undefined,
+    };
+};
+const writeStartToParams = (m) => {
+    const url = readURL();
+    const keys = ["startName", "startLat", "startLng", "startCountry", "startRegion", "startId", "startGoogleId"];
+    if (!m) {
+        keys.forEach(k => url.searchParams.delete(k));
+        commitURL(url);
+        return;
+    }
+    if (m.nazwa) url.searchParams.set("startName", m.nazwa); else url.searchParams.delete("startName");
+    if (m.location && m.location.lat != null) url.searchParams.set("startLat", String(m.location.lat)); else url.searchParams.delete("startLat");
+    if (m.location && m.location.lng != null) url.searchParams.set("startLng", String(m.location.lng)); else url.searchParams.delete("startLng");
+    if (m.kraj) url.searchParams.set("startCountry", m.kraj); else url.searchParams.delete("startCountry");
+    if (m.wojewodztwo) url.searchParams.set("startRegion", m.wojewodztwo); else url.searchParams.delete("startRegion");
+    if (Number.isFinite(m.id)) url.searchParams.set("startId", String(m.id)); else url.searchParams.delete("startId");
+    if (m.googleId) url.searchParams.set("startGoogleId", m.googleId); else url.searchParams.delete("startGoogleId");
+    commitURL(url);
+};
+
+const writeNumberParam = (key, val) => {
+    const url = readURL();
+    if (val == null || !Number.isFinite(val)) url.searchParams.delete(key);
+    else url.searchParams.set(key, String(val));
+    commitURL(url);
+};
+
+
+
+const pad2 = (n) => String(n).padStart(2, "0");
+const toKeyDate = (d) => {
+    if (!d) return "NA";
+    const dt = new Date(d);
+    if (isNaN(dt)) return "NA";
+    return `${dt.getFullYear()}-${pad2(dt.getMonth() + 1)}-${pad2(dt.getDate())}`;
+};
+
+const makeTripKey = (prefix, miejsceDocelowe, dataPrzyjazdu, dataWyjazdu) => {
+    // Najlepiej użyć stabilnego identyfikatora miejsca: googleId, w fallback nazwa.
+    const destId =
+        (miejsceDocelowe && (miejsceDocelowe.googleId || miejsceDocelowe.id || miejsceDocelowe.nazwa)) || "NO_DEST";
+    const arr = toKeyDate(dataPrzyjazdu);
+    const dep = toKeyDate(dataWyjazdu);
+    return `${prefix}__${destId}__${arr}__${dep}`;
+};
+const getStr = (v, def = null) => {
+    // Zwraca surową wartość ciągu albo domyślną
+    return (v == null || v === "") ? def : String(v);
+};
+
+const writeStringParam = (key, val) => {
+    const url = readURL();
+    if (val == null || String(val).trim() === "") url.searchParams.delete(key);
+    else url.searchParams.set(key, String(val));
+    commitURL(url);
+};
+
 export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportScheduleInit, dataPrzyjazduInit, dataWyjazduInit, standardHoteluInit, standardTransportuInit, miejsceDoceloweInit, miejsceStartoweInit, liczbaUczestnikowInit, liczbaOpiekunówInit, pokojeOpiekunowieInit }) => {
 
     //dane poczatkowe
+    // --- dates ---
+    // ===== INICJALIZACJA STANÓW (z URL -> localStorage -> inity) =====
+
+    // --- dates ---
     const [dataPrzyjazdu, setDataPrzyjazdu] = useState(() => {
+        // 1) URL
+        const fromURL = getDateFromParam(readURL().searchParams.get("arr"));
+        if (fromURL) return fromURL;
+
+        // 2) localStorage
+        try {
+            const raw = localStorage.getItem("dataPrzyjazdu");
+            if (raw) {
+                const d = new Date(raw);
+                if (!isNaN(d)) return d;
+            }
+        } catch { }
+
+        // 3) inity lub bieżąca data
         if (dataPrzyjazduInit) return new Date(dataPrzyjazduInit);
-        const saved = localStorage.getItem("dataPrzyjazdu");
-        return saved ? new Date(saved) : new Date();
+        return new Date();
     });
 
     const [dataWyjazdu, setDataWyjazdu] = useState(() => {
+        // 1) URL
+        const fromURL = getDateFromParam(readURL().searchParams.get("dep"));
+        if (fromURL) return fromURL;
+
+        // 2) localStorage
+        try {
+            const raw = localStorage.getItem("dataWyjazdu");
+            if (raw) {
+                const d = new Date(raw);
+                if (!isNaN(d)) return d;
+            }
+        } catch { }
+
+        // 3) inity lub bieżąca data
         if (dataWyjazduInit) return new Date(dataWyjazduInit);
-        const saved = localStorage.getItem("dataWyjazdu");
-        return saved ? new Date(saved) : new Date();
+        return new Date();
     });
 
-    const [standardHotelu, setStandardHotelu] = useState(
-        standardHoteluInit ?? Number(localStorage.getItem("standardHotelu")) ?? 0
-    );
+    // --- standards ---
+    const [standardHotelu, setStandardHotelu] = useState(() => {
+        // 1) URL
+        const fromURL = getInt(readURL().searchParams.get("hotelStd"));
+        if (fromURL != null) return fromURL;
 
-    const [standardTransportu, setStandardTransportu] = useState(
-        standardTransportuInit ?? Number(localStorage.getItem("standardTransportu")) ?? 0
-    );
+        // 2) localStorage
+        try {
+            const raw = localStorage.getItem("standardHotelu");
+            if (raw != null) {
+                const n = Number(raw);
+                if (Number.isFinite(n)) return n;
+            }
+        } catch { }
 
-    // --- efekty zapisu do localStorage ---
+        // 3) init lub domyślnie 0
+        return (standardHoteluInit ?? 0);
+    });
 
+    const [standardTransportu, setStandardTransportu] = useState(() => {
+        // 1) URL
+        const fromURL = getInt(readURL().searchParams.get("transportStd"));
+        if (fromURL != null) return fromURL;
+
+        // 2) localStorage
+        try {
+            const raw = localStorage.getItem("standardTransportu");
+            if (raw != null) {
+                const n = Number(raw);
+                if (Number.isFinite(n)) return n;
+            }
+        } catch { }
+
+        // 3) init lub domyślnie 0
+        return (standardTransportuInit ?? 0);
+    });
+
+    // --- destination: LEAVE AS-IS (unchanged) ---
+    const [miejsceDocelowe, setMiejsceDocelowe] = useState(() => {
+        const saved = localStorage.getItem("miejsceDocelowe");
+        return saved ? JSON.parse(saved) : miejsceDoceloweInit;
+    });
+
+    // --- start place: URL -> localStorage -> init ---
+    const [miejsceStartowe, setMiejsceStartowe] = useState(() => {
+        // 1) URL
+        const fromURL = readStartFromParams();
+        if (fromURL) return fromURL;
+
+        // 2) localStorage
+        try {
+            const saved = localStorage.getItem("miejsceStartowe");
+            if (saved) return JSON.parse(saved);
+        } catch { }
+
+        // 3) init
+        return miejsceStartoweInit;
+    });
+
+    // --- counts ---
+    const [liczbaUczestnikow, setLiczbaUczestnikow] = useState(() => {
+        // 1) URL
+        const fromURL = getInt(readURL().searchParams.get("guests"));
+        if (fromURL != null) return fromURL;
+
+        // 2) localStorage
+        try {
+            const raw = localStorage.getItem("liczbaUczestnikow");
+            if (raw != null) {
+                const n = Number(raw);
+                if (Number.isFinite(n)) return n;
+            }
+        } catch { }
+
+        // 3) init lub 0
+        return (liczbaUczestnikowInit ?? 0);
+    });
+
+    const [liczbaOpiekunów, setLiczbaOpiekunów] = useState(() => {
+        // 1) URL
+        const fromURL = getInt(readURL().searchParams.get("guardians"));
+        if (fromURL != null) return fromURL;
+
+        // 2) localStorage
+        try {
+            const raw = localStorage.getItem("liczbaOpiekunów");
+            if (raw != null) {
+                const n = Number(raw);
+                if (Number.isFinite(n)) return n;
+            }
+        } catch { }
+
+        // 3) init lub 0
+        return (liczbaOpiekunówInit ?? 0);
+    });
+    const [tripId, setTripId] = useState(() => {
+        // 1) URL
+        const fromURL = getStr(readURL().searchParams.get("tripId"));
+        if (fromURL != null) return fromURL;
+
+
+        // 3) domyślna wartość
+        return "abcd";
+    });
+
+    // ===== EFEKTY: zapis do URL + regularny zapis do localStorage =====
+    // tripId -> URL + LS
     useEffect(() => {
-        localStorage.setItem("standardTransportu", standardTransportu);
-    }, [standardTransportu]);
+        writeStringParam("tripId", tripId);
+    }, [tripId]);
 
+    // destination: pozostaje bez zmian, ale zapisuj do LS przy każdej zmianie
     useEffect(() => {
-        localStorage.setItem("standardHotelu", standardHotelu);
-    }, [standardHotelu]);
-
-    useEffect(() => {
-        if (dataWyjazdu instanceof Date && !isNaN(dataWyjazdu)) {
-            localStorage.setItem("dataWyjazdu", dataWyjazdu.toISOString());
+        if (miejsceDocelowe) {
+            localStorage.setItem("miejsceDocelowe", JSON.stringify(miejsceDocelowe));
+        } else {
+            localStorage.removeItem("miejsceDocelowe");
         }
-    }, [dataWyjazdu]);
+    }, [miejsceDocelowe]);
 
+    // start place -> URL + LS
     useEffect(() => {
+        writeStartToParams(miejsceStartowe);
+        if (miejsceStartowe) {
+            localStorage.setItem("miejsceStartowe", JSON.stringify(miejsceStartowe));
+        } else {
+            localStorage.removeItem("miejsceStartowe");
+        }
+    }, [miejsceStartowe]);
+
+    // dates -> URL + LS
+    useEffect(() => {
+        const url = readURL();
+        setDateParam(url, "arr", dataPrzyjazdu);
+        commitURL(url);
+
         if (dataPrzyjazdu instanceof Date && !isNaN(dataPrzyjazdu)) {
             localStorage.setItem("dataPrzyjazdu", dataPrzyjazdu.toISOString());
         }
     }, [dataPrzyjazdu]);
 
-    const [miejsceDocelowe, setMiejsceDocelowe] = useState(
-
-        () => {
-            const saved = localStorage.getItem("miejsceDocelowe");
-            return saved ? JSON.parse(saved) : miejsceDoceloweInit; // zwracamy obiekt albo null
-        }
-
-    );
-    const [miejsceStartowe, setMiejsceStartowe] = useState(
-
-        () => {
-            const saved = localStorage.getItem("miejsceStartowe");
-            return saved ? JSON.parse(saved) : miejsceStartoweInit; // zwracamy obiekt albo null
-        }
-
-    );
-
-
-
-    const [liczbaUczestnikow, setLiczbaUczestnikow] = useState(
-        liczbaUczestnikowInit ?? Number(localStorage.getItem("liczbaUczestnikow")) ?? 0
-    );
-    const [liczbaOpiekunów, setLiczbaOpiekunów] = useState(
-        liczbaOpiekunówInit ?? Number(localStorage.getItem("liczbaOpiekunów")) ?? 0
-    );
     useEffect(() => {
-        localStorage.setItem("liczbaUczestnikow", liczbaUczestnikow)
-    }, [liczbaUczestnikow])
+        const url = readURL();
+        setDateParam(url, "dep", dataWyjazdu);
+        commitURL(url);
+
+        if (dataWyjazdu instanceof Date && !isNaN(dataWyjazdu)) {
+            localStorage.setItem("dataWyjazdu", dataWyjazdu.toISOString());
+        }
+    }, [dataWyjazdu]);
+
+    // counts -> URL + LS
     useEffect(() => {
-        localStorage.setItem("liczbaOpiekunów", liczbaOpiekunów)
-    }, [liczbaOpiekunów])
+        writeNumberParam("guests", liczbaUczestnikow);
+        localStorage.setItem("liczbaUczestnikow", String(liczbaUczestnikow));
+    }, [liczbaUczestnikow]);
+
+    useEffect(() => {
+        writeNumberParam("guardians", liczbaOpiekunów);
+        localStorage.setItem("liczbaOpiekunów", String(liczbaOpiekunów));
+    }, [liczbaOpiekunów]);
+
+    // standards -> URL + LS
+    useEffect(() => {
+        writeNumberParam("hotelStd", standardHotelu);
+        localStorage.setItem("standardHotelu", String(standardHotelu));
+    }, [standardHotelu]);
+
+    useEffect(() => {
+        writeNumberParam("transportStd", standardTransportu);
+        localStorage.setItem("standardTransportu", String(standardTransportu));
+    }, [standardTransportu]);
+
+
+
+    useEffect(() => {
+
+        miejsceDocelowe && localStorage.setItem("miejsceDocelowe", JSON.stringify(miejsceDocelowe))
+    }, [miejsceDocelowe])
+
     //dane lokalne
     const [settingsOpened, setSettingsOpened] = useState(false);
     const [leftOpened, setLeftOpened] = useState(false)
@@ -974,7 +1227,7 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
             miejsceDocelowe.location.lat,
             miejsceDocelowe.location.lng
         );
-    }, [miejsceDocelowe, fetchAttractions]);
+    }, [miejsceDocelowe]);
 
 
     //szukanie hotelu
@@ -985,26 +1238,50 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
     const [routeSchedule, setRouteSchedule] = useState([])
     const [timeSchedule, setTimeSchedule] = useState([])
     const [activitiesSchedule, setActivitiesSchedule] = useState(() => {
-        console.log("TEST4", activitiesScheduleInit)
         if (activitiesScheduleInit != null) return activitiesScheduleInit;
-        try {
 
-            const raw = localStorage.getItem("activitiesSchedule");
-            return raw ? JSON.parse(raw) : [];
+        const tripKey = makeTripKey("activitiesSchedule", miejsceDocelowe, dataPrzyjazdu, dataWyjazdu);
+
+        // 1) próba odczytu spod klucza zależnego od miejsca i dat
+        try {
+            const raw = localStorage.getItem(tripKey);
+            if (raw) return JSON.parse(raw);
+        } catch {
+            /* ignorujemy i przechodzimy do fallbacku */
+        }
+
+        // 2) TESTOWY ETAP – fallback do legacy klucza "activitiesSchedule"
+        try {
+            const rawLegacy = localStorage.getItem("activitiesSchedule");
+            return rawLegacy ? JSON.parse(rawLegacy) : [];
         } catch {
             return [];
         }
     });
+
 
     const [chosenTransportSchedule, setChosenTransportSchedule] = useState(() => {
         if (chosenTransportScheduleInit != null) return chosenTransportScheduleInit;
+
+        const tripKey = makeTripKey("chosenTransport", miejsceDocelowe, dataPrzyjazdu, dataWyjazdu);
+
+        // 1) próba odczytu spod klucza zależnego od miejsca i dat
         try {
-            const raw = localStorage.getItem("chosenTransport");
-            return raw ? JSON.parse(raw) : [];
+            const raw = localStorage.getItem(tripKey);
+            if (raw) return JSON.parse(raw);
+        } catch {
+            /* ignorujemy i przechodzimy do fallbacku */
+        }
+
+        // 2) TESTOWY ETAP – fallback do legacy klucza "chosenTransport"
+        try {
+            const rawLegacy = localStorage.getItem("chosenTransport");
+            return rawLegacy ? JSON.parse(rawLegacy) : [];
         } catch {
             return [];
         }
     });
+
     const [startHours, setStartHours] = useState(() => {
         try {
             const raw = localStorage.getItem("startHours");
@@ -1027,10 +1304,8 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
     );
     */
     useEffect(() => {
-        // Guard: browser only
-        if (!chosenTransportSchedule.length) return;
+        if (!miejsceDocelowe || !dataPrzyjazdu || !dataWyjazdu) return;
 
-        // Shape checks
         const isValid =
             Array.isArray(activitiesSchedule) &&
             Array.isArray(chosenTransportSchedule) &&
@@ -1038,26 +1313,30 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
             activitiesSchedule.every((dayActs, i) =>
                 Array.isArray(dayActs) &&
                 Array.isArray(chosenTransportSchedule[i]) &&
-                // for N activities in a day there are max(N-1, 0) routes
                 chosenTransportSchedule[i].length === Math.max(0, dayActs.length - 1)
             );
+
         if (!isValid) return;
 
-        // Persist both only when valid
         try {
             localStorage.setItem(
-                "activitiesSchedule",
+                makeTripKey("activitiesSchedule", miejsceDocelowe, dataPrzyjazdu, dataWyjazdu),
                 JSON.stringify(activitiesSchedule)
             );
             localStorage.setItem(
-                "chosenTransport",
+                makeTripKey("chosenTransport", miejsceDocelowe, dataPrzyjazdu, dataWyjazdu),
                 JSON.stringify(chosenTransportSchedule)
             );
         } catch (err) {
-            // optional: send to your logger
             console.warn("localStorage write failed:", err);
         }
-    }, [activitiesSchedule, chosenTransportSchedule]);
+    }, [
+        activitiesSchedule,
+        chosenTransportSchedule,
+        miejsceDocelowe,
+        dataPrzyjazdu,
+        dataWyjazdu,
+    ]);
     useEffect(() => {
         // zapisuj tylko, gdy długości się zgadzają
         if (
@@ -1099,16 +1378,6 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
 
         return true;
     }
-
-
-
-    useEffect(() => {
-
-        miejsceDocelowe && localStorage.setItem("miejsceDocelowe", JSON.stringify(miejsceDocelowe))
-    }, [miejsceDocelowe])
-    useEffect(() => {
-        miejsceStartowe && localStorage.setItem("miejsceStartowe", JSON.stringify(miejsceStartowe))
-    }, [miejsceStartowe])
 
     useEffect(() => {
         if (lastDaySwap <= -1 || !activitiesSchedule?.length) return;
@@ -1333,7 +1602,11 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
 
         const newTab = structuredClone(tab);
         const hotelIds = ["baseHotelIn", "baseHotelOut", "baseBookIn", "baseBookOut"];
-
+        if (newTab.length === 1) {
+            newTab[0] = (newTab[0] || []).filter(
+                act => act && !hotelIds.includes(act.googleId)
+            );
+        }
         for (let i = 0; i < newTab.length; i++) {
             // 🔧 Aktualizuj istniejące baseHotel* i baseBook* jeśli występują
             for (let j = 0; j < newTab[i].length; j++) {
@@ -1353,7 +1626,7 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
                 let baseRouteToToAdd = true;
                 let baseBookInToAdd = newTab.length > 1;
                 let baseRouteToId = -1;
-
+                let baseBookInToDel = false;
                 for (let j = 0; j < newTab[i].length; j++) {
                     if (newTab[i][j]?.googleId === "baseRouteTo") {
                         baseRouteToToAdd = false;
@@ -1361,6 +1634,7 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
                     }
                     if (newTab[i][j]?.googleId === "baseBookIn") {
                         baseBookInToAdd = false;
+                        baseBookInToDel = newTab.length == 1;
                     }
                 }
 
@@ -1934,9 +2208,6 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
         routeSchedule,
         wybranyHotel,
     ]);
-    useEffect(() => {
-        console.log(activitiesSchedule)
-    }, [])
 
     /*
     const googleIdTest = "ChIJibBLOT9bBEcRL9IL_IaJz2I";
@@ -2183,6 +2454,9 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
 
     const [filtersLeftOpened, setFiltersLeftOpened] = useState(false)
     const [chosenFilters, setChosenFilters] = useState([])
+    useEffect(() => {
+        console.log(miejsceDocelowe)
+    }, [miejsceDocelowe])
     return (
         <>
             <TopKreatorSlider />

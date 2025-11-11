@@ -155,6 +155,7 @@ const ProfilePageBackgroundPic = styled.div`
   border-radius: 30px;
   position: relative;
   overflow: hidden;
+  margin-bottom: 20px;
 
   @media screen and (max-width: 640px){
     width: 98%;
@@ -267,13 +268,14 @@ const Meta = styled.div`
 
 /* -------------------- Pasek zakładek (responsywny i stabilny) -------------------- */
 
-const TabsContainer = styled.div`
+export const TabsContainer = styled.div`
   width: 90%;
   max-width: 1600px;
   display: flex;
   gap: 0.5rem;
   border-bottom: 1px solid #e5e7eb;
-  margin: 32px auto 48px;
+  margin-bottom: 20px;
+  margin-top: 10px;
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
   scroll-behavior: smooth;
@@ -296,7 +298,7 @@ const TabsContainer = styled.div`
   }
 `;
 
-const Tab = styled.button`
+export const Tab = styled.button`
   /* Stała „szuflada” na tab – zwęża się na mniejszych ekranach */
   flex: 0 0 140px;              /* desktop */
   text-align: center;
