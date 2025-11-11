@@ -1237,29 +1237,29 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
     //planWyjazdu
     const [routeSchedule, setRouteSchedule] = useState([])
     const [timeSchedule, setTimeSchedule] = useState([])
-    const [activitiesSchedule, setActivitiesSchedule] = useState(() => {
-        if (activitiesScheduleInit != null) return activitiesScheduleInit;
+    const [activitiesSchedule, setActivitiesSchedule] = useState([[]]);
+    useEffect(() => {
+        setActivitiesSchedule(() => {
+            if (activitiesScheduleInit != null) return activitiesScheduleInit;
 
-        const tripKey = makeTripKey("activitiesSchedule", miejsceDocelowe, dataPrzyjazdu, dataWyjazdu);
+            const tripKey = makeTripKey("activitiesSchedule", miejsceDocelowe, dataPrzyjazdu, dataWyjazdu);
 
-        // 1) próba odczytu spod klucza zależnego od miejsca i dat
-        try {
-            const raw = localStorage.getItem(tripKey);
-            if (raw) return JSON.parse(raw);
-        } catch {
-            /* ignorujemy i przechodzimy do fallbacku */
-        }
+            // 1) próba odczytu spod klucza zależnego od miejsca i dat
+            try {
+                const raw = localStorage.getItem(tripKey);
+                if (raw) return JSON.parse(raw);
+            } catch {
+            }
 
-        // 2) TESTOWY ETAP – fallback do legacy klucza "activitiesSchedule"
-        try {
-            const rawLegacy = localStorage.getItem("activitiesSchedule");
-            return rawLegacy ? JSON.parse(rawLegacy) : [];
-        } catch {
-            return [];
-        }
-    });
-
-
+            // 2) TESTOWY ETAP – fallback do legacy klucza "activitiesSchedule"
+            try {
+                const rawLegacy = localStorage.getItem("activitiesSchedule");
+                return rawLegacy ? JSON.parse(rawLegacy) : [];
+            } catch {
+                return [];
+            }
+        })
+    }, [])
     const [chosenTransportSchedule, setChosenTransportSchedule] = useState(() => {
         if (chosenTransportScheduleInit != null) return chosenTransportScheduleInit;
 

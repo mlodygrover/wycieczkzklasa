@@ -17,7 +17,7 @@ const Nav = styled.nav`
 
   background: ${props =>
         props.$variant === 'glass'
-            ? (props.$scrolled ? 'rgba(255, 255, 255, 0.14)' : 'rgba(255, 255, 255, 0.10)')
+            ? (props.$scrolled ? 'rgba(255, 255, 255, 0.14)' : 'rgba(255, 255, 255, 0.14)')
             : '#ffffff'};
   backdrop-filter: ${props => (props.$variant === 'glass' ? 'blur(12px) saturate(150%)' : 'none')};
   -webkit-backdrop-filter: ${props => (props.$variant === 'glass' ? 'blur(12px) saturate(150%)' : 'none')};
@@ -191,8 +191,6 @@ const MobileMenuButton = styled.button`
 
 const MobileMenu = styled.div`
   display: block;
-  border-top: 1px solid ${props => (props.$variant === 'glass' ? 'rgba(255, 255, 255, 0.2)' : '#e5e7eb')};
-  background: ${props => (props.$variant === 'glass' ? 'rgba(255, 255, 255, 0.15)' : '#ffffff')};
   backdrop-filter: ${props => (props.$variant === 'glass' ? 'blur(12px)' : 'none')};
   -webkit-backdrop-filter: ${props => (props.$variant === 'glass' ? 'blur(12px)' : 'none')};
   @media (min-width: 1000px) { display: none; }
