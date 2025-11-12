@@ -415,6 +415,35 @@ AttractionSchema.index({ locationGeo: '2dsphere' }); // 🔑 indeks przestrzenny
 const Attraction = mongoose.model("Attraction", AttractionSchema);
 
 
+app.get("/getOneAttraction/:googleId", async (req, res) => {
+  try {
+    const { googleId } = req.params;
+    if (!googleId || !googleId.trim()) {
+      return res.status(400).json({ error: "Parametr :googleId jest wymagany." });
+    }
+
+    // Opcjonalna projekcja, aby nie zwracać pól technicznych, których nie potrzebujesz
+    const projection = {
+      _id: 0,
+      __v: 0,
+    };
+
+    // Jeżeli masz indeks unikalny na googleId, wyszukiwanie będzie O(log n)
+    const attraction = await Attraction.findOne({ googleId }, projection).lean().exec();
+
+    if (!attraction) {
+      return res.status(404).json({ error: `Nie znaleziono atrakcji dla googleId=${googleId}.` });
+    }
+
+    // (opcjonalnie) Cache krótkoterminowy po stronie klienta/proxy
+    res.set("Cache-Control", "public, max-age=60");
+
+    return res.json(attraction);
+  } catch (err) {
+    console.error("GET /attractions/:googleId error:", err);
+    return res.status(500).json({ error: "Wewnętrzny błąd serwera." });
+  }
+});
 /**
  * GET /attractions/nearby?lat=..&lng=..&radiusKm=70
  * Zwraca atrakcje posortowane wg odległości (domyślnie 70 km).
@@ -443,12 +472,20 @@ app.get('/attractions/nearby', async (req, res) => {
                 },
             },
             {
-                $addFields: { // zachowuje wszystkie istniejące pola
+                $addFields: {
                     distanceKm: { $round: [{ $divide: ['$distanceMeters', 1000] }, 2] },
                 },
             },
+            // tylko miejsca z >= 100 opinii
+            {
+                $match: {
+                    liczbaOpinie: { $gte: 100 },
+                },
+            },
+            // sortuj po liczbie opinii malejąco (ew. można dodać tie-breaker po ocenie)
             { $sort: { liczbaOpinie: -1 } },
-            { $limit: 500 },
+            // ogranicz do pierwszych 100
+            { $limit: 100 },
         ]);
 
         return res.json(items);
@@ -1574,19 +1611,7 @@ app.get("/place-offer", async (req, res) => {
         let innerLinks = await analyzeAttractionLinks(urls[0]);
         console.log("➡️ Znalezione linki w menu:", innerLinks);
         if (!innerLinks.length) {
-            return res.json({
-                warianty: [{
-                    nazwaWariantu: "def",
-                    czasZwiedzania: 30,
-                    cenaZwiedzania: -1,
-                    cenaUlgowa: null,
-                    interval: "404",
-                    godzinyOtwarcia: [
-                        [null, null], [null, null], [null, null],
-                        [null, null], [null, null], [null, null], [null, null]
-                    ]
-                }]
-            });
+            return res.json([]);
         }
 
         if (innerLinks.length === 1 && innerLinks[0] != urls[0]) {
@@ -1648,7 +1673,6 @@ app.get("/place-offer", async (req, res) => {
 
 app.get("/update-offer", async (req, res) => {
     const { googleId, link } = req.query;
-
     if (!googleId || !link) {
         return res.status(400).json({ error: "Brak wymaganych parametrów ?googleId= oraz ?link=" });
     }
@@ -1657,33 +1681,37 @@ app.get("/update-offer", async (req, res) => {
         try {
             console.log(`🔍 Aktualizuję ofertę dla atrakcji ${googleId} z linku: ${link}`);
 
-            // 🔹 1. Sprawdź, czy atrakcja istnieje
             const attraction = await Attraction.findOne({ googleId });
             if (!attraction) {
                 return res.status(404).json({ error: `Nie znaleziono atrakcji o googleId: ${googleId}` });
             }
 
-            // 🔹 2. Wywołaj /place-offer
             const response = await axios.get("http://localhost:5006/place-offer", {
                 params: { links: link },
                 timeout: 1200000,
             });
 
-            const { warianty } = response.data;
-            if (!warianty || warianty.length === 0) {
-                return res.status(500).json({ error: "Brak wariantów oferty z /place-offer" });
+            const { warianty } = response.data || {};
+            let flattenedVariants = [];
+
+            if (Array.isArray(warianty) && warianty.length > 0) {
+                flattenedVariants = warianty.flatMap(w => {
+                    if (w && Array.isArray(w.data)) return w.data;
+                    if (Array.isArray(w)) return w;
+                    if (w && typeof w === "object") return [w];
+                    return [];
+                });
+            } else {
+                console.log("BRAK DANYCH!");
             }
 
-            // 🔹 3. Spłaszcz i zapisz
-            const flattenedVariants = warianty.flatMap(w => w.data || w);
             attraction.warianty = flattenedVariants;
             await attraction.save();
 
-            console.log(`✅ Zaktualizowano ofertę dla "${attraction.nazwa}" (${googleId})`);
+            console.log(`✅ Zaktualizowano ofertę dla "${attraction.nazwa}" (${googleId}) – warianty: ${flattenedVariants.length}`);
 
-            // ✅ Jedna odpowiedź na koniec
             return res.json({
-                success: true,
+                success: flattenedVariants.length > 0,
                 googleId,
                 warianty: flattenedVariants,
             });
@@ -1701,6 +1729,7 @@ app.get("/update-offer", async (req, res) => {
         }
     });
 });
+
 
 
 

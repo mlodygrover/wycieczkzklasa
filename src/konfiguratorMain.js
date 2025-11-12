@@ -1884,7 +1884,8 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
     }, [activitiesSchedule, timeSchedule])
 
     async function updateOffer({ googleId, link, delayMs = 1000 }) {
-        if (!googleId || !link) return;
+        if (!googleId || !link) return null;
+
         if (delayMs > 0) {
             await new Promise((resolve) => setTimeout(resolve, delayMs));
         }
@@ -1892,18 +1893,61 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
         try {
             console.log(`🔄 Aktualizuję ofertę dla ${googleId} z linku ${link}...`);
 
-            const response = await axios.get("http://localhost:5006/update-offer", {
+            // 1) Aktualizacja oferty po stronie serwera
+            const { data: updateRes } = await axios.get("http://localhost:5006/update-offer", {
                 params: { googleId, link },
                 timeout: 120000,
             });
 
-            console.log("✅ Oferta zaktualizowana:", response.data);
-            return response.data;
+            // 2) Pobranie świeżej wersji atrakcji
+            const { data: attraction } = await axios.get(
+                `http://localhost:5006/getOneAttraction/${encodeURIComponent(googleId)}`,
+                { timeout: 120000 }
+            );
+
+            // 3) Zaktualizuj listę 'atrakcje' (immutably)
+            setAtrakcje((prev) =>
+                Array.isArray(prev)
+                    ? prev.map((a) => (a.googleId === googleId ? { ...a, ...attraction } : a))
+                    : prev
+            );
+
+            // 4) Podmień wszystkie wystąpienia w activitiesSchedule (immutably)
+            setActivitiesSchedule((prev) => {
+                if (!Array.isArray(prev)) return prev;
+
+                return prev.map((day) => {
+                    if (!Array.isArray(day)) return day;
+
+                    return day.map((act) => {
+                        if (!act || act.googleId !== googleId) return act;
+
+                        // Zachowaj ręcznie ustawiony czas, jeśli był
+                        const preservedCzas =
+                            typeof act.czasZwiedzania === "number" ? act.czasZwiedzania : undefined;
+
+                        const merged = { ...act, ...attraction };
+
+                        if (preservedCzas != null) {
+                            merged.czasZwiedzania = preservedCzas;
+                        } else if (merged.czasZwiedzania == null) {
+                            // Domyśl do 60 min, jeśli dalej brak wartości
+                            merged.czasZwiedzania = 60;
+                        }
+
+                        return merged;
+                    });
+                });
+            });
+
+            console.log("✅ Oferta zaktualizowana:", updateRes);
+            return { update: updateRes, attraction };
         } catch (err) {
             console.error("❌ Błąd przy aktualizacji oferty:", err?.message || err);
             throw err;
         }
     }
+
     function addActivity(dayIndex, activity, botAuthor = false) {
         if (konfiguratorLoading) return;
         if (activity?.googleId?.includes("base")) return;
