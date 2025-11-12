@@ -33,8 +33,6 @@ const testResults = [
     { nazwa: "Luboń koło Poznania", region: "Wielkopolska", kraj: "Polska" },
     { nazwa: "Poznań", region: "Lubelskie", kraj: "Polska" },
     { nazwa: "Druzyna Poznańska", wojewodztwo: "Wielkopolska", kraj: "Polska" }
-
-
 ]
 const basicActivities = [
     {
@@ -177,7 +175,6 @@ const basicActivities = [
 const namesTransportTab = ["Transport zbiorowy", "Wynajęty autokar", "Własny"]
 const namesHotelsTab = ["Ośrodki kolonijne", "Hotele 2/3 gwiazdkowe", "Hotele premium", "Własny"]
 const KonfiguratorMainMainbox = styled.div`
-
     width: 100%;
     min-height: 1000px;
     display: flex;
@@ -191,11 +188,9 @@ const KonfiguratorMainMainbox = styled.div`
     }
 `
 const KonfiguratorMainMainboxLeft = styled.div`
-
     width: 300px;
     border-right: 1px solid lightgray;
     &.right{
-        
         border-right: none;
         border-left: 1px solid lightgray;
     }
@@ -208,17 +203,14 @@ const KonfiguratorMainMainboxLeft = styled.div`
         align-items: center;
         justify-content: flex-start;
     }
-
     .listBox--hidden {
         display: none;
     }
-
     .googleLogoDiv{
-    margin-top: 5px;
+        margin-top: 5px;
         width: 90%;
         display: flex;
         align-items: center;
-        
     }
     display: flex;
     flex-direction: column;
@@ -228,7 +220,6 @@ const KonfiguratorMainMainboxLeft = styled.div`
     @media screen and (max-width: 1000px){
         width: 100%;
         &.a{
-
             display: none;
         }
     }
@@ -240,7 +231,6 @@ const KonfiguratorMainMainboxLeft = styled.div`
         padding: 10px 0;
         font-size: 18px;
         font-weight: 400;
-       
     }  
     .mainboxLeftInput{
         width: 90%;
@@ -262,7 +252,6 @@ const KonfiguratorMainMainboxLeft = styled.div`
             outline: none;
             padding-left: 10px;
             color: #606060;
-            
         }
     }  
     .mainboxLeftFilterButtons{
@@ -323,8 +312,6 @@ const KonfiguratorMainMainboxLeft = styled.div`
                     }
                 }
             }
-
-
             img{
                 transition: 0.3s ease;
             }
@@ -333,7 +320,6 @@ const KonfiguratorMainMainboxLeft = styled.div`
                 border-bottom-left-radius: 0;
                 border-bottom-right-radius: 0;
                 img{
-
                     transform: rotate(180deg);
                 }
                 .mainboxLeftFilterResults{
@@ -346,7 +332,6 @@ const KonfiguratorMainMainboxLeft = styled.div`
                     flex-direction: column;
                     align-items: flex-start;
                     justify-content: flex-start;
-                    
                 }
             }
             &:hover{
@@ -380,7 +365,6 @@ const AttractionResultMedium = styled.div`
             display: flex;
             align-items: center;
             justify-content: center;
-        
         }
         .titleTextBox{
             flex: 1;
@@ -402,7 +386,6 @@ const AttractionResultMedium = styled.div`
                 text-align: left;
             }
         }
-        
     }
     .attractionResultMediumDetails{
         flex: 1;
@@ -454,11 +437,9 @@ const AttractionResultMedium = styled.div`
                     background-color: #cfffe4ff;
                     color: black;
                     font-weight: 400;
-                   
                 }
             }
         }
-
     }
     .attractionResultMediumAddBox{
         height: 30px;
@@ -480,18 +461,14 @@ const AttractionResultMedium = styled.div`
             background-color: #007a61ff;
         }
     }
-    
 `
-
 const KonfiguratorMainMainboxRight = styled.div`
     flex: 1;
     height: 100%;
     display: flex;
     align-items: center;
     justify-content: center;
-    
 `
-
 export const KonfiguratorRadioButton = styled.div`
     width: 45px;
     height: 45px;
@@ -502,9 +479,8 @@ export const KonfiguratorRadioButton = styled.div`
     align-items: center;
     justify-content: center;
     &.chosen{
-    border-bottom: 3px solid #008d73ff;
+        border-bottom: 3px solid #008d73ff;
     }
-    
     &:hover{
        border-bottom: 3px solid #008d73ff;
     }
@@ -530,20 +506,18 @@ const SettingsButton = styled.div`
     &:hover{
         border-bottom: 3px solid #008d73ff;
     }
-
     @media screen and (max-width: 1100px){
         border-bottom: none;
         border-left: 2px solid lightgray;
         &:hover{
-        border-bottom: none;
-        border-left: 2px solid #008d73ff;
-    }
-        
+            border-bottom: none;
+            border-left: 2px solid #008d73ff;
+        }
     }
     .settingsPopup{
         position: absolute;
         top: 80px;
-        left: 50%;               /* ustawiamy na połowę szerokości SettingsButton */
+        left: 50%;
         transform: translateX(-50%);
         max-width: 400px;
         width: 95vw;
@@ -577,8 +551,6 @@ const KonfiguratorMainSettings = styled.div`
         display: flex;
         align-items: center;
         justify-content: center;
-        
-        
     }
     @media screen and (max-width: 1200px){
         flex-direction: column;
@@ -591,22 +563,16 @@ const KonfiguratorMainSettings = styled.div`
             height: 45px;
             overflow: hidden;
         }
-        
-        
         .iconEditBox{
             width: 100%;
             transition: 0.3s ease-in-out;
             &:hover{
                 background-color: #e0e0e0;
                 cursor: pointer;
-
             }
         }
     }
-    
-    
 `
-
 
 const AddAttractionWrapper = styled.div`
   position: fixed;
@@ -620,19 +586,15 @@ const AddAttractionWrapper = styled.div`
   align-items: center;
   justify-content: center;
 `;
-
 const AddActivityPanelContainer = styled.div`
   width: 100%;
-  max-height: 100%;      
+  max-height: 100%;
   border-radius: 10px;
-  overflow-y: auto;     /* umożliwia scrollowanie wewnątrz panelu */
+  overflow-y: auto;
   padding-top: 20px;
-  
 `;
-
 const SummaryInfoBox = styled.div`
     background: linear-gradient(90deg, #008d73ff 0%, #22af95ff 100%);
-    
     width: 90%;
     min-height: 100px;
     border-radius: 15px;
@@ -649,9 +611,7 @@ const SummaryInfoBox = styled.div`
         width: 90%;
         display: flex;
         align-items: center;
-        
     }
-    
     .summaryInfoBoxTitle{
         margin: 0 auto;
         margin-bottom: 5px;
@@ -683,7 +643,6 @@ const SummaryInfoBox = styled.div`
             box-sizing: border-box;
             padding: 10px;
             border-radius: 10px;
-           
             width: 90%;
             display: flex;
             flex-direction: row;
@@ -702,12 +661,10 @@ const SummaryInfoBox = styled.div`
                 font-size: 12px;
                 a{
                     text-align: left;
-                font-weight: 600;
+                    font-weight: 600;
                 }
-                
             }
         }
-
     }
     .summaryInfoBoxMoreButton{
         color: #fefefe;
@@ -719,14 +676,10 @@ const SummaryInfoBox = styled.div`
         text-decoration: underline;
         &:hover{
             color: #e0e0e0;
-            
         }
     }
-
 `
-//inputpairb
-//inputpairb
-//inputpairb
+
 const InputPairBMainbox = styled.div`
     min-width: 150px;
     height: 60px;
@@ -742,7 +695,6 @@ const InputPairBMainbox = styled.div`
     }
 `
 
-
 const minimum = (a, b) => {
     if (a < b) return a;
     return b;
@@ -753,7 +705,6 @@ const maximum = (a, b) => {
 }
 
 export function timeToMinutes(timeString) {
-    // Oczekiwany format: "HH:MM"
     const [hours, minutes] = timeString.split(":").map(Number);
     return hours * 60 + minutes;
 }
@@ -762,10 +713,8 @@ export function toBookingDateFormat(dateInput) {
     const y = date.getFullYear();
     const m = String(date.getMonth() + 1).padStart(2, "0");
     const d = String(date.getDate()).padStart(2, "0");
-
     return `${y}-${m}-${d}`;
 }
-
 
 // ===== URL PARAM HELPERS (no libs) =====
 const readURL = () => new URL(window.location.href);
@@ -797,7 +746,7 @@ const setDateParam = (url, key, date) => {
     url.searchParams.set(key, `${y}-${m}-${day}`);
 };
 
-// START PLACE ONLY (destination remains as-is)
+// START PLACE
 const readStartFromParams = () => {
     const p = readURL().searchParams;
     const name = p.get("startName");
@@ -831,14 +780,46 @@ const writeStartToParams = (m) => {
     commitURL(url);
 };
 
+// DESTINATION — analogicznie jak START
+const readDestFromParams = () => {
+    const p = readURL().searchParams;
+    const name = p.get("destName");
+    if (!name) return null;
+    const lat = getNum(p.get("destLat"));
+    const lng = getNum(p.get("destLng"));
+    return {
+        nazwa: name || undefined,
+        kraj: p.get("destCountry") || undefined,
+        wojewodztwo: p.get("destRegion") || undefined,
+        googleId: p.get("destGoogleId") || undefined,
+        id: getInt(p.get("destId")),
+        location: (lat != null && lng != null) ? { lat, lng } : undefined,
+    };
+};
+const writeDestToParams = (m) => {
+    const url = readURL();
+    const keys = ["destName", "destLat", "destLng", "destCountry", "destRegion", "destId", "destGoogleId"];
+    if (!m) {
+        keys.forEach(k => url.searchParams.delete(k));
+        commitURL(url);
+        return;
+    }
+    if (m.nazwa) url.searchParams.set("destName", m.nazwa); else url.searchParams.delete("destName");
+    if (m.location && m.location.lat != null) url.searchParams.set("destLat", String(m.location.lat)); else url.searchParams.delete("destLat");
+    if (m.location && m.location.lng != null) url.searchParams.set("destLng", String(m.location.lng)); else url.searchParams.delete("destLng");
+    if (m.kraj) url.searchParams.set("destCountry", m.kraj); else url.searchParams.delete("destCountry");
+    if (m.wojewodztwo) url.searchParams.set("destRegion", m.wojewodztwo); else url.searchParams.delete("destRegion");
+    if (Number.isFinite(m.id)) url.searchParams.set("destId", String(m.id)); else url.searchParams.delete("destId");
+    if (m.googleId) url.searchParams.set("destGoogleId", m.googleId); else url.searchParams.delete("destGoogleId");
+    commitURL(url);
+};
+
 const writeNumberParam = (key, val) => {
     const url = readURL();
     if (val == null || !Number.isFinite(val)) url.searchParams.delete(key);
     else url.searchParams.set(key, String(val));
     commitURL(url);
 };
-
-
 
 const pad2 = (n) => String(n).padStart(2, "0");
 const toKeyDate = (d) => {
@@ -849,18 +830,15 @@ const toKeyDate = (d) => {
 };
 
 const makeTripKey = (prefix, miejsceDocelowe, dataPrzyjazdu, dataWyjazdu) => {
-    // Najlepiej użyć stabilnego identyfikatora miejsca: googleId, w fallback nazwa.
     const destId =
         (miejsceDocelowe && (miejsceDocelowe.googleId || miejsceDocelowe.id || miejsceDocelowe.nazwa)) || "NO_DEST";
-    const arr = toKeyDate(dataPrzyjazdu);
-    const dep = toKeyDate(dataWyjazdu);
+    const dep = toKeyDate(dataPrzyjazdu);
+    const arr = toKeyDate(dataWyjazdu);
     return `${prefix}__${destId}__${arr}__${dep}`;
 };
 const getStr = (v, def = null) => {
-    // Zwraca surową wartość ciągu albo domyślną
     return (v == null || v === "") ? def : String(v);
 };
-
 const writeStringParam = (key, val) => {
     const url = readURL();
     if (val == null || String(val).trim() === "") url.searchParams.delete(key);
@@ -870,17 +848,12 @@ const writeStringParam = (key, val) => {
 
 export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportScheduleInit, dataPrzyjazduInit, dataWyjazduInit, standardHoteluInit, standardTransportuInit, miejsceDoceloweInit, miejsceStartoweInit, liczbaUczestnikowInit, liczbaOpiekunówInit, pokojeOpiekunowieInit }) => {
 
-    //dane poczatkowe
-    // --- dates ---
     // ===== INICJALIZACJA STANÓW (z URL -> localStorage -> inity) =====
 
     // --- dates ---
     const [dataPrzyjazdu, setDataPrzyjazdu] = useState(() => {
-        // 1) URL
-        const fromURL = getDateFromParam(readURL().searchParams.get("arr"));
+        const fromURL = getDateFromParam(readURL().searchParams.get("arr")); // arrival
         if (fromURL) return fromURL;
-
-        // 2) localStorage
         try {
             const raw = localStorage.getItem("dataPrzyjazdu");
             if (raw) {
@@ -888,18 +861,13 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
                 if (!isNaN(d)) return d;
             }
         } catch { }
-
-        // 3) inity lub bieżąca data
         if (dataPrzyjazduInit) return new Date(dataPrzyjazduInit);
         return new Date();
     });
 
     const [dataWyjazdu, setDataWyjazdu] = useState(() => {
-        // 1) URL
-        const fromURL = getDateFromParam(readURL().searchParams.get("dep"));
+        const fromURL = getDateFromParam(readURL().searchParams.get("dep")); // departure
         if (fromURL) return fromURL;
-
-        // 2) localStorage
         try {
             const raw = localStorage.getItem("dataWyjazdu");
             if (raw) {
@@ -907,19 +875,14 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
                 if (!isNaN(d)) return d;
             }
         } catch { }
-
-        // 3) inity lub bieżąca data
         if (dataWyjazduInit) return new Date(dataWyjazduInit);
         return new Date();
     });
 
     // --- standards ---
     const [standardHotelu, setStandardHotelu] = useState(() => {
-        // 1) URL
         const fromURL = getInt(readURL().searchParams.get("hotelStd"));
         if (fromURL != null) return fromURL;
-
-        // 2) localStorage
         try {
             const raw = localStorage.getItem("standardHotelu");
             if (raw != null) {
@@ -927,17 +890,12 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
                 if (Number.isFinite(n)) return n;
             }
         } catch { }
-
-        // 3) init lub domyślnie 0
         return (standardHoteluInit ?? 0);
     });
 
     const [standardTransportu, setStandardTransportu] = useState(() => {
-        // 1) URL
         const fromURL = getInt(readURL().searchParams.get("transportStd"));
         if (fromURL != null) return fromURL;
-
-        // 2) localStorage
         try {
             const raw = localStorage.getItem("standardTransportu");
             if (raw != null) {
@@ -945,40 +903,40 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
                 if (Number.isFinite(n)) return n;
             }
         } catch { }
-
-        // 3) init lub domyślnie 0
         return (standardTransportuInit ?? 0);
     });
 
-    // --- destination: LEAVE AS-IS (unchanged) ---
+    // --- destination: TERAZ z URL -> localStorage -> init
     const [miejsceDocelowe, setMiejsceDocelowe] = useState(() => {
-        const saved = localStorage.getItem("miejsceDocelowe");
-        return saved ? JSON.parse(saved) : miejsceDoceloweInit;
-    });
-
-    // --- start place: URL -> localStorage -> init ---
-    const [miejsceStartowe, setMiejsceStartowe] = useState(() => {
         // 1) URL
-        const fromURL = readStartFromParams();
+        const fromURL = readDestFromParams();
         if (fromURL) return fromURL;
 
         // 2) localStorage
         try {
-            const saved = localStorage.getItem("miejsceStartowe");
+            const saved = localStorage.getItem("miejsceDocelowe");
             if (saved) return JSON.parse(saved);
         } catch { }
 
         // 3) init
+        return miejsceDoceloweInit;
+    });
+
+    // --- start place: URL -> localStorage -> init
+    const [miejsceStartowe, setMiejsceStartowe] = useState(() => {
+        const fromURL = readStartFromParams();
+        if (fromURL) return fromURL;
+        try {
+            const saved = localStorage.getItem("miejsceStartowe");
+            if (saved) return JSON.parse(saved);
+        } catch { }
         return miejsceStartoweInit;
     });
 
     // --- counts ---
     const [liczbaUczestnikow, setLiczbaUczestnikow] = useState(() => {
-        // 1) URL
         const fromURL = getInt(readURL().searchParams.get("guests"));
         if (fromURL != null) return fromURL;
-
-        // 2) localStorage
         try {
             const raw = localStorage.getItem("liczbaUczestnikow");
             if (raw != null) {
@@ -986,17 +944,12 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
                 if (Number.isFinite(n)) return n;
             }
         } catch { }
-
-        // 3) init lub 0
         return (liczbaUczestnikowInit ?? 0);
     });
 
     const [liczbaOpiekunów, setLiczbaOpiekunów] = useState(() => {
-        // 1) URL
         const fromURL = getInt(readURL().searchParams.get("guardians"));
         if (fromURL != null) return fromURL;
-
-        // 2) localStorage
         try {
             const raw = localStorage.getItem("liczbaOpiekunów");
             if (raw != null) {
@@ -1004,28 +957,25 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
                 if (Number.isFinite(n)) return n;
             }
         } catch { }
-
-        // 3) init lub 0
         return (liczbaOpiekunówInit ?? 0);
     });
+
     const [tripId, setTripId] = useState(() => {
-        // 1) URL
         const fromURL = getStr(readURL().searchParams.get("tripId"));
         if (fromURL != null) return fromURL;
-
-
-        // 3) domyślna wartość
-        return "abcd";
+        return "";
     });
 
     // ===== EFEKTY: zapis do URL + regularny zapis do localStorage =====
-    // tripId -> URL + LS
+    // tripId -> URL
     useEffect(() => {
         writeStringParam("tripId", tripId);
+        console.log("Ustawiam tripId w LS:", tripId);
     }, [tripId]);
 
-    // destination: pozostaje bez zmian, ale zapisuj do LS przy każdej zmianie
+    // DESTINATION -> URL + LS
     useEffect(() => {
+        writeDestToParams(miejsceDocelowe);
         if (miejsceDocelowe) {
             localStorage.setItem("miejsceDocelowe", JSON.stringify(miejsceDocelowe));
         } else {
@@ -1033,7 +983,7 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
         }
     }, [miejsceDocelowe]);
 
-    // start place -> URL + LS
+    // START -> URL + LS
     useEffect(() => {
         writeStartToParams(miejsceStartowe);
         if (miejsceStartowe) {
@@ -1048,7 +998,6 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
         const url = readURL();
         setDateParam(url, "arr", dataPrzyjazdu);
         commitURL(url);
-
         if (dataPrzyjazdu instanceof Date && !isNaN(dataPrzyjazdu)) {
             localStorage.setItem("dataPrzyjazdu", dataPrzyjazdu.toISOString());
         }
@@ -1058,7 +1007,6 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
         const url = readURL();
         setDateParam(url, "dep", dataWyjazdu);
         commitURL(url);
-
         if (dataWyjazdu instanceof Date && !isNaN(dataWyjazdu)) {
             localStorage.setItem("dataWyjazdu", dataWyjazdu.toISOString());
         }
@@ -1086,10 +1034,8 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
         localStorage.setItem("standardTransportu", String(standardTransportu));
     }, [standardTransportu]);
 
-
-
     useEffect(() => {
-
+        console.log("TEST1", miejsceDocelowe, miejsceStartowe)
         miejsceDocelowe && localStorage.setItem("miejsceDocelowe", JSON.stringify(miejsceDocelowe))
     }, [miejsceDocelowe])
 
@@ -1105,27 +1051,19 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
     const [miejsceStartowePopupOpened, setMiejsceStartowePopupOpened] = useState(false);
 
     const [wyborDatyOpened, setWyborDatyOpened] = useState(false)
-
     const [wyborGosciOpened, setWyborGosciOpened] = useState(false)
-
     const [wyborStandardHoteluOpened, setWyborStandardHoteluOpened] = useState(false);
-
     const [wyborStandardTransportuOpened, setWyborStandardTransportuOpened] = useState(false);
     const [activityPanelOpened, setActivityPanelOpened] = useState(false);
     const [modyfikacja, setModyfikacja] = useState({ flag: false, dayIdx: null, idx: null })
 
     const libraryFilters = ["Muzeum",]
     const [filtersChosen, setFiltersChosen] = useState()
-
-
     const [alertsTable, setAlertsTable] = useState([])
+
     useEffect(() => {
         if (!miejsceStartoweSearching) return;
-
-        // 1. od razu czyścimy poprzednie wyniki
         setMiejsceStartoweResults([]);
-
-        // 2. ustawiamy timer
         const timeoutId = setTimeout(async () => {
             try {
                 const response = await fetch(
@@ -1136,7 +1074,6 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
                 const data = await response.json();
 
                 if (data?.length > 0) {
-                    // Wywołujemy getPlaceId dla każdego wyniku
                     const resultsWithPlaceId = await Promise.all(
                         data.map(async (item) => {
                             try {
@@ -1151,21 +1088,17 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
                             }
                         })
                     );
-
                     setMiejsceStartoweResults(resultsWithPlaceId);
                 }
-                else { setMiejsceStartoweResults([{ kraj: "brak" }]) }// <-- zapisanie wyników
-
+                else { setMiejsceStartoweResults([{ kraj: "brak" }]) }
             } catch (error) {
                 console.error("Błąd pobierania danych:", error);
             }
-        }, 1000); // 1000ms = 1s
+        }, 1000);
 
-        // 3. czyszczenie timera przy zmianie inputa
         return () => clearTimeout(timeoutId);
     }, [miejsceStartoweSearching]);
 
-    //test test test test
     useEffect(() => {
         const fetchRouteData = async () => {
             try {
@@ -1173,7 +1106,6 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
                 const fromLng = 19.9449799;
                 const toLat = 52.411542;
                 const toLng = 16.9487706;
-
 
                 const url = `http://localhost:5006/routeSummary?fromLat=${fromLat}&fromLng=${fromLng}&toLat=${toLat}&toLng=${toLng}`;
                 const response = await fetch(url);
@@ -1190,13 +1122,7 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
         fetchRouteData();
     }, [miejsceDocelowe, miejsceStartowe]);
 
-
-    //test test test
-    //dane z serwera
     const [changedActivities, setChangeActivities] = useState([])
-
-    //atrakcje
-    const [atrakcje, setAtrakcje] = useState([]);
 
     const fetchAttractions = useCallback(
         debounce(async (placeId, lat, lng) => {
@@ -1210,70 +1136,234 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
                 console.error("Błąd przy pobieraniu atrakcji:", err);
             }
         }, 1000),
-        [] // ważne: debounce nie powinno być tworzony przy każdym renderze
+        []
     );
-    useEffect(() => {
-        if (!miejsceDocelowe?.googleId || !miejsceDocelowe?.location) return;
 
-        // na start ładujemy dane z localStorage
+    const [atrakcje, setAtrakcje] = useState([]);
+
+    useEffect(() => {
+        const lat = Number(miejsceDocelowe?.location?.lat);
+        const lng = Number(miejsceDocelowe?.location?.lng);
+        if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
+
+        const controller = new AbortController();
         const cached = localStorage.getItem("lsAtrakcje");
 
         if (cached) {
             setAtrakcje(JSON.parse(cached));
         }
-        // wywołujemy zdebouncowaną funkcję
-        fetchAttractions(
-            miejsceDocelowe.googleId,
-            miejsceDocelowe.location.lat,
-            miejsceDocelowe.location.lng
-        );
-    }, [miejsceDocelowe]);
+        (async () => {
+            try {
+                const url = `http://localhost:5006/attractions/nearby?lat=${encodeURIComponent(
+                    lat
+                )}&lng=${encodeURIComponent(lng)}&radiusKm=70`;
 
+                const resp = await fetch(url, {
+                    method: "GET",
+                    headers: { Accept: "application/json" },
+                    signal: controller.signal,
+                });
 
-    //szukanie hotelu
+                if (!resp.ok) {
+                    const text = await resp.text().catch(() => "");
+                    throw new Error(`HTTP ${resp.status}: ${text || resp.statusText}`);
+                }
+
+                const data = await resp.json();
+                console.log("✅ /attractions/nearby result:", JSON.parse(cached), data);
+                setAtrakcje(data);
+            } catch (err) {
+                if (err.name !== "AbortError") {
+                    console.error("❌ /attractions/nearby error:", err);
+                }
+            }
+        })();
+
+        return () => controller.abort();
+    }, [miejsceDocelowe?.location?.lat, miejsceDocelowe?.location?.lng]);
+
     const [wybranyHotel, setWybranyHotel] = useState({ stars: 3, nazwa: "Ibis Budget", adres: "Koszalińska 45", checkIn: '14:00', checkOut: '11:00', cena: 100 })
 
-
-    //planWyjazdu
     const [routeSchedule, setRouteSchedule] = useState([])
     const [timeSchedule, setTimeSchedule] = useState([])
     const [activitiesSchedule, setActivitiesSchedule] = useState([[]]);
+
+    const [tripPrice, setTripPrice] = useState(0);
+    const [insurancePrice, setInsurancePrice] = useState(0);
+    const [computingPrice, setComputingPrice] = useState(false)
+    const userIdFromStore = useUserStore(s => s.user?._id);
+
     useEffect(() => {
-        setActivitiesSchedule(() => {
+        let aborted = false;
+
+        const getFallbackActivities = () => {
             if (activitiesScheduleInit != null) return activitiesScheduleInit;
-
+            return [[]]
             const tripKey = makeTripKey("activitiesSchedule", miejsceDocelowe, dataPrzyjazdu, dataWyjazdu);
-
-            // 1) próba odczytu spod klucza zależnego od miejsca i dat
             try {
                 const raw = localStorage.getItem(tripKey);
                 if (raw) return JSON.parse(raw);
-            } catch {
+            } catch { return [[]] }
+            return [[]];
+        };
+
+        const fallback = () => {
+            if (!aborted) {
+                console.log("Używam fallbacku dla activitiesSchedule");
+                setActivitiesSchedule(getFallbackActivities());
+            }
+        };
+
+        (async () => {
+            if (!tripId || String(tripId).trim() === "") {
+                return fallback();
             }
 
-            // 2) TESTOWY ETAP – fallback do legacy klucza "activitiesSchedule"
-            try {
-                const rawLegacy = localStorage.getItem("activitiesSchedule");
-                return rawLegacy ? JSON.parse(rawLegacy) : [];
-            } catch {
-                return [];
+            console.log("Próbuję pobrać plan wyjazdu z API dla tripId:", tripId);
+
+            let userId =
+                userIdFromStore ??
+                useUserStore.getState?.().user?._id ??
+                null;
+
+            if (!userId) {
+                try {
+                    const me = await fetchMe().catch(() => null);
+                    userId = me?._id ?? useUserStore.getState?.().user?._id ?? null;
+                } catch { }
             }
-        })
-    }, [])
+
+            console.log("Używam userId:", userId);
+
+            if (!userId) {
+                return fallback();
+            }
+
+            try {
+                const url = `http://localhost:5007/api/trip-plans/${encodeURIComponent(tripId)}/by-author/${encodeURIComponent(userId)}`;
+                const resp = await fetch(url, { credentials: "include" });
+
+                if (!aborted && resp.ok) {
+                    const data = await resp.json();
+                    if (Array.isArray(data?.activitiesSchedule)) {
+                        setActivitiesSchedule(data.activitiesSchedule);
+                        console.log("Pobrano plan wyjazdu z API dla tripId:", data.activitiesSchedule);
+                        return;
+                    }
+                }
+                return fallback();
+            } catch {
+                return fallback();
+            }
+        })();
+
+        return () => {
+            aborted = true;
+        };
+    }, []);
+
+    const saveTimerRef = useRef(null);
+    const saveControllerRef = useRef(null);
+
+    const canSave = () =>
+        !!tripId &&
+        String(tripId).trim().length > 0 &&
+        Array.isArray(activitiesSchedule);
+
+    const saveTripPlan = useCallback(async (opts = {}) => {
+        if (!canSave()) return;
+        const { signal } = opts;
+
+        try {
+            let userId = useUserStore.getState?.().user?._id ?? null;
+            if (!userId) {
+                try {
+                    const me = await fetchMe().catch(() => null);
+                    userId = me?._id ?? useUserStore.getState?.().user?._id ?? null;
+                } catch { /* cicho */ }
+            }
+            if (!userId) return;
+
+            const url = `http://localhost:5007/api/trip-plans/${encodeURIComponent(
+                tripId
+            )}/by-author/${encodeURIComponent(userId)}`;
+
+            const payload = {
+                activitiesSchedule,
+                computedPrice: (tripPrice ?? 0) + (insurancePrice ?? 0),
+            };
+
+            const resp = await fetch(url, {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                credentials: "include",
+                body: JSON.stringify(payload),
+                signal,
+            });
+
+            if (!resp.ok) {
+                console.warn("PUT trip plan failed:", resp.status, await resp.text());
+                return;
+            }
+        } catch (err) {
+            if (err?.name !== "AbortError") {
+                console.error("PUT trip plan error:", err);
+            }
+        }
+    }, [
+        tripId,
+        activitiesSchedule,
+        tripPrice,
+        insurancePrice,
+    ]);
+
+    const queueTripPlanSave = useCallback(() => {
+        if (!canSave()) return;
+
+        if (saveTimerRef.current) {
+            clearTimeout(saveTimerRef.current);
+            saveTimerRef.current = null;
+        }
+        if (saveControllerRef.current) {
+            try { saveControllerRef.current.abort(); } catch { }
+            saveControllerRef.current = null;
+        }
+
+        saveControllerRef.current = new AbortController();
+
+        saveTimerRef.current = setTimeout(() => {
+            const ctrl = saveControllerRef.current;
+            saveTimerRef.current = null;
+            saveTripPlan({ signal: ctrl?.signal }).finally(() => {
+                saveControllerRef.current = null;
+            });
+        }, 20000);
+    }, [saveTripPlan]);
+
+    useEffect(() => {
+        queueTripPlanSave();
+        return () => {
+            if (saveTimerRef.current) {
+                clearTimeout(saveTimerRef.current);
+                saveTimerRef.current = null;
+            }
+            if (saveControllerRef.current) {
+                try { saveControllerRef.current.abort(); } catch { }
+                saveControllerRef.current = null;
+            }
+        };
+    }, [JSON.stringify(activitiesSchedule), tripPrice, insurancePrice]);
+
     const [chosenTransportSchedule, setChosenTransportSchedule] = useState(() => {
         if (chosenTransportScheduleInit != null) return chosenTransportScheduleInit;
 
         const tripKey = makeTripKey("chosenTransport", miejsceDocelowe, dataPrzyjazdu, dataWyjazdu);
 
-        // 1) próba odczytu spod klucza zależnego od miejsca i dat
         try {
             const raw = localStorage.getItem(tripKey);
             if (raw) return JSON.parse(raw);
-        } catch {
-            /* ignorujemy i przechodzimy do fallbacku */
-        }
+        } catch { }
 
-        // 2) TESTOWY ETAP – fallback do legacy klucza "chosenTransport"
         try {
             const rawLegacy = localStorage.getItem("chosenTransport");
             return rawLegacy ? JSON.parse(rawLegacy) : [];
@@ -1286,23 +1376,13 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
         try {
             const raw = localStorage.getItem("startHours");
             const parsed = raw ? JSON.parse(raw) : null;
-            // jeśli w storage jest poprawna tablica liczb, przyjmij ją
             if (Array.isArray(parsed) && parsed.every(v => Number.isFinite(v))) {
                 return parsed;
             }
         } catch { }
-        // fallback: 480 dla każdego dnia (zależnie od istniejącego activitiesSchedule)
         return Array.from({ length: (Array.isArray(activitiesSchedule) ? activitiesSchedule.length : 0) }, () => 480);
     });
 
-
-    /*
-    
-        useState(() =>
-        (activitiesSchedule ?? []).map(() => [])
-    
-    );
-    */
     useEffect(() => {
         if (!miejsceDocelowe || !dataPrzyjazdu || !dataWyjazdu) return;
 
@@ -1337,8 +1417,8 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
         dataPrzyjazdu,
         dataWyjazdu,
     ]);
+
     useEffect(() => {
-        // zapisuj tylko, gdy długości się zgadzają
         if (
             Array.isArray(activitiesSchedule) &&
             Array.isArray(startHours) &&
@@ -1365,7 +1445,6 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
         for (let j = 0; j < activitiesSchedule[i].length; j++) {
             if (timeSchedule.length && Array.isArray(timeSchedule[i])) {
                 if (activitiesSchedule[i][j]?.googleId == "baseBookOut" && timeSchedule[i][j] > timeToMinutes(wybranyHotel.checkOut)) {
-
                     toChange = j;
                 }
             }
@@ -1373,9 +1452,6 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
         if (toChange > -1) {
             setLastDaySwap(toChange);
         }
-
-
-
         return true;
     }
 
@@ -1400,12 +1476,8 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
                             Musiałem poprawić plan dnia.`,
                             type: "error"
                         },
-
-
                     ];
                 });
-
-
             } catch (err) {
                 console.error("❌ Błąd przy automatycznej zamianie atrakcji:", err);
             }
@@ -1422,8 +1494,7 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
     useEffect(() => {
         const timer = setTimeout(() => {
             addAlert("guidance", "");
-        }, 5); // 5 ms debounce
-
+        }, 5);
         return () => clearTimeout(timer);
     }, []);
     function addRouteAlert(dayIdx) {
@@ -1436,8 +1507,6 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
                     route: routeSchedule[routeSchedule.length - 1][routeSchedule[routeSchedule.length - 1].length - 1]?.transitRoute,
                     type: "route"
                 },
-
-
             ];
         });
         dayIdx == 0 && setAlertsTable(prev => {
@@ -1449,11 +1518,8 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
                     route: routeSchedule[0][0]?.transitRoute,
                     type: "route"
                 },
-
-
             ];
         });
-
     }
     function deleteAlert(alertId) {
         setAlertsTable(prev =>
@@ -1461,10 +1527,9 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
         );
     }
 
-
     function roundFive(num) {
         if (num <= 0) return 0;
-        return Math.ceil((num + 0.0001) / 5) * 5; // dodanie małej wartości, by np. 20 -> 25
+        return Math.ceil((num + 0.0001) / 5) * 5;
     }
 
     async function generateRouteSchedule(activitiesScheduleProps) {
@@ -1472,16 +1537,12 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
             return;
         }
 
-        // ⏱️ odblokowanie po 1 sekundzie
-
         const activitiesScheduleLocal = structuredClone(activitiesScheduleProps)
         const tabRoutesTmp = Array.from({ length: activitiesSchedule.length }, () => []);
         const tabTimeScheduleTmp = Array.from({ length: activitiesSchedule.length }, (_, i) => [startHours[i] || 480]);
 
-        // 🔹 Pętla po dniach
         for (let dayIdx = 0; dayIdx < activitiesScheduleLocal.length; dayIdx++) {
             const day = activitiesScheduleLocal[dayIdx];
-            // 🔹 Pętla po aktywnościach
             for (let actIdx = 0; actIdx < day.length - 1; actIdx++) {
                 let current = day[actIdx];
                 let next = day[actIdx + 1];
@@ -1542,7 +1603,6 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
             }
         }
 
-        // 🔹 Obliczanie czasu dla każdego dnia
         for (let dayIdx = 0; dayIdx < activitiesScheduleLocal.length; dayIdx++) {
             const day = activitiesScheduleLocal[dayIdx];
 
@@ -1572,8 +1632,6 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
                             tabTimeScheduleTmp[dayIdx][actIdx] +
                             activitiesSchedule[dayIdx][actIdx].czasZwiedzania +
                             transportCzas,
-
-
                             timeToMinutes(wybranyHotel.checkIn)
                         );
                         tabTimeScheduleTmp[dayIdx].push(val);
@@ -1590,10 +1648,6 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
 
         setRouteSchedule(tabRoutesTmp);
         setTimeSchedule(tabTimeScheduleTmp);
-
-        //console.log("✅ Nowe trasy:", tabRoutesTmp);
-        //console.log("🕒 Harmonogram:", tabTimeScheduleTmp);
-
         return true;
     }
 
@@ -1608,7 +1662,6 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
             );
         }
         for (let i = 0; i < newTab.length; i++) {
-            // 🔧 Aktualizuj istniejące baseHotel* i baseBook* jeśli występują
             for (let j = 0; j < newTab[i].length; j++) {
                 const act = newTab[i][j];
                 if (hotelIds.includes(act.googleId)) {
@@ -1619,8 +1672,6 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
                     act.adres = wybranyHotel?.adres || wybranyHotel?.nazwa || miejsceDocelowe?.nazwa || "";
                 }
             }
-
-            // ================== 🔽 POZOSTAŁA LOGIKA Z TWOJEGO KODU 🔽 ==================
 
             if (newTab.length && i === 0) {
                 let baseRouteToToAdd = true;
@@ -1830,17 +1881,10 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
 
     useEffect(() => {
         validateSchedule()
-        //console.log("TEST1", activitiesSchedule, timeSchedule, routeSchedule, chosenTransportSchedule)
     }, [activitiesSchedule, timeSchedule])
 
-
-
-
-
     async function updateOffer({ googleId, link, delayMs = 1000 }) {
-        if (!googleId || !link) return; // ⛔ required data missing
-
-        // optional debounce-like delay
+        if (!googleId || !link) return;
         if (delayMs > 0) {
             await new Promise((resolve) => setTimeout(resolve, delayMs));
         }
@@ -1850,7 +1894,7 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
 
             const response = await axios.get("http://localhost:5006/update-offer", {
                 params: { googleId, link },
-                timeout: 120000, // 2 min
+                timeout: 120000,
             });
 
             console.log("✅ Oferta zaktualizowana:", response.data);
@@ -1913,8 +1957,6 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
         }
     }
 
-
-
     function deleteActivity(dayIndex, actIdx) {
         if (activitiesSchedule[dayIndex][actIdx]?.googleId?.includes("base")) return;
         setActivitiesSchedule(prev =>
@@ -1926,7 +1968,6 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
         );
     }
     async function swapActivities(dayIndex, act1, act2) {
-        // 🧩 Blokada — nie zamieniamy hotelu lub pustych elementów
         if (
             act1 === 0 ||
             act2 === 0 ||
@@ -1936,16 +1977,11 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
             return;
         }
 
-        // 🔹 Utwórz kopię harmonogramu
         const tmpActivities = activitiesSchedule.map(day => [...day]);
-
-        // 🔹 Zamiana miejscami atrakcji w danym dniu
         const day = tmpActivities[dayIndex];
         [day[act1], day[act2]] = [day[act2], day[act1]];
 
-        // 🔹 Wygeneruj ponownie harmonogram tras
-        const success = true;//await generateRouteSchedule(tmpActivities);
-
+        const success = true;
         if (success) {
             setActivitiesSchedule(tmpActivities);
             return true;
@@ -1970,14 +2006,14 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
     function changeStartHour(dayIdx, startTime) {
         if (startTime < 0) return;
         dayIdx != activitiesSchedule.length - 1 && setStartHours(prev => {
-            const tmpHours = [...prev]; // tworzymy kopię poprzedniego stanu
-            tmpHours[dayIdx] = startTime; // modyfikujemy kopię
-            return tmpHours; // ustawiamy nową tablicę w stanie
+            const tmpHours = [...prev];
+            tmpHours[dayIdx] = startTime;
+            return tmpHours;
         });
         dayIdx == activitiesSchedule.length - 1 && setStartHours(prev => {
-            const tmpHours = [...prev]; // tworzymy kopię poprzedniego stanu
-            tmpHours[dayIdx] = minimum(startTime, timeToMinutes(wybranyHotel.checkOut) - 10); // modyfikujemy kopię
-            return tmpHours; // ustawiamy nową tablicę w stanie
+            const tmpHours = [...prev];
+            tmpHours[dayIdx] = minimum(startTime, timeToMinutes(wybranyHotel.checkOut) - 10);
+            return tmpHours;
         });
     }
 
@@ -1990,7 +2026,6 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
     }, [modyfikacja])
 
     async function changeActivityTime(dayIdx, actIdx, time) {
-        // 🔹 Utwórz głęboką kopię harmonogramu i zaktualizuj wybrany czas
         const tmpActivities = activitiesSchedule.map((day, dIdx) =>
             day.map((activity, aIdx) =>
                 dIdx === dayIdx && aIdx === actIdx
@@ -2000,11 +2035,7 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
         );
         setActivitiesSchedule(tmpActivities);
         return true;
-
     }
-
-
-
 
     useEffect(() => {
         setKonfiguratorLoading(true)
@@ -2015,19 +2046,17 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
 
             setActivitiesSchedule(prev => {
                 if (days < prev.length) {
-                    // skrócenie do wymaganej liczby dni
                     let updated = verifyBaseActs(prev.slice(0, days));
                     setStartHours(prev => prev.slice(0, days));
                     return updated;
                 } else if (days > prev.length) {
-                    // dodanie brakujących dni jako pustych tablic
                     const extra = Array.from({ length: days - prev.length }, () => []);
                     let updated = verifyBaseActs([...prev, ...extra]);
                     setStartHours(prev => [...prev, ...Array.from({ length: days - prev.length }, () => 480)]);
                     return updated;
                 }
                 let updated = verifyBaseActs(prev);
-                return updated; // bez zmian
+                return updated;
             });
 
             setLiczbaDni(days);
@@ -2037,36 +2066,26 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
         return () => clearTimeout(handler);
     }, [dataWyjazdu, dataPrzyjazdu]);
 
-
     useEffect(() => {
-
         setChosenTransportSchedule(prev => {
             let updated = [...prev];
-            let localActivitiesSchedule = activitiesSchedule;
-
-            // 1️⃣ Dostosowanie liczby dni
 
             if (activitiesSchedule.length > updated.length) {
-                // dodaj brakujące dni (puste tablice)
                 const extraDays = Array.from(
                     { length: activitiesSchedule.length - updated.length },
                     () => []
                 );
                 updated = [...updated, ...extraDays];
             } else if (activitiesSchedule.length < updated.length) {
-                // usuń nadmiarowe dni
                 updated = updated.slice(0, activitiesSchedule.length);
             }
 
-            // 2️⃣ Dostosowanie liczby transportów w każdym dniu
             updated = updated.map((dayTransports, dayIdx) => {
                 const targetLen = activitiesSchedule[dayIdx].length;
                 const diff = targetLen - dayTransports.length - 1;
                 if (diff > 0) {
-                    // dodaj brakujące elementy (np. zera)
                     return [...dayTransports, ...Array(diff).fill(standardTransportu == 0 ? 1 : 2)];
                 } else if (diff < 0) {
-                    // usuń nadmiar
                     return dayTransports.slice(0, targetLen + diff);
                 }
                 return dayTransports;
@@ -2075,9 +2094,7 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
         });
     }, [activitiesSchedule]);
 
-
     function changeChosenTransport(dayIdx, actIdx, value) {
-
         setChosenTransportSchedule(prev => {
             const updated = prev.map((day, dIdx) =>
                 dIdx === dayIdx
@@ -2088,16 +2105,13 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
             );
             return updated;
         });
-
     }
-
 
     const prevValues = useRef({
         chosenTransportSchedule,
         startHours,
         activitiesSchedule,
     });
-
 
     useEffect(() => {
         if (!miejsceDocelowe || !miejsceStartowe) return;
@@ -2124,24 +2138,19 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
 
         recalculate();
     }, [chosenTransportSchedule, startHours, activitiesSchedule]);
+
     useEffect(() => {
         const timer = setTimeout(() => {
             console.log("Correcting hotel's informations.", wybranyHotel)
             setActivitiesSchedule(prev => verifyBaseActs(structuredClone(prev)));
-        }, 10000); // 1 s
-
+        }, 10000);
         return () => clearTimeout(timer);
     }, [miejsceStartowe, wybranyHotel]);
-
-
-
-
 
     const submitMiejsceStartowe = (miejsceStartoweWybor) => {
         setMiejsceStartowe(miejsceStartoweWybor);
         setMiejsceStartoweSearching("")
         setMiejsceStartoweResults([]);
-
     }
     function formatDate(dateInput) {
         if (!dateInput) {
@@ -2150,17 +2159,13 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
         const date = new Date(dateInput);
 
         const day = String(date.getDate()).padStart(2, "0");
-        const month = String(date.getMonth() + 1).padStart(2, "0"); // miesiące są od 0 do 11
+        const month = String(date.getMonth() + 1).padStart(2, "0");
         const year = date.getFullYear();
 
         return `${day}/${month}/${year}`;
     }
-    //temp temp temp
-    const [tripPrice, setTripPrice] = useState(0);
-    const [insurancePrice, setInsurancePrice] = useState(0);
-    const [computingPrice, setComputingPrice] = useState(false)
+
     useEffect(() => {
-        // Sprawdzenie kompletności danych
         const hasAll =
             Array.isArray(activitiesSchedule) &&
             typeof liczbaUczestnikow === "number" &&
@@ -2173,7 +2178,6 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
         const controller = new AbortController();
 
         const timer = setTimeout(async () => {
-
             try {
                 const { data } = await axios.post(
                     "http://localhost:5006/computePrice",
@@ -2195,7 +2199,7 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
                     console.error("❌ /computePrice error:", err?.message || err);
                 }
             }
-        }, 1000); // debounce 1 s
+        }, 1000);
         setComputingPrice(false)
         return () => {
             clearTimeout(timer);
@@ -2208,77 +2212,6 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
         routeSchedule,
         wybranyHotel,
     ]);
-
-    /*
-    const googleIdTest = "ChIJibBLOT9bBEcRL9IL_IaJz2I";
-    const linkTest = "https://fara.archpoznan.pl/pl/";
-
-    useEffect(() => {
-        if (!googleIdTest || !linkTest) return; // ⛔ brak wymaganych danych — nie wywołujemy API
-
-        const handler = setTimeout(async () => {
-            try {
-                console.log(`🔄 Aktualizuję ofertę dla ${googleIdTest} z linku ${linkTest}...`);
-
-                const response = await axios.get("http://localhost:5006/update-offer", {
-                    params: { googleId: googleIdTest, link: linkTest },
-                    timeout: 120000, // 2 minuty
-                });
-
-                console.log("✅ Oferta zaktualizowana:", response.data);
-            } catch (err) {
-                console.error("❌ Błąd przy aktualizacji oferty:", err.message);
-            }
-        }, 1000); // ⏱️ 1 sekunda opóźnienia
-
-        // 🧹 Wyczyść timeout przy zmianie zależności lub unmount
-        return () => clearTimeout(handler);
-    }, [googleIdTest, linkTest]);
-    /* useEffect(()=>{
-        setMiejsceDocelowe(miejsceStartowe)
-    }, [miejsceStartowe])
-    const link1 = "https://ogrod.amu.edu.pl/";
-
-    useEffect(() => {
-        const fetchOffer = async () => {
-            try {
-                const response = await fetch(`http://localhost:5006/place-offer?links=${encodeURIComponent(link1)}`);
-                const data = await response.json();
-                console.log("✅ Odpowiedź z backendu:", data);
-            } catch (err) {
-                console.error(err);
-            }
-        };
-
-        fetchOffer();
-    }, []);
-    
-    const googleIdTest = "ChIJSW5ASGlbBEcR9aAyoa6e1Qg";
-    const linkTest = "http://www.bramapoznania.pl/";
-    
-    useEffect(() => {
-        if (!googleIdTest || !linkTest) return; // ⛔ brak wymaganych danych — nie wywołujemy API
-
-        const handler = setTimeout(async () => {
-            try {
-                console.log(`🔄 Aktualizuję ofertę dla ${googleIdTest} z linku ${linkTest}...`);
-
-                const response = await axios.get("http://localhost:5006/update-offer", {
-                    params: { googleId: googleIdTest, link: linkTest },
-                    timeout: 120000, // 2 minuty
-                });
-
-                console.log("✅ Oferta zaktualizowana:", response.data);
-            } catch (err) {
-                console.error("❌ Błąd przy aktualizacji oferty:", err.message);
-            }
-        }, 1000); // ⏱️ 1 sekunda opóźnienia
-
-        // 🧹 Wyczyść timeout przy zmianie zależności lub unmount
-        return () => clearTimeout(handler);
-    }, [googleIdTest, linkTest]);*/
-
-
 
     const pokojeOpiekunowie = 2;
     useEffect(() => {
@@ -2296,7 +2229,6 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
 
         const key = `Hotel-${nazwa}-${dataPrzyjazdu}-${dataWyjazdu}-${standardHotelu}-${liczbaUczestnikow}-${liczbaOpiekunów}-${pokojeOpiekunowie}`;
 
-        // 🔍 Sprawdzenie localStorage
         const cachedHotel = localStorage.getItem(key);
         if (cachedHotel) {
             try {
@@ -2309,9 +2241,13 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
             }
         }
 
-        const handler = setTimeout(async () => {
+        let initialTimer;
+        let retryTimer;
+        let cancelled = false;
+
+        const fetchHotel = async (attempt = 0) => {
             try {
-                console.log("🌍 Pobieram hotel z API /findHotel...");
+                console.log(`🌍 Pobieram hotel z API /findHotel... (attempt ${attempt + 1})`);
                 const response = await axios.get("http://localhost:5006/findHotel", {
                     params: {
                         city: nazwa,
@@ -2319,21 +2255,28 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
                         centerLng: lng,
                         arrival_date: toBookingDateFormat(dataPrzyjazdu),
                         departure_date: toBookingDateFormat(dataWyjazdu),
-                        stars: standardHotelu == 0 ? "class::0,class::1" : standardHotelu == 1 ? "class::2,class::3" : "class::4,class::5",
+                        stars:
+                            standardHotelu == 0
+                                ? "class::0,class::1"
+                                : standardHotelu == 1
+                                    ? "class::2,class::3"
+                                    : "class::4,class::5",
                         property_types: "property_type::204",
                         apartsAllowed: standardHotelu > 0 ? false : true,
                         max_pages: 3,
                         uczestnicy: liczbaUczestnikow,
                         opiekunowie: liczbaOpiekunów,
-                        pokojeOpiekunowie: pokojeOpiekunowie
-                    }
+                        pokojeOpiekunowie: pokojeOpiekunowie,
+                    },
                 });
+
+                if (cancelled) return;
 
                 console.log("✅ Wynik zapytania /findHotel:", response.data);
 
-                const winningHotel = Array.isArray(response.data.hotels)
+                const winningHotel = Array.isArray(response.data?.hotels)
                     ? response.data.hotels[Math.min(response.data.hotels.length - 1, 2)]
-                    : response.data[0];
+                    : response.data?.[0];
 
                 if (!winningHotel) {
                     console.warn("⚠️ Nie znaleziono hoteli dla podanych parametrów.");
@@ -2351,28 +2294,34 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
                     cena:
                         (Number(pb?.strikethroughPrice?.value) || 0) > 0
                             ? Number(pb.strikethroughPrice.value)
-                            : ((Number(pb?.grossPrice?.value) || 0) > 0
-                                ? Number(pb.grossPrice.value)
-                                : 0),
+                            : (Number(pb?.grossPrice?.value) || 0),
                     lat: winningHotel.property.latitude,
                     lng: winningHotel.property.longitude,
                     cachedAt: new Date().toISOString(),
                 };
 
-
-                // 💾 Zapisz w localStorage
                 localStorage.setItem(key, JSON.stringify(hotelData));
                 console.log(`💾 Zapisano hotel w localStorage jako "${key}"`);
 
                 setWybranyHotel(hotelData);
-
             } catch (error) {
-                console.error("❌ Błąd podczas pobierania hoteli:", error.message);
+                if (cancelled) return;
+                console.error("❌ Błąd podczas pobierania hoteli:", error?.message || error);
+
+                if (attempt === 0) {
+                    console.log("⏳ Ponawiam próbę pobrania hotelu za 5 s...");
+                    retryTimer = setTimeout(() => fetchHotel(1), 5000);
+                }
             }
-        }, 1000);
+        };
 
-        return () => clearTimeout(handler);
+        initialTimer = setTimeout(() => fetchHotel(0), 1000);
 
+        return () => {
+            cancelled = true;
+            if (initialTimer) clearTimeout(initialTimer);
+            if (retryTimer) clearTimeout(retryTimer);
+        };
     }, [
         miejsceDocelowe,
         dataPrzyjazdu,
@@ -2382,13 +2331,6 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
         liczbaOpiekunów,
         pokojeOpiekunowie
     ]);
-
-
-
-
-
-
-    //temp temp temp
 
     const setOffOthers = (s) => {
         if (s != 0) {
@@ -2411,7 +2353,6 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
     useEffect(() => {
         function handleClickOutside(event) {
             if (settingsRef.current && !settingsRef.current.contains(event.target)) {
-                // Kliknięto poza całym KonfiguratorMainSettings → zamknij wszystkie popupy
                 setSettingsOpened(false);
                 setMiejsceStartowePopupOpened(false);
                 setWyborDatyOpened(false);
@@ -2425,7 +2366,6 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
         return () => document.removeEventListener("mousedown", handleClickOutside);
     }, []);
     const settingsRef = useRef(null);
-
 
     const [routeToPrint, setRouteToPrint] = useState([]);
     const [routeFromPrint, setRouteFromPrint] = useState([])
@@ -2451,7 +2391,6 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
 
     }, [routeSchedule])
 
-
     const [filtersLeftOpened, setFiltersLeftOpened] = useState(false)
     const [chosenFilters, setChosenFilters] = useState([])
     useEffect(() => {
@@ -2466,20 +2405,15 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
                     <img src="../icons/filter.svg" height={'60%'} />
                 </div>
                 <SettingsButton onClick={() => { setMiejsceStartowePopupOpened(!miejsceStartowePopupOpened); setOffOthers(0) }} className={miejsceStartowePopupOpened ? "chosen" : ""}>
-
                     <img height="30px" width="30px" src="../icons/icon-rocket.svg" />
                     Miejsce początkowe:<span>{miejsceStartowe ? miejsceStartowe.nazwa : "..."} </span>
                     {miejsceStartowePopupOpened && <div className="settingsPopup" onClick={(e) => e.stopPropagation()} >
-
                         <SearchBox value={miejsceStartoweSearching} onChange={setMiejsceStartoweSearching} results={miejsceStartoweResults} searchAction={submitMiejsceStartowe} disabled={miejsceStartowe} />
                         {miejsceStartowe && <>
                             <MapaBox key={`startowe-${miejsceStartowe.nazwa}`}>
                                 <LeafletMap lat={miejsceStartowe?.location?.lat || 52.5333} lng={miejsceStartowe?.location?.lng || 16.9252} zoom={9} />
-
                             </MapaBox>
                             <MapaResultBox>
-
-
                                 <PopupResult onClick={() => setMiejsceStartowe("")} onMouseEnter={() => setMiejsceStartoweHovering(true)} onMouseLeave={() => setMiejsceStartoweHovering(false)}>
                                     <div className="popupResultTitle">
                                         {miejsceStartowe.nazwa}
@@ -2502,7 +2436,6 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
                                     kliknij aby zmienić lokalizację
                                 </div>
                             </MapaResultBox>
-
                         </>}
                         {!miejsceStartowe &&
                             <MapaBox>
@@ -2511,13 +2444,10 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
                                     <img src="../icons/icon-location-gray.svg" width={'100px'} />
                                 </div>
                             </MapaBox>}
-
-
                     </div>}
                 </SettingsButton>
 
                 <SettingsButton className={wyborDatyOpened ? "chosen" : ""} onClick={() => { setWyborDatyOpened(!wyborDatyOpened); setOffOthers(1) }}>
-
                     <img height="30px" width="30px" src="../icons/calendar-svgrepo-com.svg" />
                     {formatDate(dataPrzyjazdu || "")} - {formatDate(dataWyjazdu || "")}
                     {wyborDatyOpened && <div className="settingsPopup" onClick={(e) => e.stopPropagation()} >
@@ -2526,18 +2456,15 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
                 </SettingsButton>
 
                 <SettingsButton className={wyborGosciOpened ? "chosen" : ""} onClick={() => { setWyborGosciOpened(!wyborGosciOpened); setOffOthers(2) }}>
-
                     <img height="30px" width="30px" src="../icons/users.svg" />
                     {liczbaUczestnikow} uczestników, {liczbaOpiekunów} opiekunów
                     {wyborGosciOpened && <div className="settingsPopup" onClick={(e) => e.stopPropagation()} >
                         Liczba uczestników
                         <WyborUczestnikow uczestnicy={liczbaUczestnikow} setUczestnicy={setLiczbaUczestnikow} opiekunowie={liczbaOpiekunów} setOpiekunowie={setLiczbaOpiekunów} />
                     </div>}
-
                 </SettingsButton>
 
                 <SettingsButton className={wyborStandardHoteluOpened ? "chosen" : ""} onClick={() => { setWyborStandardHoteluOpened(!wyborStandardHoteluOpened); setOffOthers(3) }}>
-
                     <img height="30px" width="30px" src="../icons/icon-hotel.svg" />
                     Standard hotelu : {standardHotelu || standardHotelu == 0 ? namesHotelsTab[standardHotelu] : "..."}
                     {wyborStandardHoteluOpened && <div className="settingsPopup" onClick={(e) => e.stopPropagation()} >
@@ -2552,7 +2479,6 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
                 </SettingsButton>
 
                 <SettingsButton className={wyborStandardTransportuOpened ? "chosen" : ""} onClick={() => { setWyborStandardTransportuOpened(!wyborStandardTransportuOpened); setOffOthers(4) }}>
-
                     <img height="30px" width="30px" src="../icons/icon-transport.svg" />
                     Preferowany transport: {standardTransportu || standardTransportu == 0 ? namesTransportTab[standardTransportu] : "..."}
                     {wyborStandardTransportuOpened && <div className="settingsPopup" onClick={(e) => e.stopPropagation()} >
@@ -2563,7 +2489,6 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
                                 { value: 0, icon: "../icons/icon-public-trannsport.svg", label: "Transport publiczny" },
                                 { value: 2, icon: "../icons/icon-own-transport.svg", label: "Własny" }
                             ]}
-
                             setWybor={setStandardTransportu}
                             value={standardTransportu}
                             name="transport-form"
@@ -2572,16 +2497,12 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
                 </SettingsButton>
             </KonfiguratorMainSettings>
 
-
             <KonfiguratorMainMainbox>
-
                 <KonfiguratorMainMainboxLeft className="a">
                     <div className="mainboxLeftTitle">
                         Biblioteka atrakcji
-
                     </div>
                     <PanelBoxNav className="a">
-
                         {[
                             { id: 0, icon: "../icons/castle.svg", label: "Podstawowe" },
                             { id: 1, icon: "../icons/park.svg", label: "Parki" },
@@ -2596,7 +2517,7 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
                                     value={option.id}
                                     checked={radioChosen === option.id}
                                     onChange={() => setRadioChosen(option.id)}
-                                    style={{ display: "none" }} // ukrywamy natywny wygląd radio
+                                    style={{ display: "none" }}
                                 />
                                 <img src={option.icon} width="25px" alt={option.label} />
                             </label>
@@ -2606,8 +2527,6 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
                         <img src="../icons/search-gray.svg" width={'20px'} />
                         <input type="text" placeholder="Wyszukaj aktywność..." value={attractionsSearching} onChange={(e) => setAttractionsSearching(e.target.value)} />
                     </div>
-
-
 
                     <div className={radioChosen === 0 ? "listBox" : "listBox listBox--hidden"}>
                         <div className="mainboxLeftFilterButtons">
@@ -2672,10 +2591,6 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
                                 />
                             ))}
                     </div>
-
-
-
-
                 </KonfiguratorMainMainboxLeft>
 
                 <KonfiguratorMainMainboxRight>
@@ -2690,7 +2605,6 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
                 </KonfiguratorMainMainboxRight>
 
                 <KonfiguratorMainMainboxLeft className="right">
-
                     <ChatBox2 activitiesSchedule={activitiesSchedule} basicActivities={basicActivities} miejsceDocelowe={miejsceDocelowe} attractions={atrakcje} addActivity={addActivity} swapActivities={swapActivities} changeActivity={changeActivity} deleteActivity={deleteActivity} />
                     <div className="mainboxLeftTitle">
                         Podsumowanie wyjazdu
@@ -2711,15 +2625,10 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
                                     Doba hotelowa: {wybranyHotel.checkIn} - {wybranyHotel.checkOut}
                                 </div>
                             </>
-
                         }
-
-
-
-
                     </SummaryInfoBox>
-                    <SummaryInfoBox className="b">
 
+                    <SummaryInfoBox className="b">
                         <div className="summaryInfoBoxTitle">
                             <img src="../icons/hotel-white.svg" width="20px" />
                             Przejazd do {miejsceDocelowe?.nazwa}
@@ -2728,7 +2637,6 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
                             standardTransportu == 0 ?
                                 routeToPrint && routeToPrint.length > 0 ?
                                     <>
-
                                         {
                                             routeToPrint.map((rt, rtIdx) => (
                                                 <div className="routeSummaryRow" key={`${rt.line}_${rtIdx}`}>
@@ -2740,7 +2648,6 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
                                         <div className="summaryInfoBoxMoreButton" onClick={() => addRouteAlert(0)}>
                                             Pokaż całą trasę
                                         </div>
-
                                     </>
                                     :
                                     "To nie będzie ciężki przejazd"
@@ -2748,20 +2655,16 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
                                 standardTransportu == 1 ?
                                     <>
                                         <img src="../icons/bus-white.svg" height="30px" />
-
                                     </>
-
                                     :
                                     <>
                                         <img src="../icons/ownTransport-white.svg" height="30px" />
                                         Własny transport
                                     </>
                         }
-
-
                     </SummaryInfoBox>
-                    <SummaryInfoBox className="b">
 
+                    <SummaryInfoBox className="b">
                         <div className="summaryInfoBoxTitle">
                             <img src="../icons/hotel-white.svg" width="20px" />
                             Powrót do {miejsceStartowe?.nazwa}
@@ -2770,7 +2673,6 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
                             standardTransportu == 0 ?
                                 routeFromPrint && routeFromPrint.length > 0 ?
                                     <>
-
                                         {
                                             routeFromPrint.map((rt, rtIdx) => (
                                                 <div className="routeSummaryRow" key={`${rt.line}_${rtIdx}`}>
@@ -2789,20 +2691,15 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
                                 standardTransportu == 1 ?
                                     <>
                                         <img src="../icons/bus-white.svg" height="30px" />
-
                                     </>
-
                                     :
                                     <>
                                         <img src="../icons/ownTransport-white.svg" height="30px" />
                                         Własny transport
                                     </>
-
                         }
-
-
-
                     </SummaryInfoBox>
+
                     <CostSummary tripPrice={tripPrice} insurancePrice={insurancePrice} liczbaOpiekunow={liczbaOpiekunów} liczbaUczestnikow={liczbaUczestnikow} />
                     <div className="mainboxLeftTitle" style={{ paddingTop: '10px', marginTop: '20px', borderTop: '1px solid #ccc' }}>
                         Podsumowanie dnia
@@ -2811,11 +2708,9 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
                         <RouteMap
                             schedule={activitiesSchedule[wybranyDzien]}
                             key={JSON.stringify(activitiesSchedule[wybranyDzien])}
-
                         />
                     </div>
                 </KonfiguratorMainMainboxLeft>
-
             </KonfiguratorMainMainbox>
 
             {alertsTable && alertsTable.length ?
@@ -2824,7 +2719,5 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
                 null
             }
         </>
-
     )
-
 }

@@ -251,10 +251,10 @@ const AttractionResultMediumComponent = ({
         atrakcja.selectedVariant = idx;
     }
     return (
-        <AttractionResultMedium key={`${atrakcja.googleId}${atrakcja.cenaZwiedzania}${selectedVariant}`} className={baseVersion ? "baseVersion" :"" }>
+        <AttractionResultMedium key={`${atrakcja.googleId}${atrakcja.cenaZwiedzania}${selectedVariant}`} className={baseVersion ? "baseVersion" : ""}>
             <div className="attractionResultMediumTitleBox">
                 <div className="titleIconBox">
-                   {baseVersion ? <img src="../icons/park-color.svg" width="20px" alt="Ikona atrakcji" />: <img src="../icons/color-castle.svg" width="20px" alt="Ikona atrakcji" />} 
+                    {baseVersion ? <img src="../icons/park-color.svg" width="20px" alt="Ikona atrakcji" /> : <img src="../icons/color-castle.svg" width="20px" alt="Ikona atrakcji" />}
                 </div>
                 <div className="titleTextBox">
                     <div className="attractionResultMediumTitle">{atrakcja.nazwa}</div>
@@ -269,11 +269,13 @@ const AttractionResultMediumComponent = ({
                             {atrakcja?.czasZwiedzania && minutesToStringTime(atrakcja.czasZwiedzania) || "1h 30min"}
                         </div>
                         {
-
-                            <div className="detailRowElement">
-                                <img src="../icons/icon-ticket.svg" width="20px" alt="Cena" />{" "}
-                                {atrakcja?.warianty.length == 0 ? "Dodaj aby obliczyć" : atrakcja.cenaZwiedzania == 0 ? "Bezpłatne" : atrakcja.cenaZwiedzania ? atrakcja.cenaZwiedzania + "zł /osoba" : ""}
-                            </div>
+                            (!Array.isArray(atrakcja?.warianty) || atrakcja.warianty.length === 0)
+                                ? "Dodaj aby obliczyć"
+                                : atrakcja?.cenaZwiedzania === 0
+                                    ? "Bezpłatne"
+                                    : atrakcja?.cenaZwiedzania != null
+                                        ? `${Number(atrakcja.cenaZwiedzania)} zł / osoba`
+                                        : ""
                         }
 
                     </div>
@@ -317,7 +319,7 @@ const AttractionResultMediumComponent = ({
                     <VariantButton variants={atrakcja.warianty} onSelect={setWariant} selectedVariantInit={selectedVariant} />
                 </>
             }
-            <div style={{flex: 1}}/>
+            <div style={{ flex: 1 }} />
             <div
                 className="attractionResultMediumAddBox"
                 onClick={() => addActivity(wybranyDzien, atrakcja)}

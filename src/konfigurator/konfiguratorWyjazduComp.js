@@ -177,7 +177,6 @@ export const KonfiguratorWyjazduComp = ({
 
     useEffect(() => {
         setWybranyDzien(Math.min(localWybranyDzien, activitiesSchedule.length - 1));
-        console.log("TEST3", wybranyDzien, localWybranyDzien, activitiesSchedule.length - 1, Math.min(localWybranyDzien, activitiesSchedule.length - 1)) 
     }, [localWybranyDzien, activitiesSchedule, setWybranyDzien]);
 
     // Zapis – minimalnie jak wcześniej (bez zmian w kontrakcie)
@@ -244,19 +243,13 @@ export const KonfiguratorWyjazduComp = ({
         if (!canSave) return; // bezpieczeństwo
         try {
             setSaving(true);
-            console.log("TEST2", computedPrice)
             const doc = await saveActivitiesSchedule(activitiesSchedule, miejsceDocelowe, computedPrice);
-            console.log('Zapisano plan:', doc._id, 'Cena zapisana:', doc.computedPrice);
         } catch (e) {
             alert(e.message || 'Wystąpił błąd podczas zapisu planu.');
         } finally {
             setSaving(false);
         }
     };
-
-    useEffect(() => {
-        console.log("TEST2", activitiesSchedule)
-    }, [activitiesSchedule])
     return (
         <KonfiguratorWyjazduCompMainbox>
             <div className="konifuguratorMainboxTitle">

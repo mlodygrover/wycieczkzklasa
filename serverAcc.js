@@ -179,8 +179,12 @@ app.get(
 
 // Informacja o zalogowanym użytkowniku (sesja)
 app.get('/api/me', (req, res) => {
-    if (!req.user) return res.status(401).json({ authenticated: false });
-    res.json({ authenticated: true, user: req.user });
+    if (!req.user) {
+        return res
+            .status(200)
+            .json({ authenticated: false, user: null });
+    }
+    res.status(200).json({ authenticated: true, user: req.user });
 });
 
 // Logout (Passport 0.6)
@@ -228,7 +232,7 @@ const ActivityItemSchema = new mongoose.Schema(
 
         czasZwiedzania: { type: Number, default: 10 },
         cenaZwiedzania: { type: Number, default: 0 },
-        selectedVariant: {type: Number},
+        selectedVariant: { type: Number },
         warianty: { type: [WariantSchema], default: [] },
     },
     { _id: false }
@@ -519,47 +523,135 @@ app.get('/api/users/:userId/name', async (req, res) => {
 // GET /api/trip-plans/:tripId/by-author/:userId
 // Gdy userId ∈ authors → zwraca plan; inaczej → null.
 app.get('/api/trip-plans/:tripId/by-author/:userId', async (req, res) => {
-  try {
-    const { tripId, userId } = req.params;
+    try {
+        const { tripId, userId } = req.params;
 
-    // Walidacja identyfikatorów
-    if (!mongoose.Types.ObjectId.isValid(tripId)) {
-      return res.status(400).json({ error: 'InvalidObjectId', which: 'tripId' });
+        // Walidacja identyfikatorów
+        if (!mongoose.Types.ObjectId.isValid(tripId)) {
+            return res.status(400).json({ error: 'InvalidObjectId', which: 'tripId' });
+        }
+        if (!mongoose.Types.ObjectId.isValid(userId)) {
+            return res.status(400).json({ error: 'InvalidObjectId', which: 'userId' });
+        }
+
+        // Jedno zapytanie: plan o danym _id, którego authors zawiera userId
+        const doc = await TripPlan.findOne({
+            _id: new mongoose.Types.ObjectId(tripId),
+            authors: new mongoose.Types.ObjectId(userId),
+        }).lean();
+
+        // Brak uprawnień lub brak planu → zwróć null (200)
+        if (!doc) {
+            return res.json(null);
+        }
+
+        // Spójny format odpowiedzi jak w innych endpointach
+        const aoa = unpackDays(doc.activitiesSchedule);
+        const price = (typeof doc.computedPrice === 'number')
+            ? doc.computedPrice
+            : computePriceFromAoA(aoa);
+
+        return res.json({
+            _id: doc._id,
+            createdAt: doc.createdAt,
+            updatedAt: doc.updatedAt,
+            authors: doc.authors,
+            miejsceDocelowe: doc.miejsceDocelowe,
+            activitiesSchedule: aoa,
+            computedPrice: num(price),
+        });
+    } catch (err) {
+        console.error('GET /api/trip-plans/:tripId/by-author/:userId error:', err);
+        return res.status(500).json({ error: 'ServerError' });
     }
-    if (!mongoose.Types.ObjectId.isValid(userId)) {
-      return res.status(400).json({ error: 'InvalidObjectId', which: 'userId' });
+});
+// PUT /api/trip-plans/:tripId/by-author/:userId
+// Aktualizuje plan wyjazdu tylko wtedy, gdy userId = req.user._id i userId ∈ authors.
+// Dozwolone modyfikacje: activitiesSchedule (AoA) oraz computedPrice (opcjonalnie).
+app.put('/api/trip-plans/:tripId/by-author/:userId', requireAuth, async (req, res) => {
+    try {
+        const { tripId, userId } = req.params;
+
+        // Walidacja identyfikatorów
+        if (!mongoose.Types.ObjectId.isValid(tripId)) {
+            return res.status(400).json({ error: 'InvalidObjectId', which: 'tripId' });
+        }
+        if (!mongoose.Types.ObjectId.isValid(userId)) {
+            return res.status(400).json({ error: 'InvalidObjectId', which: 'userId' });
+        }
+
+        // Spójność sesji z parametrem userId
+        if (String(req.user._id) !== String(userId)) {
+            return res.status(403).json({ error: 'Forbidden', message: 'Mismatched user.' });
+        }
+
+        // Znajdź plan, którego autorzy zawierają userId
+        const plan = await TripPlan.findOne({
+            _id: new mongoose.Types.ObjectId(tripId),
+            authors: new mongoose.Types.ObjectId(userId),
+        });
+
+        if (!plan) {
+            // Brak uprawnień lub brak planu
+            return res.status(404).json({ error: 'NotFound' });
+        }
+
+        // Whitelist pól do aktualizacji
+        const { activitiesSchedule, computedPrice } = req.body || {};
+        const updates = {};
+
+        // Aktualizacja harmonogramu (przyjmujemy AoA i pakujemy do [{activities:...}])
+        let aoaForPrice = null;
+        if (Array.isArray(activitiesSchedule)) {
+            updates.activitiesSchedule = packDays(activitiesSchedule);
+            aoaForPrice = activitiesSchedule; // do kalkulacji ceny na backendzie
+        }
+
+        // Ustalenie ceny do zapisu:
+        // - jeżeli klient podał poprawną liczbę, zapisujemy ją
+        // - w przeciwnym razie liczymy cenę na serwerze z AoA (jeżeli harmonogram jest w payloadzie)
+        if (Object.prototype.hasOwnProperty.call(req.body, 'computedPrice')) {
+            const clientPrice = Number(computedPrice);
+            if (Number.isFinite(clientPrice) && clientPrice >= 0) {
+                updates.computedPrice = clientPrice;
+            } else if (aoaForPrice) {
+                updates.computedPrice = computePriceFromAoA(aoaForPrice);
+            }
+        } else if (aoaForPrice) {
+            // Gdy zmienił się harmonogram, możemy zaktualizować serverową cenę (jeśli tak chcesz)
+            const serverPrice = computePriceFromAoA(aoaForPrice);
+            updates.computedPrice = serverPrice;
+        }
+
+        if (!Object.keys(updates).length) {
+            return res.status(400).json({ error: 'NoValidFields', message: 'Brak pól do aktualizacji.' });
+        }
+
+        // Zapis zmian i zwrot spójnej odpowiedzi
+        const updated = await TripPlan.findByIdAndUpdate(
+            plan._id,
+            { $set: updates },
+            { new: true, runValidators: true }
+        ).lean();
+
+        const aoa = unpackDays(updated.activitiesSchedule);
+        const priceOut = (typeof updated.computedPrice === 'number')
+            ? updated.computedPrice
+            : computePriceFromAoA(aoa);
+
+        return res.json({
+            _id: updated._id,
+            createdAt: updated.createdAt,
+            updatedAt: updated.updatedAt,
+            authors: updated.authors,
+            miejsceDocelowe: updated.miejsceDocelowe,
+            activitiesSchedule: aoa,
+            computedPrice: num(priceOut),
+        });
+    } catch (err) {
+        console.error('PUT /api/trip-plans/:tripId/by-author/:userId error:', err);
+        return res.status(500).json({ error: 'ServerError' });
     }
-
-    // Jedno zapytanie: plan o danym _id, którego authors zawiera userId
-    const doc = await TripPlan.findOne({
-      _id: new mongoose.Types.ObjectId(tripId),
-      authors: new mongoose.Types.ObjectId(userId),
-    }).lean();
-
-    // Brak uprawnień lub brak planu → zwróć null (200)
-    if (!doc) {
-      return res.json(null);
-    }
-
-    // Spójny format odpowiedzi jak w innych endpointach
-    const aoa = unpackDays(doc.activitiesSchedule);
-    const price = (typeof doc.computedPrice === 'number')
-      ? doc.computedPrice
-      : computePriceFromAoA(aoa);
-
-    return res.json({
-      _id: doc._id,
-      createdAt: doc.createdAt,
-      updatedAt: doc.updatedAt,
-      authors: doc.authors,
-      miejsceDocelowe: doc.miejsceDocelowe,
-      activitiesSchedule: aoa,
-      computedPrice: num(price),
-    });
-  } catch (err) {
-    console.error('GET /api/trip-plans/:tripId/by-author/:userId error:', err);
-    return res.status(500).json({ error: 'ServerError' });
-  }
 });
 
 

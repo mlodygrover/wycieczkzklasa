@@ -105,8 +105,13 @@ async function computePrice({
     let przejazdyPerUczestnik = Math.ceil(sumaPrzejazdow * (liczbaOpiekunow + liczbaUczestnikow) / (liczbaUczestnikow))
     // console.log("Podzial ceny", sumaAktywnosci, aktywnosciPerUczestnik, hotelPrice, perPerson(hotelPrice), sumaPrzejazdow, przejazdyPerUczestnik, )
     const nettoResult = aktywnosciPerUczestnik + przejazdyPerUczestnik + perPerson(hotelPrice);
-    console.log("Calkowita cena netto per osoba:", aktywnosciPerUczestnik, przejazdyPerUczestnik, perPerson(hotelPrice), Math.ceil(Math.max(50 + (dni - 1) * 35, Math.min(nettoResult * 1 / 10, 200))) * 123 / 100)
-    const bruttoResult = Math.ceil(Math.min(Math.max(50 + (dni - 1) * 35, nettoResult * 1 / 10)),nettoResult * 2 / 10  ) * 123 / 100 + nettoResult;
+    console.log("Calkowita cena netto per osoba:",
+        aktywnosciPerUczestnik,
+        przejazdyPerUczestnik,
+        perPerson(hotelPrice),
+        Math.ceil(Math.min(Math.max(50 + (dni - 1) * 35, nettoResult * 1 / 10), nettoResult * 2 / 10) * 123 / 100)
+    )
+    const bruttoResult = Math.ceil(Math.min(Math.max(50 + (dni - 1) * 35, nettoResult * 1 / 10), nettoResult * 2 / 10) * 123 / 100) + nettoResult;
     // 5) wynik per osoba
     return bruttoResult
 }
@@ -159,69 +164,69 @@ app.post("/computePrice", async (req, res, next) => {
 
 
 app.get("/searchCityNew", async (req, res) => {
-  const { query } = req.query;
-  if (!query) {
-    return res.status(400).json({ error: "Brak parametru 'query'" });
-  }
+    const { query } = req.query;
+    if (!query) {
+        return res.status(400).json({ error: "Brak parametru 'query'" });
+    }
 
-  try {
-    const response = await axios.get("https://nominatim.openstreetmap.org/search", {
-      params: {
-        q: query,
-        format: "json",
-        addressdetails: 1,
-        limit: 15,
-        countrycodes: "pl",
-        "accept-language": "pl",
-        autocomplete: 1,
-        dedupe: 1
-      },
-    });
-
-    const uniqueMap = new Map();
-
-    response.data.forEach((place) => {
-      const addr = place.address || {};
-      const nazwa =
-        addr.city ||
-        addr.town ||
-        addr.village ||
-        addr.hamlet ||
-        (place.display_name ? place.display_name.split(",")[0] : "");
-
-      if (!nazwa) return;
-
-      const wojewodztwo = addr.state || "";
-      const kraj = addr.country || "";
-      const key = `${nazwa}-${wojewodztwo}-${kraj}`;
-
-      if (!uniqueMap.has(key)) {
-        let priority = 5;
-        if (addr.city) priority = 1;
-        else if (addr.town) priority = 2;
-        else if (addr.village) priority = 3;
-        else if (addr.hamlet) priority = 4;
-
-        uniqueMap.set(key, {
-          id: place.place_id,
-          nazwa,
-          wojewodztwo,
-          kraj,
-          priority,
-          location: {
-            lat: place.lat ? Number(place.lat) : null,
-            lng: place.lon ? Number(place.lon) : null, // UWAGA: lng, nie lon
-          },
+    try {
+        const response = await axios.get("https://nominatim.openstreetmap.org/search", {
+            params: {
+                q: query,
+                format: "json",
+                addressdetails: 1,
+                limit: 15,
+                countrycodes: "pl",
+                "accept-language": "pl",
+                autocomplete: 1,
+                dedupe: 1
+            },
         });
-      }
-    });
 
-    const results = Array.from(uniqueMap.values()).sort((a, b) => a.priority - b.priority);
-    res.json(results);
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: "Błąd serwera" });
-  }
+        const uniqueMap = new Map();
+
+        response.data.forEach((place) => {
+            const addr = place.address || {};
+            const nazwa =
+                addr.city ||
+                addr.town ||
+                addr.village ||
+                addr.hamlet ||
+                (place.display_name ? place.display_name.split(",")[0] : "");
+
+            if (!nazwa) return;
+
+            const wojewodztwo = addr.state || "";
+            const kraj = addr.country || "";
+            const key = `${nazwa}-${wojewodztwo}-${kraj}`;
+
+            if (!uniqueMap.has(key)) {
+                let priority = 5;
+                if (addr.city) priority = 1;
+                else if (addr.town) priority = 2;
+                else if (addr.village) priority = 3;
+                else if (addr.hamlet) priority = 4;
+
+                uniqueMap.set(key, {
+                    id: place.place_id,
+                    nazwa,
+                    wojewodztwo,
+                    kraj,
+                    priority,
+                    location: {
+                        lat: place.lat ? Number(place.lat) : null,
+                        lng: place.lon ? Number(place.lon) : null, // UWAGA: lng, nie lon
+                    },
+                });
+            }
+        });
+
+        const results = Array.from(uniqueMap.values()).sort((a, b) => a.priority - b.priority);
+        res.json(results);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: "Błąd serwera" });
+    }
 });
 
 app.get("/searchCity", async (req, res) => {
@@ -366,6 +371,18 @@ const AttractionSchema = new mongoose.Schema({
         lat: Number,
         lng: Number,
     },
+    locationGeo: {
+        type: {
+            type: String,
+            enum: ['Point'],
+            default: 'Point',
+        },
+        coordinates: {
+            // [lng, lat]
+            type: [Number],
+            index: '2dsphere',
+        },
+    },
 
     typy: [String],
     ikona: String,
@@ -394,7 +411,112 @@ const AttractionSchema = new mongoose.Schema({
     ],
 });
 
+AttractionSchema.index({ locationGeo: '2dsphere' }); // 🔑 indeks przestrzenny
 const Attraction = mongoose.model("Attraction", AttractionSchema);
+
+
+/**
+ * GET /attractions/nearby?lat=..&lng=..&radiusKm=70
+ * Zwraca atrakcje posortowane wg odległości (domyślnie 70 km).
+ */
+app.get('/attractions/nearby', async (req, res) => {
+    try {
+        const lat = Number(req.query.lat);
+        const lng = Number(req.query.lng);
+        const radiusKm = Number(req.query.radiusKm) || 70;
+
+        if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+            return res.status(400).json({ error: 'Wymagane parametry: lat, lng (Number)' });
+        }
+
+        const maxDistanceMeters = Math.max(1, Math.round(radiusKm * 1000));
+
+        const items = await Attraction.aggregate([
+            {
+                $geoNear: {
+                    near: { type: 'Point', coordinates: [lng, lat] }, // [lng, lat]
+                    key: 'locationGeo',
+                    spherical: true,
+                    distanceField: 'distanceMeters',
+                    maxDistance: maxDistanceMeters,
+                    query: { locationGeo: { $exists: true } }, // pomiń niemigrowane rekordy
+                },
+            },
+            {
+                $addFields: { // zachowuje wszystkie istniejące pola
+                    distanceKm: { $round: [{ $divide: ['$distanceMeters', 1000] }, 2] },
+                },
+            },
+            { $sort: { liczbaOpinie: -1 } },
+            { $limit: 500 },
+        ]);
+
+        return res.json(items);
+    } catch (err) {
+        console.error('GET /attractions/nearby error:', err);
+        return res.status(500).json({ error: 'ServerError' });
+    }
+});
+// Endpoint: awaryjne dodanie atrakcji z wyliczeniem locationGeo
+app.post('/emergencyAddAttraction', async (req, res) => {
+    try {
+        const {
+            parentPlaceId,
+            googleId,
+            nazwa,
+            adres,
+            ocena,
+            liczbaOpinie,
+            lokalizacja,        // { lat, lng }
+            typy,
+            ikona,
+            stronaInternetowa,
+            photos,
+            warianty
+        } = req.body || {};
+
+        if (!parentPlaceId || !googleId) {
+            return res.status(400).json({ error: 'parentPlaceId i googleId są wymagane.' });
+        }
+
+        const lat = Number(lokalizacja?.lat);
+        const lng = Number(lokalizacja?.lng);
+        if (!Number.isFinite(lat) || !Number.isFinite(lng) || lat < -90 || lat > 90 || lng < -180 || lng > 180) {
+            return res.status(422).json({ error: 'Nieprawidłowe współrzędne lokalizacji (lat/lng).' });
+        }
+
+        const exists = await Attraction.findOne({ googleId }).lean();
+        if (exists) {
+            return res.status(409).json({ error: 'Atrakcja o podanym googleId już istnieje.' });
+        }
+
+        const locationGeo = { type: 'Point', coordinates: [lng, lat] };
+
+        const doc = new Attraction({
+            parentPlaceId,
+            googleId,
+            nazwa,
+            adres,
+            ocena,
+            liczbaOpinie,
+            lokalizacja,
+            locationGeo,
+            typy,
+            ikona,
+            stronaInternetowa,
+            photos,
+            warianty
+        });
+
+        await doc.save();
+        return res.status(201).json(doc);
+    } catch (err) {
+        console.error('POST /emergencyAddAttraction error:', err);
+        return res.status(500).json({ error: 'ServerError' });
+    }
+});
+
+
 const getPlaceDetails = async (placeId) => {
     try {
         const url = `https://maps.googleapis.com/maps/api/place/details/json?place_id=${placeId}&fields=website&key=${process.env.GOOGLE_API_KEY}`;
@@ -419,7 +541,7 @@ app.post("/addAttraction", async (req, res) => {
             adres,
             ocena,
             liczbaOpinie,
-            lokalizacja,
+            lokalizacja,       // { lat, lng } – pozostaje bez zmian w schemacie
             typy,
             ikona,
             stronaInternetowa,
@@ -430,10 +552,23 @@ app.post("/addAttraction", async (req, res) => {
             return res.status(400).json({ error: "parentPlaceId i googleId są wymagane." });
         }
 
-        // Sprawdzenie, czy atrakcja już istnieje
-        const existing = await Attraction.findOne({ googleId });
+        // Unikalność po googleId
+        const existing = await Attraction.findOne({ googleId }).lean();
         if (existing) {
             return res.status(409).json({ error: "Atrakcja o podanym googleId już istnieje." });
+        }
+
+        // Zbuduj locationGeo z lokalizacja.lat/lng (jeśli podano poprawne liczby)
+        let locationGeo = undefined;
+        const lat = Number(lokalizacja?.lat);
+        const lng = Number(lokalizacja?.lng);
+        if (Number.isFinite(lat) && Number.isFinite(lng)) {
+            // prosta walidacja zakresu
+            if (lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
+                locationGeo = { type: "Point", coordinates: [lng, lat] };
+            } else {
+                return res.status(422).json({ error: "Nieprawidłowy zakres współrzędnych lat/lng." });
+            }
         }
 
         const newAttraction = new Attraction({
@@ -443,21 +578,25 @@ app.post("/addAttraction", async (req, res) => {
             adres,
             ocena,
             liczbaOpinie,
-            lokalizacja,
+            lokalizacja,          // zachowujemy stare pole
+            locationGeo,          // NOWE pole – używane do zapytań geospatial
             typy,
             ikona,
             stronaInternetowa,
-            photos,
+            photos
         });
 
         await newAttraction.save();
 
-        res.status(201).json({ message: "Atrakcja dodana pomyślnie.", attraction: newAttraction });
+        return res
+            .status(201)
+            .json({ message: "Atrakcja dodana pomyślnie.", attraction: newAttraction });
     } catch (err) {
         console.error("Błąd przy dodawaniu atrakcji:", err);
-        res.status(500).json({ error: "Błąd serwera." });
+        return res.status(500).json({ error: "Błąd serwera." });
     }
 });
+
 
 
 
@@ -475,7 +614,7 @@ app.get("/getAttractions", async (req, res) => {
         // 1️⃣ Sprawdzenie w bazie
         const attractionsFromDb = await Attraction.find({ parentPlaceId });
         if (attractionsFromDb.length >= 50) {
-            console.log("ZWRACAM Z DB")
+            //console.log("ZWRACAM Z DB")
             return res.json(attractionsFromDb);
         }
         console.log("KAFELKUJE")
@@ -881,9 +1020,9 @@ async function getTransitRoute(fromLat, fromLng, toLat, toLng) {
 
         // ✅ Ograniczenie szybkości zapytań dzięki kolejce
         const { data } = await googleQueue.add(() => axios.get(url));
-        console.log("Directions status:", data?.status, data?.error_message);
+        //console.log("Directions status:", data?.status, data?.error_message);
         if (!data.routes?.length) {
-            console.warn("⚠️ Brak wyników Google Directions API dla transit.");
+            //console.warn("⚠️ Brak wyników Google Directions API dla transit.");
             return null;
         }
 
@@ -1629,7 +1768,7 @@ app.get("/routeSummary", async (req, res) => {
             console.log("♻️ Zaktualizowano trasę w bazie");
         } else {
             await new Trasa(newRoute).save();
-            console.log("💾 Zapisano nową trasę do bazy");
+            //console.log("💾 Zapisano nową trasę do bazy");
         }
 
         res.json({
@@ -1818,7 +1957,7 @@ async function getHotels({
             };
 
             console.log(`🌍 Pobieram stronę ${page} z Booking.com API...`);
-            const response = await axios.get(url, { params, headers, timeout: 20000 });
+            const response = await axios.get(url, { params, headers, timeout: 40000 });
 
             const hotels = response.data.data?.hotels || [];
             console.log(`✅ Otrzymano ${hotels.length} hoteli z strony ${page}`);

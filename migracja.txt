@@ -1,0 +1,58 @@
+/*
+mongoose.connection.once('open', async () => {
+    try { await migrateAddLocationGeoFromLokalizacja(); } catch (e) { console.error(e); }
+});
+
+// Lock migracji (prosta tablica "migrations")
+const MigrationSchema = new mongoose.Schema({
+    key: { type: String, unique: true, required: true },
+    ranAt: { type: Date, default: Date.now },
+    details: mongoose.Schema.Types.Mixed,
+});
+const Migration = mongoose.model('Migration', MigrationSchema);
+
+async function migrateAddLocationGeoFromLokalizacja() {
+    const MIGRATION_KEY = 'attractions_add_locationGeo_from_lokalizacja_v1';
+    const exists = await Migration.findOne({ key: MIGRATION_KEY }).lean();
+    if (exists) {
+        console.log('✔ Migracja już wykonana:', MIGRATION_KEY);
+        return { skipped: true };
+    }
+
+    console.log('▶ Start migracji: przepisuję lokalizacja{lat,lng} → locationGeo...');
+    let total = 0, updated = 0, skipped = 0, invalid = 0;
+
+    const cursor = Attraction.find({}, { lokalizacja: 1, locationGeo: 1 }).cursor();
+    for await (const doc of cursor) {
+        total++;
+
+        // jeżeli już jest GeoJSON → pomiń
+        if (doc.locationGeo?.type === 'Point' && Array.isArray(doc.locationGeo.coordinates)) {
+            skipped++;
+            continue;
+        }
+
+        const lat = doc?.lokalizacja?.lat;
+        const lng = doc?.lokalizacja?.lng;
+
+        if (Number.isFinite(lat) && Number.isFinite(lng)) {
+            doc.locationGeo = { type: 'Point', coordinates: [Number(lng), Number(lat)] }; // [lng, lat]
+            await doc.save();
+            updated++;
+        } else {
+            invalid++;
+        }
+    }
+
+    // upewnij się, że indeks istnieje
+    await Attraction.collection.createIndex({ locationGeo: '2dsphere' }).catch(() => { });
+
+    await new Migration({
+        key: MIGRATION_KEY,
+        details: { total, updated, skipped, invalid },
+    }).save();
+
+    console.log(`✔ Migracja zakończona: total=${total} updated=${updated} skipped=${skipped} invalid=${invalid}`);
+    return { total, updated, skipped, invalid };
+}
+*/
