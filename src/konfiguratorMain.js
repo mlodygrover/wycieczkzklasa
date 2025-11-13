@@ -1883,7 +1883,7 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
         validateSchedule()
     }, [activitiesSchedule, timeSchedule])
 
-    async function updateOffer({ googleId, link, delayMs = 1000 }) {
+    async function updateOffer({ googleId, link, delayMs = 1000, nazwa }) {
         if (!googleId || !link) return null;
 
         if (delayMs > 0) {
@@ -1895,8 +1895,8 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
 
             // 1) Aktualizacja oferty po stronie serwera
             const { data: updateRes } = await axios.get("http://localhost:5006/update-offer", {
-                params: { googleId, link },
-                timeout: 120000,
+                params: { googleId, link, miasto: miejsceDocelowe.nazwa ??"", nazwa },
+                timeout: 240000,
             });
 
             // 2) Pobranie świeżej wersji atrakcji
@@ -1963,6 +1963,7 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
                 googleId: activity.googleId,
                 link: activity.stronaInternetowa,
                 delayMs: 0,
+                nazwa: activity.nazwa
             }).catch((err) => {
                 console.error("❌ updateOffer error:", err?.message || err);
             });

@@ -416,33 +416,33 @@ const Attraction = mongoose.model("Attraction", AttractionSchema);
 
 
 app.get("/getOneAttraction/:googleId", async (req, res) => {
-  try {
-    const { googleId } = req.params;
-    if (!googleId || !googleId.trim()) {
-      return res.status(400).json({ error: "Parametr :googleId jest wymagany." });
+    try {
+        const { googleId } = req.params;
+        if (!googleId || !googleId.trim()) {
+            return res.status(400).json({ error: "Parametr :googleId jest wymagany." });
+        }
+
+        // Opcjonalna projekcja, aby nie zwracać pól technicznych, których nie potrzebujesz
+        const projection = {
+            _id: 0,
+            __v: 0,
+        };
+
+        // Jeżeli masz indeks unikalny na googleId, wyszukiwanie będzie O(log n)
+        const attraction = await Attraction.findOne({ googleId }, projection).lean().exec();
+
+        if (!attraction) {
+            return res.status(404).json({ error: `Nie znaleziono atrakcji dla googleId=${googleId}.` });
+        }
+
+        // (opcjonalnie) Cache krótkoterminowy po stronie klienta/proxy
+        res.set("Cache-Control", "public, max-age=60");
+
+        return res.json(attraction);
+    } catch (err) {
+        console.error("GET /attractions/:googleId error:", err);
+        return res.status(500).json({ error: "Wewnętrzny błąd serwera." });
     }
-
-    // Opcjonalna projekcja, aby nie zwracać pól technicznych, których nie potrzebujesz
-    const projection = {
-      _id: 0,
-      __v: 0,
-    };
-
-    // Jeżeli masz indeks unikalny na googleId, wyszukiwanie będzie O(log n)
-    const attraction = await Attraction.findOne({ googleId }, projection).lean().exec();
-
-    if (!attraction) {
-      return res.status(404).json({ error: `Nie znaleziono atrakcji dla googleId=${googleId}.` });
-    }
-
-    // (opcjonalnie) Cache krótkoterminowy po stronie klienta/proxy
-    res.set("Cache-Control", "public, max-age=60");
-
-    return res.json(attraction);
-  } catch (err) {
-    console.error("GET /attractions/:googleId error:", err);
-    return res.status(500).json({ error: "Wewnętrzny błąd serwera." });
-  }
 });
 /**
  * GET /attractions/nearby?lat=..&lng=..&radiusKm=70
@@ -1541,7 +1541,7 @@ Struktura JSON:
   }
 ]
 
-Nie zwracaj ofert grupowych jako osobnych wariantów. Najlepiej podaj ceny dla osoby indywidualnej bez zadnych znizek, jesli jednak podane beda tylko ceny grupowe podaj ja w przeliczeniu na osobe (powiedzmy w grupie 15 osobowej). Jesli nie znajdziesz zadnej informacji o cenach zwroc pusta tablice [].
+Nie zwracaj ofert grupowych jako osobnych wariantów. Najlepiej podaj ceny dla osoby indywidualnej bez zadnych znizek, jesli jednak podane beda tylko ceny grupowe podaj ja w przeliczeniu na osobe (powiedzmy w grupie 15 osobowej). Jesli nie znajdziesz zadnej informacji o cenach zwroc pusta tablice [] bez zadnej struktury!!.
 Odpowiedź ma być **czystym JSON**, bez Markdowna ani komentarzy.
 `;
 
@@ -1559,6 +1559,7 @@ Odpowiedź ma być **czystym JSON**, bez Markdowna ani komentarzy.
 
         try {
             const parsed = JSON.parse(content);
+            console.log("AI ZWRACA!", parsed)
             return { index, data: parsed };
         } catch (e) {
             console.warn(`⚠️ Nie udało się sparsować JSON dla strony #${index}`);
@@ -1671,12 +1672,156 @@ app.get("/place-offer", async (req, res) => {
     });
 });
 
+
+
+const PPLX_ENDPOINT = "https://api.perplexity.ai/chat/completions";
+// Aktualne, wspierane modele – kolejność = priorytet/fallback
+const PPLX_MODELS = [
+    "sonar-pro",
+    "sonar",
+    "sonar-small-online"
+];
+
+function buildPrompt(nazwa) {
+    return `
+ile kosztuje wejscie do ${nazwa} i jakie sa warianty.
+zwróc informacje o wariantach, cenach, ich nazwach i potencjalnym czasie trwania
+w kontekscie osoby kupujacej bilet normalny bez znizek wchodzacej samemu –
+interesuje nas tylko stala oferta, pomijaj okresowe wydarzenia.
+Interesuje nas tylko oferta dotyczaca tego obiektu, zadnego innego z nim powiazanego.
+Jesli caly obiekt opiera sie jedynie na okresowych wydarzeniach zwroc obiekt {"nazwa":"defEvents"}. Pomijaj oferty wspolne z innymi obiektami - interesuje nas tylko i wylacznie oferta wspomnianego.
+Dane zwroc jako CZYSTY JSON bez komentarzy i tekstu pobocznego,
+w formacie jednej z dwoch struktur:
+
+1) {"warianty":[{"nazwa":"…","cena":123.45,"czasZwiedzania":90}, ...]}
+   - cena liczba (0 jesli bezplatne), czasZwiedzania liczba w minutach
+   - czasZwiedzania min. 10
+2) {"nazwa":"defEvents"}  // gdy brak stalej oferty stalej, a sa tylko wydarzenia okresowe
+
+Wartosci MUSZA byc liczbami tam, gdzie wymagane. Nie dodawaj wyjasnien ani tekstu poza JSON.
+`.trim();
+}
+
+function toNumberOrNull(v) {
+    const n = Number(v);
+    return Number.isFinite(n) ? n : null;
+}
+function coerceMinutes(v) {
+    const n = Number(v);
+    if (Number.isFinite(n) && n > 0) return Math.round(n);
+    return 60;
+}
+function extractJson(text) {
+    if (!text) return null;
+    const fenced = text.match(/```json\s*([\s\S]*?)\s*```/i);
+    if (fenced) return fenced[1].trim();
+    const brace = text.match(/\{[\s\S]*\}$/);
+    if (brace) return brace[0];
+    return text.trim();
+}
+
+/**
+ * Zwraca:
+ *  - []                        // brak informacji
+ *  - [{ nazwa: "defEvents" }]  // obiekt dziala tylko w trybie wydarzen okresowych
+ *  - lub [{ nazwaWariantu, cenaZwiedzania, czasZwiedzania }, ...]
+ */
+async function askPerplexityForAttraction(nazwaObiektu) {
+    if (!nazwaObiektu || !String(nazwaObiektu).trim()) {
+        throw new Error("nazwaObiektu jest wymagana");
+    }
+    const API_KEY = process.env.PERPLEXITY_API_KEY;
+    if (!API_KEY) {
+        throw new Error("Brak klucza PERPLEXITY_API_KEY w zmiennych środowiskowych");
+    }
+
+    const prompt = buildPrompt(nazwaObiektu);
+
+    let lastErr;
+    for (const model of PPLX_MODELS) {
+        try {
+            const { data } = await axios.post(
+                PPLX_ENDPOINT,
+                {
+                    model,
+                    temperature: 0,
+                    max_tokens: 800,
+                    return_citations: false,
+                    messages: [
+                        {
+                            role: "system",
+                            content: "Jestes asystentem ekstrakcji danych. Zwracasz WYLACZNIE surowy JSON zgodny ze schematem uzytkownika.",
+                        },
+                        { role: "user", content: prompt },
+                    ],
+                },
+                {
+                    headers: {
+                        "Content-Type": "application/json",
+                        Authorization: `Bearer ${API_KEY}`,
+                    },
+                    timeout: 90_000,
+                }
+            );
+
+            const raw = data?.choices?.[0]?.message?.content;
+            if (!raw) return [];
+
+            const jsonStr = extractJson(raw);
+            if (!jsonStr) return [];
+
+            let parsed;
+            try {
+                parsed = JSON.parse(jsonStr);
+            } catch (e) {
+                console.error("Nieudany JSON.parse. Odpowiedź:", raw);
+                return [];
+            }
+
+            // tylko wydarzenia okresowe
+            if (parsed && parsed.nazwa === "defEvents") {
+                return [{ nazwa: "defEvents" }];
+            }
+
+            // normalizacja
+            const input = Array.isArray(parsed?.warianty) ? parsed.warianty : [];
+            const normalized = input
+                .map((it) => {
+                    const nazwaWariantu = String(it.nazwa ?? it.nazwaWariantu ?? "Zwiedzanie").trim();
+                    let cenaZwiedzania = toNumberOrNull(it.cena ?? it.cenaZwiedzania);
+                    if (cenaZwiedzania == null) cenaZwiedzania = 0;
+                    let czasZwiedzania = toNumberOrNull(it.czasZwiedzania);
+                    if (czasZwiedzania == null) czasZwiedzania = coerceMinutes(it.czas || it.dlugosc || it.duration);
+                    return { nazwaWariantu, cenaZwiedzania, czasZwiedzania };
+                })
+                .filter(
+                    (v) =>
+                        v &&
+                        typeof v.nazwaWariantu === "string" &&
+                        Number.isFinite(v.cenaZwiedzania) &&
+                        Number.isFinite(v.czasZwiedzania)
+                );
+
+            // jeżeli po normalizacji nic sensownego – "brak informacji"
+            return normalized.length ? normalized : [];
+        } catch (err) {
+            lastErr = err;
+            const status = err?.response?.status;
+            const body = err?.response?.data;
+            console.error(`Perplexity error (model=${model}) status=${status}`, body || err.message);
+            // lecimy do kolejnego modelu
+        }
+    }
+
+    // wszystkie modele zawiodły → przekaż kontekst błędu wyżej (do logów)
+    throw lastErr || new Error("Nie udało się pobrać danych z Perplexity.");
+}
 app.get("/update-offer", async (req, res) => {
-    const { googleId, link } = req.query;
+    const { googleId, link, miasto, nazwa } = req.query;
     if (!googleId || !link) {
         return res.status(400).json({ error: "Brak wymaganych parametrów ?googleId= oraz ?link=" });
     }
-
+    console.log("ℹ️ Parametr miasto:", miasto ?? "(brak)");
     offerQueue.add(async () => {
         try {
             console.log(`🔍 Aktualizuję ofertę dla atrakcji ${googleId} z linku: ${link}`);
@@ -1694,7 +1839,7 @@ app.get("/update-offer", async (req, res) => {
             const { warianty } = response.data || {};
             let flattenedVariants = [];
 
-            if (Array.isArray(warianty) && warianty.length > 0) {
+            if (Array.isArray(warianty) && warianty.length > 0 && warianty[0].data.length > 0) {
                 flattenedVariants = warianty.flatMap(w => {
                     if (w && Array.isArray(w.data)) return w.data;
                     if (Array.isArray(w)) return w;
@@ -1702,7 +1847,16 @@ app.get("/update-offer", async (req, res) => {
                     return [];
                 });
             } else {
+
                 console.log("BRAK DANYCH!");
+                const qName = [nazwa, miasto].filter(Boolean).join(" w ");
+                try {
+                    const alt = await askPerplexityForAttraction(qName || nazwa || miasto || "obiekt");
+                    console.log("🧠 Perplexity (fallback) wynik:", alt);
+                    flattenedVariants = alt;
+                } catch (e) {
+                    console.error("🧠 Perplexity (fallback) błąd:", e?.message || e);
+                }
             }
 
             attraction.warianty = flattenedVariants;
