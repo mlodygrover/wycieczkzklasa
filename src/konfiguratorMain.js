@@ -1883,13 +1883,13 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
         validateSchedule()
     }, [activitiesSchedule, timeSchedule])
 
-    async function updateOffer({ googleId, link, delayMs = 1000, nazwa }) {
-        if (!googleId || !link) return null;
+    async function updateOffer({ googleId, link = "", delayMs = 1000, nazwa }) {
+        if (!googleId) return null;
 
         if (delayMs > 0) {
             await new Promise((resolve) => setTimeout(resolve, delayMs));
         }
-
+        console.log("UPDATEOFFER", nazwa)
         try {
             console.log(`🔄 Aktualizuję ofertę dla ${googleId} z linku ${link}...`);
 
@@ -1956,12 +1956,12 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
         }
         const needsAlert = !activity?.warianty?.length && !botAuthor && !activity?.googleId.includes("dAct_");
 
-        if (!activity?.warianty?.length && activity?.stronaInternetowa) {
+        if (!activity?.warianty?.length) {
             console.log("Aktualizuje oferte dla ", activity.nazwa);
 
             updateOffer({
                 googleId: activity.googleId,
-                link: activity.stronaInternetowa,
+                link: activity.stronaInternetowa ?? null,
                 delayMs: 0,
                 nazwa: activity.nazwa
             }).catch((err) => {

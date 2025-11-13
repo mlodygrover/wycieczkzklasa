@@ -1816,73 +1816,187 @@ async function askPerplexityForAttraction(nazwaObiektu) {
     // wszystkie modele zawiodły → przekaż kontekst błędu wyżej (do logów)
     throw lastErr || new Error("Nie udało się pobrać danych z Perplexity.");
 }
+// Zakładam, że masz zainicjalizowanego klienta OpenAI jako `openai`
+// np. const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+
+async function askChatIfStatic(nazwa) {
+    if (!nazwa || !String(nazwa).trim()) return 0;
+
+    const systemPrompt =
+        "Jesteś asystentem decyzyjnym. Zwracasz wyłącznie surowy JSON, bez komentarzy ani dodatkowych treści.";
+    const userPrompt = `
+Czy "${nazwa}" jest atrakcją turystyczną biletowaną, czy ponad wszelką wątpliwość nie?
+Przykład: wejście do parku/placu/pomnika nie wymaga biletu; to punkt do obejrzenia bez zakupu wejściówki.
+Jesli obiekt jest pomnikiem lub parkiem praktycznie na pewno mozesz oszacowac czas jaki warto na niego poswiecic.
+Zasady:
+- Jeśli masz pewność, że to publiczna przestrzeń/obiekt niewymagający biletu - pomnnik, park czy inna przestrzen publiczna, zwróć szacowany czas w minutach, jaki warto poświęcić (np. 10–60 minut).
+- Jeśli nie masz pewności (brak danych, możliwe bilety, obiekt muzealny itp.), zwróć 0.
+
+Format odpowiedzi (STRICT JSON):
+{"czasMinut": <liczba_calkowita>}
+`.trim();
+
+    try {
+        const response = await openai.chat.completions.create({
+            model: "gpt-5-mini",
+            messages: [
+                { role: "system", content: systemPrompt },
+                { role: "user", content: userPrompt },
+            ],
+        });
+
+        const content = (response?.choices?.[0]?.message?.content || "").trim();
+
+        // Spróbuj sparsować JSON
+        let minutes = 0;
+        try {
+            const obj = JSON.parse(content);
+            minutes = Number(obj?.czasMinut);
+            if (!Number.isFinite(minutes) || minutes < 0) minutes = 0;
+        } catch {
+            // Fallback: spróbuj wydobyć pierwszą liczbę całkowitą z odpowiedzi
+            const m = content.match(/\b\d+\b/);
+            minutes = m ? Number(m[0]) : 0;
+            if (!Number.isFinite(minutes) || minutes < 0) minutes = 0;
+        }
+
+        // Zaokrąglenie i sanity-check
+        minutes = Math.round(minutes);
+        if (minutes > 0 && minutes < 5) minutes = 5; // minimalny sensowny czas
+        if (minutes > 8 * 60) minutes = 8 * 60;      // górny bezpieczny limit
+
+        return minutes;
+    } catch (err) {
+        console.error("askChatIfStatic error:", err?.message || err);
+        return 0;
+    }
+}
+
+function flattenWarianty(warianty) {
+    if (!Array.isArray(warianty)) return [];
+    return warianty
+        .flatMap(w => {
+            if (w && Array.isArray(w.data)) return w.data;  // [{ index, data: [...] }, ...]
+            if (Array.isArray(w)) return w;                 // [[...], ...]
+            if (w && typeof w === "object") return [w];     // [{...}, ...]
+            return [];
+        })
+        .filter(Boolean);
+}
+
 app.get("/update-offer", async (req, res) => {
     const { googleId, link, miasto, nazwa } = req.query;
-    if (!googleId || !link) {
-        return res.status(400).json({ error: "Brak wymaganych parametrów ?googleId= oraz ?link=" });
+
+    // link jest opcjonalny; wymagamy tylko googleId
+    if (!googleId) {
+        return res.status(400).json({ error: "Brak wymaganego parametru ?googleId=" });
     }
-    console.log("ℹ️ Parametr miasto:", miasto ?? "(brak)");
-    offerQueue.add(async () => {
-        try {
-            console.log(`🔍 Aktualizuję ofertę dla atrakcji ${googleId} z linku: ${link}`);
 
-            const attraction = await Attraction.findOne({ googleId });
-            if (!attraction) {
-                return res.status(404).json({ error: `Nie znaleziono atrakcji o googleId: ${googleId}` });
-            }
-
-            const response = await axios.get("http://localhost:5006/place-offer", {
-                params: { links: link },
-                timeout: 1200000,
-            });
-
-            const { warianty } = response.data || {};
-            let flattenedVariants = [];
-
-            if (Array.isArray(warianty) && warianty.length > 0 && warianty[0].data.length > 0) {
-                flattenedVariants = warianty.flatMap(w => {
-                    if (w && Array.isArray(w.data)) return w.data;
-                    if (Array.isArray(w)) return w;
-                    if (w && typeof w === "object") return [w];
-                    return [];
+    // --- PRE-TEST: czy to „statyczna” (bezpłatna, publiczna) atrakcja ---
+    try {
+        if (nazwa) {
+            const label = [nazwa, miasto].filter(Boolean).join(" w ");
+            const preTest = await askChatIfStatic(label);
+            console.log(nazwa, preTest)
+            if (Number.isFinite(preTest) && preTest > 0) {
+                const attraction = await Attraction.findOne({ googleId });
+                if (!attraction) {
+                    return res.status(404).json({ error: `Nie znaleziono atrakcji o googleId: ${googleId}` });
+                }
+                attraction.warianty = [{ nazwa: "bezplatne", cenaZwiedzania: 0, czasZwiedzania: preTest }];
+                await attraction.save();
+                return res.json({
+                    success: true,
+                    googleId,
+                    warianty: attraction.warianty,
                 });
-            } else {
+            }
+        }
+    } catch (e) {
+        console.error("askChatIfStatic pre-check error:", e?.message || e);
+        // Nie przerywamy — lecimy dalej do kolejki
+    }
 
-                console.log("BRAK DANYCH!");
-                const qName = [nazwa, miasto].filter(Boolean).join(" w ");
-                try {
-                    const alt = await askPerplexityForAttraction(qName || nazwa || miasto || "obiekt");
-                    console.log("🧠 Perplexity (fallback) wynik:", alt);
-                    flattenedVariants = alt;
-                } catch (e) {
-                    console.error("🧠 Perplexity (fallback) błąd:", e?.message || e);
+    // --- GŁÓWNY PRZEPŁYW W KOLEJCE ---
+    offerQueue
+        .add(async () => {
+            try {
+                const attraction = await Attraction.findOne({ googleId });
+                if (!attraction) {
+                    return res.status(404).json({ error: `Nie znaleziono atrakcji o googleId: ${googleId}` });
+                }
+
+                let flattenedVariants = [];
+
+                if (link) {
+                    // a) Mamy link → najpierw własny parser /place-offer
+                    try {
+                        const response = await axios.get("http://localhost:5006/place-offer", {
+                            params: { links: link },
+                            timeout: 1_200_000,
+                        });
+                        const { warianty } = response.data || {};
+                        flattenedVariants = flattenWarianty(warianty);
+                    } catch (e) {
+                        console.error("place-offer error:", e?.message || e);
+                        flattenedVariants = [];
+                    }
+
+                    // b) jeśli brak wyników po parserze → Perplexity
+                    if (!Array.isArray(flattenedVariants) || flattenedVariants.length === 0) {
+                        const qName =
+                            [nazwa, miasto].filter(Boolean).join(" w ") ||
+                            attraction.nazwa ||
+                            "obiekt";
+                        try {
+                            const alt = await askPerplexityForAttraction(qName);
+                            flattenedVariants = Array.isArray(alt) ? flattenWarianty(alt) : [];
+                            console.log("Perplexity (fallback) wynik:", flattenedVariants);
+                        } catch (e) {
+                            console.error("Perplexity fallback error:", e?.message || e);
+                            flattenedVariants = [];
+                        }
+                    }
+                } else {
+                    // Brak linku → od razu Perplexity (pomijamy analizę strony)
+                    const qName =
+                        [nazwa, miasto].filter(Boolean).join(" w ") ||
+                        attraction.nazwa ||
+                        "obiekt";
+                    try {
+                        const alt = await askPerplexityForAttraction(qName);
+                        flattenedVariants = Array.isArray(alt) ? flattenWarianty(alt) : [];
+                        console.log("Perplexity (no-link) wynik:", flattenedVariants);
+                    } catch (e) {
+                        console.error("Perplexity (no-link) error:", e?.message || e);
+                        flattenedVariants = [];
+                    }
+                }
+
+                attraction.warianty = flattenedVariants;
+                await attraction.save();
+
+                return res.json({
+                    success: Array.isArray(flattenedVariants) && flattenedVariants.length > 0,
+                    googleId,
+                    warianty: flattenedVariants,
+                });
+            } catch (err) {
+                console.error("❌ /update-offer error:", err.message);
+                if (!res.headersSent) {
+                    return res.status(500).json({ error: err.message });
                 }
             }
-
-            attraction.warianty = flattenedVariants;
-            await attraction.save();
-
-            console.log(`✅ Zaktualizowano ofertę dla "${attraction.nazwa}" (${googleId}) – warianty: ${flattenedVariants.length}`);
-
-            return res.json({
-                success: flattenedVariants.length > 0,
-                googleId,
-                warianty: flattenedVariants,
-            });
-
-        } catch (err) {
-            console.error("❌ Błąd w /update-offer:", err.message);
+        })
+        .catch((err) => {
+            console.error("❌ offerQueue error:", err);
             if (!res.headersSent) {
-                return res.status(500).json({ error: err.message });
+                return res.status(500).json({ error: "Błąd podczas przetwarzania żądania w kolejce." });
             }
-        }
-    }).catch(err => {
-        console.error("❌ Błąd w kolejce offerQueue:", err);
-        if (!res.headersSent) {
-            return res.status(500).json({ error: "Błąd podczas przetwarzania żądania w kolejce." });
-        }
-    });
+        });
 });
+
+
 
 
 
