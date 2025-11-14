@@ -1887,53 +1887,78 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
         if (!googleId) return null;
 
         if (delayMs > 0) {
-            await new Promise((resolve) => setTimeout(resolve, delayMs));
+            await new Promise((r) => setTimeout(r, delayMs));
         }
-        console.log("UPDATEOFFER", nazwa)
-        try {
-            console.log(`🔄 Aktualizuję ofertę dla ${googleId} z linku ${link}...`);
 
-            // 1) Aktualizacja oferty po stronie serwera
+        try {
+            console.log(`🔄 Aktualizuję ofertę dla ${googleId} z linku ${link || "(brak)"}...`);
+
+            // 0) ZŁAP POPRZEDNIĄ WERSJĘ ATRAKCJI (z lokalnego stanu), żeby znać "stary" domyślny czas
+            const prevAttr = Array.isArray(atrakcje)
+                ? atrakcje.find(a => a && a.googleId === googleId)
+                : null;
+
+            const prevDefaultTime =
+                (prevAttr?.czasZwiedzania != null ? prevAttr.czasZwiedzania : null) ??
+                (prevAttr?.warianty?.[0]?.czasZwiedzania != null ? prevAttr.warianty[0].czasZwiedzania : null);
+
+            // 1) Aktualizacja po stronie serwera (może pójść bez linku – backend powinien to wspierać)
             const { data: updateRes } = await axios.get("http://localhost:5006/update-offer", {
-                params: { googleId, link, miasto: miejsceDocelowe.nazwa ??"", nazwa },
+                params: { googleId, link, miasto: miejsceDocelowe?.nazwa ?? "", nazwa },
                 timeout: 240000,
             });
 
-            // 2) Pobranie świeżej wersji atrakcji
-            const { data: attraction } = await axios.get(
+            // 2) Pobranie świeżej wersji
+            const { data: freshAttraction } = await axios.get(
                 `http://localhost:5006/getOneAttraction/${encodeURIComponent(googleId)}`,
                 { timeout: 120000 }
             );
 
-            // 3) Zaktualizuj listę 'atrakcje' (immutably)
-            setAtrakcje((prev) =>
+            // Wyznacz nowy domyślny czas i cenę z pierwszego wariantu (jeśli jest)
+            const newDefaultTime =
+                (freshAttraction?.czasZwiedzania != null ? freshAttraction.czasZwiedzania : null) ??
+                (freshAttraction?.warianty?.[0]?.czasZwiedzania != null ? freshAttraction.warianty[0].czasZwiedzania : null) ??
+                60;
+
+            const newDefaultPrice =
+                (freshAttraction?.warianty?.[0]?.cenaZwiedzania != null ? freshAttraction.warianty[0].cenaZwiedzania : null) ??
+                (freshAttraction?.cenaZwiedzania != null ? freshAttraction.cenaZwiedzania : null) ??
+                0;
+
+            // 3) Zaktualizuj listę atrakcje (immutably)
+            setAtrakcje(prev =>
                 Array.isArray(prev)
-                    ? prev.map((a) => (a.googleId === googleId ? { ...a, ...attraction } : a))
+                    ? prev.map(a => (a?.googleId === googleId ? { ...a, ...freshAttraction } : a))
                     : prev
             );
 
-            // 4) Podmień wszystkie wystąpienia w activitiesSchedule (immutably)
-            setActivitiesSchedule((prev) => {
+            // 4) Podmień wystąpienia w activitiesSchedule:
+            //    - jeśli user NIE edytował czasu (tj. czas == poprzedni domyślny), ustaw nowy domyślny
+            //    - jeśli user edytował (czas różny od poprzedniego domyślnego), zostaw nietknięty
+            setActivitiesSchedule(prev => {
                 if (!Array.isArray(prev)) return prev;
 
-                return prev.map((day) => {
+                return prev.map(day => {
                     if (!Array.isArray(day)) return day;
 
-                    return day.map((act) => {
+                    return day.map(act => {
                         if (!act || act.googleId !== googleId) return act;
 
-                        // Zachowaj ręcznie ustawiony czas, jeśli był
-                        const preservedCzas =
-                            typeof act.czasZwiedzania === "number" ? act.czasZwiedzania : undefined;
+                        const preserved = Number.isFinite(act.czasZwiedzania) ? act.czasZwiedzania : null;
+                        const userOverrode =
+                            preserved != null &&
+                            prevDefaultTime != null &&
+                            preserved !== prevDefaultTime;
 
-                        const merged = { ...act, ...attraction };
+                        const nextTime =
+                            preserved == null
+                                ? newDefaultTime                           // wcześniej brak – daj nowy default
+                                : (userOverrode ? preserved : newDefaultTime); // user zmieniał? zachowaj; inaczej nadpisz
 
-                        if (preservedCzas != null) {
-                            merged.czasZwiedzania = preservedCzas;
-                        } else if (merged.czasZwiedzania == null) {
-                            // Domyśl do 60 min, jeśli dalej brak wartości
-                            merged.czasZwiedzania = 60;
-                        }
+                        // scal dane atrakcji, ustaw domyślną cenę z wariantu #1
+                        const merged = { ...act, ...freshAttraction };
+                        merged.cenaZwiedzania = newDefaultPrice;
+                        merged.czasZwiedzania = Number.isFinite(nextTime) ? nextTime : 60;
 
                         return merged;
                     });
@@ -1941,13 +1966,16 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
             });
 
             console.log("✅ Oferta zaktualizowana:", updateRes);
-            return { update: updateRes, attraction };
+            return { update: updateRes, attraction: freshAttraction };
         } catch (err) {
             console.error("❌ Błąd przy aktualizacji oferty:", err?.message || err);
             throw err;
         }
     }
 
+    useEffect(() => {
+        console.log("Aktywnosci", activitiesSchedule)
+    }, [activitiesSchedule])
     function addActivity(dayIndex, activity, botAuthor = false) {
         if (konfiguratorLoading) return;
         if (activity?.googleId?.includes("base")) return;
