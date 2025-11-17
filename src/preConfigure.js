@@ -211,7 +211,30 @@ export async function fetchTripPlanById(tripId, { signal } = {}) {
     }
 
     const data = await resp.json();
+    console.log("Synchronizacja z planem", data)
     return data;
+}
+export async function fetchDownloadedTripPlan(tripId, { signal } = {}) {
+    if (!tripId || !String(tripId).trim()) {
+        throw new Error("tripId is required");
+    }
+
+    const url = `http://localhost:5007/download/trip-plan?tripId=${encodeURIComponent(tripId)}`;
+
+    const resp = await fetch(url, {
+        method: "GET",
+        credentials: "include",
+        headers: { Accept: "application/json" },
+        signal,
+    });
+
+    if (resp.status === 404) return null;
+    if (!resp.ok) {
+        const text = await resp.text().catch(() => "");
+        throw new Error(`Fetch failed (${resp.status}): ${text || resp.statusText}`);
+    }
+
+    return await resp.json(); // { computedPrice, miejsceDocelowe, standardTransportu, standardHotelu, activitiesSchedule, photoLink }
 }
 
 /* ===================== URL HELPERS ===================== */
@@ -386,7 +409,7 @@ export const PreConfigure = (
     const [liczbaOpiekunow, setLiczbaOpiekunow] = useState(urlDefaults.liczbaOpiekunow ?? liczbaOpiekunowInit);
     const [standardHotelu, setStandardHotelu] = useState(urlDefaults.standardHotelu ?? standardHoteluInit);
     const [standardTransportu, setStandardTransportu] = useState(urlDefaults.standardTransportu ?? standardTransportuInit);
-
+    const [photoWallpaper, setPhotoWallpaper] = useState("https://images.unsplash.com/photo-1633268456308-72d1c728943c?auto=format&fit=crop&w=1600&q=80")
     const [selectedMenu, setSelectedMenu] = useState(0);
 
     // 2) Synchronizacja stanu → URL (bez przeładowania)
@@ -478,14 +501,151 @@ export const PreConfigure = (
         standardTransportu,
         tripId,
     ]);
+    // stan na pobrany plan (opcjonalnie — jeśli chcesz go gdzieś wyświetlać/przekazać)
+    const [synchronisedPlan, setsynchronisedPlan] = useState(null);
+    const [downloadedPlan, setDownloadedPlan] = useState(null)
+    const [planError, setPlanError] = useState(null);
+    const [planLoading, setPlanLoading] = useState(false);
+    const [downloadedLoading, setDownloadedLoading] = useState(false);
+    const [downloadedError, setDownloadedError] = useState(null);
 
 
+    useEffect(() => {
+        if (!tripId) {
+            setsynchronisedPlan(null);
+            return;
+        }
+
+        const ac = new AbortController();
+        setPlanLoading(true);
+        setPlanError(null);
+
+        (async () => {
+            try {
+                const plan = await fetchTripPlanById(tripId, { signal: ac.signal });
+                setsynchronisedPlan(plan);           // masz dane w stanie
+                console.log("Pobrany plan", plan); // tu już realne dane
+            } catch (e) {
+                if (e.name !== "AbortError") {
+                    console.error("Błąd pobierania planu:", e);
+                    setPlanError(e.message || "Fetch error");
+                }
+            } finally {
+                setPlanLoading(false);
+            }
+        })();
+
+        return () => ac.abort();
+    }, [tripId]);
+    // efekt: gdy w URL jest downloadPlan (ID planu do "odczytu"), pobierz i nałóż wartości
+    useEffect(() => {
+        if (!downloadPlan || !String(downloadPlan).trim()) return;
+
+        // OPCJONALNE: gdy priorytet ma tripId (plan autora), nie uruchamiaj downloadPlan
+        if (tripId && String(tripId).trim()) return;
+
+        const ac = new AbortController();
+        setDownloadedLoading(true);
+        setDownloadedError(null);
+
+        (async () => {
+            try {
+                // UWAGA: używamy downloadPlan jako ID!
+                const dp = await fetchDownloadedTripPlan(downloadPlan, { signal: ac.signal });
+                if (!dp) return;
+
+                const {
+                    miejsceDocelowe,
+                    standardHotelu,
+                    standardTransportu,
+                    photoLink,
+                    // computedPrice, activitiesSchedule – dostępne w odpowiedzi,
+                    // ale ten komponent nie ma na nie lokalnych stanów.
+                } = dp;
+
+                if (miejsceDocelowe) setMiejsceDocelowe(miejsceDocelowe);
+                if (Number.isFinite(standardHotelu)) setStandardHotelu(standardHotelu);
+                if (Number.isFinite(standardTransportu)) setStandardTransportu(standardTransportu);
+                if (typeof photoLink === "string" && photoLink.trim()) setPhotoWallpaper(photoLink);
+            } catch (e) {
+                if (e?.name !== "AbortError") {
+                    console.error("Błąd pobierania downloadedPlan:", e);
+                    setDownloadedError(e?.message || "Fetch error");
+                }
+            } finally {
+                setDownloadedLoading(false);
+            }
+        })();
+
+        return () => ac.abort();
+    }, [downloadPlan, tripId]);
+
+    const toLocalDateNoon = (iso) => {
+        if (!iso) return null;
+        const d = new Date(iso);
+        if (Number.isNaN(d)) return null;
+        // Budujemy nową datę w CZASIE LOKALNYM, na południe:
+        return new Date(d.getFullYear(), d.getMonth(), d.getDate(), 12, 0, 0, 0);
+    };
+    // pomocnicze: liczby + zakresy
+    const toIntOrNull = (v) => {
+        const n = Number(v);
+        return Number.isFinite(n) ? Math.round(n) : null;
+    };
+    const clamp = (n, min, max) =>
+        Number.isFinite(n) ? Math.min(max, Math.max(min, n)) : null;
+
+    useEffect(() => {
+        if (!synchronisedPlan) return;
+
+        const start = toLocalDateNoon(synchronisedPlan.dataPrzyjazdu);   // początek
+        const end = toLocalDateNoon(synchronisedPlan.dataWyjazdu);     // koniec
+
+        const miejsceDoceloweSource = synchronisedPlan.miejsceDocelowe;
+        const miejsceStartoweSource = synchronisedPlan.miejsceStartowe;
+        const standardTransportuSourceRaw = synchronisedPlan.standardTransportu;
+        const standardHoteluSourceRaw = synchronisedPlan.standardHotelu;
+        const liczbaUczestnikowSourceRaw = synchronisedPlan.liczbaUczestnikow;
+        const liczbaOpiekunowSourceRaw = synchronisedPlan.liczbaOpiekunow;
+
+
+        const photoWallpaperSource = synchronisedPlan.photoLink; // jeśli dodasz stan na tapetę, ustawisz go tutaj
+
+        // daty
+        if (start) setDataWyjazdu(start);
+        if (end) setDataPowrotu(end);
+
+        // miejsca
+        if (miejsceDoceloweSource) setMiejsceDocelowe(miejsceDoceloweSource);
+        if (miejsceStartoweSource) setMiejsceStartowe(miejsceStartoweSource);
+
+        // standardy z zakresem (hotel 0–3, transport 0–2)
+        const stdTrans = clamp(toIntOrNull(standardTransportuSourceRaw), 0, 2);
+        const stdHotel = clamp(toIntOrNull(standardHoteluSourceRaw), 0, 3);
+        if (stdTrans != null) setStandardTransportu(stdTrans);
+        if (stdHotel != null) setStandardHotelu(stdHotel);
+
+        // liczby osób (sensowne minimum: 0 opiekunów, 1 uczestnik)
+        const guests = toIntOrNull(liczbaUczestnikowSourceRaw);
+        const guardians = toIntOrNull(liczbaOpiekunowSourceRaw);
+
+        if (guests != null && guests > 0) { setLiczbaUczestnikow(guests) };
+        if (guardians != null && guardians >= 0) setLiczbaOpiekunow(guardians);
+
+        // jeśli w przyszłości dodasz stan dla zdjęcia nagłówka:
+        if (photoWallpaperSource) setPhotoWallpaper(photoWallpaperSource);
+
+    }, [synchronisedPlan]);
+
+    useEffect(() => {
+        console.log("Tapeta", photoWallpaper)
+    }, [photoWallpaper])
     return (
         <PreConfigureMainbox>
-            <PreConfigureHeader>
+            <PreConfigureHeader key={photoWallpaper}>
                 <div className="preConfigureHeaderImage">
                     <img
-                        src="https://images.unsplash.com/photo-1633268456308-72d1c728943c?auto=format&fit=crop&w=1600&q=80"
+                        src={photoWallpaper}
                         alt="Pre Configure Header"
                     />
                 </div>
@@ -532,9 +692,7 @@ export const PreConfigure = (
                     setLiczbaOpiekunow={setLiczbaOpiekunow}
                     setStandardHotelu={setStandardHotelu}
                     setStandardTransportu={setStandardTransportu}
-                    // sterowanie pobraniem planu – obsługiwane wewnątrz PreConfigureSketch
-                    downloadPlan={downloadPlan}
-                    tripId={tripId}
+
                 />
             )}
         </PreConfigureMainbox>

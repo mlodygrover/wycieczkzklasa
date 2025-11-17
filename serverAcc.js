@@ -9,6 +9,7 @@ const cors = require('cors');
 const { data } = require('react-router-dom');
 const { number } = require('framer-motion');
 const FacebookStrategy = require('passport-facebook').Strategy;
+const axios = require("axios");
 
 const app = express();
 
@@ -198,6 +199,7 @@ app.post('/auth/logout', (req, res) => {
 app.get('/healthz', (_req, res) => res.send('OK'));
 
 // ==== Schematy i model TripPlan z ceną ====
+// ===================== MODELE I SCHEMATY =====================
 
 const WariantSchema = new mongoose.Schema(
     {
@@ -245,9 +247,8 @@ const DaySchema = new mongoose.Schema(
     { _id: false }
 );
 
-const MiejsceDoceloweSchema = new mongoose.Schema(
+const MiejsceSchema = new mongoose.Schema(
     {
-        googleId: { type: String, trim: true },
         id: { type: Number },
         nazwa: { type: String, required: true, trim: true },
         kraj: { type: String, trim: true },
@@ -257,42 +258,113 @@ const MiejsceDoceloweSchema = new mongoose.Schema(
     },
     { _id: false }
 );
-
 const TripPlanSchema = new mongoose.Schema(
     {
-        // >>> NOWE POLE CENY <<<
         computedPrice: { type: Number, default: 0 },
+        authors: [{ type: mongoose.Schema.Types.ObjectId, ref: "User", index: true }],
 
-        authors: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User', index: true }],
-        miejsceDocelowe: { type: MiejsceDoceloweSchema },
-        activitiesSchedule: { type: [DaySchema], default: [] }, // [{activities:[...]}...]
+        // NOWE POLA
+        miejsceDocelowe: { type: MiejsceSchema, required: true },
+        miejsceStartowe: { type: MiejsceSchema, required: true },
+        dataPrzyjazdu: { type: Date, required: true },
+        dataWyjazdu: { type: Date, required: true },
+        standardTransportu: { type: Number, required: true, min: 0, max: 2 },
+        standardHotelu: { type: Number, required: true, min: 0, max: 3 },
+
+        // NOWE: uczestnicy / opiekunowie
+        liczbaUczestnikow: { type: Number, required: true, min: 1 },
+        liczbaOpiekunow: { type: Number, required: true, min: 0, default: 0 },
+
+        activitiesSchedule: { type: [DaySchema], default: [] },
+        photoLink: { type: String, default: null },
     },
     { timestamps: true, versionKey: false }
 );
 
+const TripPlan = mongoose.model("TripPlan", TripPlanSchema);
+
+// ===================== AUTORYZACJA =====================
+
 function requireAuth(req, res, next) {
     if (!req.user?._id) {
-        return res.status(401).json({ error: 'Unauthenticated' });
+        return res.status(401).json({ error: "Unauthenticated" });
     }
     next();
 }
 
-const TripPlan = mongoose.model('TripPlan', TripPlanSchema);
+// ===================== HELPERY =====================
 
-// ==== Helpery transformacji i kalkulacji ceny ====
+function isValidLatLng(obj) {
+    const lat = Number(obj?.lat);
+    const lng = Number(obj?.lng);
+    return (
+        Number.isFinite(lat) &&
+        Number.isFinite(lng) &&
+        lat >= -90 &&
+        lat <= 90 &&
+        lng >= -180 &&
+        lng <= 180
+    );
+}
+
+function validatePlace(place, { fieldName }) {
+    if (!place?.nazwa || !place?.location || !isValidLatLng(place.location)) {
+        console.log("Blad ", place)
+        return {
+            ok: false,
+            message: `${fieldName} wymaga: nazwa, location.lat, location.lng (poprawne współrzędne).`,
+        };
+    }
+    return { ok: true };
+}
+
+function toDateOrNull(v) {
+    if (!v) return null;
+    const d = v instanceof Date ? v : new Date(v);
+    return Number.isNaN(d.getTime()) ? null : d;
+}
+
+function validateDates(dataPrzyjazdu, dataWyjazdu) {
+    const a = toDateOrNull(dataPrzyjazdu);
+    const b = toDateOrNull(dataWyjazdu);
+    if (!a || !b) {
+        return {
+            ok: false,
+            message: "Wymagane poprawne daty: dataPrzyjazdu oraz dataWyjazdu (ISO/Date).",
+        };
+    }
+    if (a.getTime() > b.getTime()) {
+        return { ok: false, message: "dataPrzyjazdu nie może być późniejsza niż dataWyjazdu." };
+    }
+    return { ok: true, a, b };
+}
+
+function clampInt(n, min, max) {
+    const v = Number(n);
+    if (!Number.isFinite(v)) return null;
+    const iv = Math.trunc(v);
+    if (iv < min || iv > max) return null;
+    return iv;
+}
+
+function validateParticipants(ucz, opiek) {
+    const u = clampInt(ucz, 1, 10000); // sensowny zakres
+    const o = clampInt(opiek, 0, 10000);
+    if (u === null) return { ok: false, message: "liczbaUczestnikow musi być liczbą całkowitą ≥ 1." };
+    if (o === null) return { ok: false, message: "liczbaOpiekunow musi być liczbą całkowitą ≥ 0." };
+    return { ok: true, u, o };
+}
 
 function packDays(arrayOfArrays) {
-    // [ [act, act], [act], ... ] -> [ { activities:[...] }, ... ]
     if (!Array.isArray(arrayOfArrays)) return [];
-    return arrayOfArrays.map(dayArr => ({
-        activities: Array.isArray(dayArr) ? dayArr : []
+    return arrayOfArrays.map((dayArr) => ({
+        activities: Array.isArray(dayArr) ? dayArr : [],
     }));
 }
 
 function unpackDays(arrayOfDayObjects) {
-    // [ { activities:[...] }, ... ] -> [ [...], [...], ... ]
     if (!Array.isArray(arrayOfDayObjects)) return [];
-    return arrayOfDayObjects.map(dayObj =>
+    return arrayOfDayObjects.map((dayObj) =>
         Array.isArray(dayObj?.activities) ? dayObj.activities : []
     );
 }
@@ -307,56 +379,173 @@ function computePriceFromAoA(activitiesScheduleAoA) {
     let sum = 0;
     for (const day of activitiesScheduleAoA) {
         if (!Array.isArray(day)) continue;
-        for (const act of day) {
-            // Podstawowa logika – sumuj cenaZwiedzania (liczbę)
-            sum += num(act?.cenaZwiedzania);
-            // Jeśli w przyszłości pojawi się wybrany wariant, można tu dodać preferencję wariantu.
-        }
+        for (const act of day) sum += num(act?.cenaZwiedzania);
     }
     return sum;
 }
 
-// ==== ENDPOINTY z obsługą computedPrice ====
+// ===================== UNSPLASH =====================
 
-app.post('/api/trip-plans', async (req, res) => {
+const UNSPLASH_ACCESS_KEY = process.env.UNSPLASH_ACCESS_KEY;
+
+/**
+ * Pobiera link do zdjęcia z Unsplash dla podanej frazy (np. nazwy miejsca).
+ * Best-effort; w razie błędu zwraca null.
+ */
+async function fetchUnsplashPhotoLinkForDestination(
+    destName,
+    { timeoutMs = 5000, orientation = "landscape" } = {}
+) {
+    if (!destName || !String(destName).trim()) return null;
+    if (!UNSPLASH_ACCESS_KEY) {
+        console.warn("[Unsplash] Brak UNSPLASH_ACCESS_KEY w env.");
+        return null;
+    }
+
     try {
-        const { activitiesSchedule, miejsceDocelowe, computedPrice } = req.body || {};
+        const url = new URL("https://api.unsplash.com/search/photos");
+        url.searchParams.set("query", destName);
+        url.searchParams.set("per_page", "1");
+        url.searchParams.set("page", "1");
+        if (orientation) url.searchParams.set("orientation", orientation);
 
-        // wymagana autoryzacja
+        const { data } = await axios.get(url.toString(), {
+            headers: { Authorization: `Client-ID ${UNSPLASH_ACCESS_KEY}` },
+            timeout: timeoutMs,
+        });
+
+        const photo = Array.isArray(data?.results) ? data.results[0] : null;
+        if (!photo) return null;
+
+        return (
+            photo?.urls?.regular ||
+            photo?.urls?.small ||
+            photo?.urls?.thumb ||
+            photo?.urls?.full ||
+            null
+        );
+    } catch (err) {
+        console.warn("[Unsplash photo fetch warning]", err?.response?.status || "", err?.message || err);
+        return null;
+    }
+}
+
+// ===================== ENDPOINTY TRIP PLANS =====================
+// GET /download/trip-plan?tripId=<ObjectId>
+app.get("/download/trip-plan", requireAuth, async (req, res) => {
+    try {
+        const { tripId } = req.query;
+
+        if (!tripId || !mongoose.Types.ObjectId.isValid(tripId)) {
+            return res.status(400).json({ error: "InvalidObjectId", which: "tripId" });
+        }
+
+        // Pobieramy tylko potrzebne pola + upewniamy się, że user jest autorem
+        const doc = await TripPlan.findOne({
+            _id: new mongoose.Types.ObjectId(tripId),
+            authors: req.user._id,
+        })
+            .select("computedPrice miejsceDocelowe standardTransportu standardHotelu activitiesSchedule photoLink")
+            .lean();
+
+        if (!doc) {
+            return res.status(404).json({ error: "NotFound" });
+        }
+
+        // U Ciebie istnieje helper `unpackDays`; jeśli jest w tym module – użyj bezpośrednio:
+        // const activitiesAoA = unpackDays(doc.activitiesSchedule);
+        //
+        // Jeżeli piszesz endpoint w osobnym pliku bez importu helpera, możesz rozpakować defensywnie:
+        const activitiesAoA = Array.isArray(doc.activitiesSchedule)
+            ? doc.activitiesSchedule.map(d => Array.isArray(d?.activities) ? d.activities : [])
+            : [];
+
+        res.status(200).json({
+            computedPrice: typeof doc.computedPrice === "number" ? doc.computedPrice : 0,
+            miejsceDocelowe: doc.miejsceDocelowe || null,
+            standardTransportu: doc.standardTransportu,
+            standardHotelu: doc.standardHotelu,
+            activitiesSchedule: activitiesAoA,
+            photoLink: doc.photoLink ?? null,
+        });
+    } catch (err) {
+        console.error("GET /download/trip-plan error:", err);
+        res.status(500).json({ error: "ServerError" });
+    }
+});
+
+/**
+ * POST /api/trip-plans
+ * Tworzy nowy plan z pełnym schematem oraz photoLink z Unsplash (best-effort).
+ */
+app.post("/api/trip-plans", async (req, res) => {
+    try {
+        const {
+            activitiesSchedule,
+            miejsceDocelowe,
+            miejsceStartowe,
+            dataPrzyjazdu,
+            dataWyjazdu,
+            standardTransportu,
+            standardHotelu,
+            liczbaUczestnikow,
+            liczbaOpiekunow,
+            computedPrice,
+        } = req.body || {};
+
         if (!req.user?._id) {
-            return res.status(401).json({ error: 'Unauthorized', message: 'Musisz być zalogowany.' });
+            return res.status(401).json({ error: "Unauthorized", message: "Musisz być zalogowany." });
         }
 
-        // walidacja wejścia
         if (!Array.isArray(activitiesSchedule)) {
-            return res.status(400).json({ error: 'BadPayload', message: 'activitiesSchedule musi być tablicą tablic.' });
-        }
-        if (!miejsceDocelowe?.googleId || !miejsceDocelowe?.nazwa || !miejsceDocelowe?.location?.lat || !miejsceDocelowe?.location?.lng) {
-            return res.status(400).json({ error: 'BadPayload', message: 'miejsceDocelowe wymaga: googleId, nazwa, location.lat, location.lng.' });
+            return res.status(400).json({ error: "BadPayload", message: "activitiesSchedule musi być tablicą tablic." });
         }
 
-        // a) cena podana przez UI (jeśli jest poprawną liczbą)
+        const destVal = validatePlace(miejsceDocelowe, { fieldName: "miejsceDocelowe" });
+        if (!destVal.ok) return res.status(400).json({ error: "BadPayload", message: destVal.message });
+
+        const startVal = validatePlace(miejsceStartowe, { fieldName: "miejsceStartowe" });
+        if (!startVal.ok) return res.status(400).json({ error: "BadPayload", message: startVal.message });
+
+        const dv = validateDates(dataPrzyjazdu, dataWyjazdu);
+        if (!dv.ok) return res.status(400).json({ error: "BadPayload", message: dv.message });
+
+        const trStd = clampInt(standardTransportu, 0, 2);
+        const hoStd = clampInt(standardHotelu, 0, 3);
+        if (trStd === null) {
+            return res.status(400).json({ error: "BadPayload", message: "standardTransportu musi być liczbą całkowitą 0–2." });
+        }
+        if (hoStd === null) {
+            return res.status(400).json({ error: "BadPayload", message: "standardHotelu musi być liczbą całkowitą 0–3." });
+        }
+
+        const pv = validateParticipants(liczbaUczestnikow, liczbaOpiekunow);
+        if (!pv.ok) {
+            return res.status(400).json({ error: "BadPayload", message: pv.message });
+        }
+
         const clientPrice = Number(computedPrice);
-        // b) cena wyliczona na serwerze (diagnostyka / fallback)
         const serverPrice = computePriceFromAoA(activitiesSchedule);
-
-        let priceToSave;
-        if (Number.isFinite(clientPrice) && clientPrice >= 0) {
-            priceToSave = clientPrice;
-        } else {
-            priceToSave = serverPrice;
-        }
-
-        // Log rozbieżności – do analizy, dlaczego UI ≠ backend
+        const priceToSave = Number.isFinite(clientPrice) && clientPrice >= 0 ? clientPrice : serverPrice;
         if (Number.isFinite(clientPrice) && clientPrice !== serverPrice) {
-            console.warn('[PRICE MISMATCH] client:', clientPrice, 'server:', serverPrice);
+            console.warn("[PRICE MISMATCH] client:", clientPrice, "server:", serverPrice);
         }
+
+        const photoLink = await fetchUnsplashPhotoLinkForDestination(miejsceDocelowe.nazwa);
 
         const created = await TripPlan.create({
             authors: [req.user._id],
             miejsceDocelowe,
+            miejsceStartowe,
+            dataPrzyjazdu: dv.a,
+            dataWyjazdu: dv.b,
+            standardTransportu: trStd,
+            standardHotelu: hoStd,
+            liczbaUczestnikow: pv.u,
+            liczbaOpiekunow: pv.o,
             activitiesSchedule: packDays(activitiesSchedule),
             computedPrice: priceToSave,
+            photoLink: photoLink || null,
         });
 
         return res.status(201).json({
@@ -365,57 +554,77 @@ app.post('/api/trip-plans', async (req, res) => {
             updatedAt: created.updatedAt,
             authors: created.authors,
             miejsceDocelowe: created.miejsceDocelowe,
+            miejsceStartowe: created.miejsceStartowe,
+            dataPrzyjazdu: created.dataPrzyjazdu,
+            dataWyjazdu: created.dataWyjazdu,
+            standardTransportu: created.standardTransportu,
+            standardHotelu: created.standardHotelu,
+            liczbaUczestnikow: created.liczbaUczestnikow,
+            liczbaOpiekunow: created.liczbaOpiekunow,
             activitiesSchedule: unpackDays(created.activitiesSchedule),
             computedPrice: num(created.computedPrice),
+            photoLink: created.photoLink,
         });
     } catch (err) {
-        if (err?.name === 'ValidationError') {
-            return res.status(400).json({ error: 'ValidationError', details: err.errors });
+        if (err?.name === "ValidationError") {
+            return res.status(400).json({ error: "ValidationError", details: err.errors });
         }
-        console.error('POST /api/trip-plans error:', err);
-        return res.status(500).json({ error: 'ServerError' });
+        console.error("POST /api/trip-plans error:", err);
+        return res.status(500).json({ error: "ServerError" });
     }
 });
 
-app.get('/api/trip-plans', async (_req, res) => {
+/**
+ * GET /api/trip-plans
+ * Lista planów z nowymi polami.
+ */
+app.get("/api/trip-plans", async (_req, res) => {
     try {
         const docs = await TripPlan.find().sort({ createdAt: -1 }).lean();
-        const out = docs.map(d => {
+        const out = docs.map((d) => {
             const aoa = unpackDays(d.activitiesSchedule);
-            const price = (typeof d.computedPrice === 'number')
-                ? d.computedPrice
-                : computePriceFromAoA(aoa);
+            const price = typeof d.computedPrice === "number" ? d.computedPrice : computePriceFromAoA(aoa);
             return {
                 _id: d._id,
                 createdAt: d.createdAt,
                 updatedAt: d.updatedAt,
                 authors: d.authors,
                 miejsceDocelowe: d.miejsceDocelowe,
+                miejsceStartowe: d.miejsceStartowe,
+                dataPrzyjazdu: d.dataPrzyjazdu,
+                dataWyjazdu: d.dataWyjazdu,
+                standardTransportu: d.standardTransportu,
+                standardHotelu: d.standardHotelu,
+                liczbaUczestnikow: d.liczbaUczestnikow,
+                liczbaOpiekunow: d.liczbaOpiekunow,
                 activitiesSchedule: aoa,
                 computedPrice: num(price),
+                photoLink: d.photoLink ?? null,
             };
         });
         return res.json(out);
     } catch (err) {
-        console.error('GET /api/trip-plans error:', err);
-        return res.status(500).json({ error: 'ServerError' });
+        console.error("GET /api/trip-plans error:", err);
+        return res.status(500).json({ error: "ServerError" });
     }
 });
 
-app.get('/api/trip-plans/:id', async (req, res) => {
+/**
+ * GET /api/trip-plans/:id
+ * Pojedynczy plan.
+ */
+app.get("/api/trip-plans/:id", async (req, res) => {
     try {
         const { id } = req.params;
         if (!mongoose.Types.ObjectId.isValid(id)) {
-            return res.status(400).json({ error: 'InvalidObjectId' });
+            return res.status(400).json({ error: "InvalidObjectId" });
         }
 
         const doc = await TripPlan.findById(id).lean();
-        if (!doc) return res.status(404).json({ error: 'NotFound' });
+        if (!doc) return res.status(404).json({ error: "NotFound" });
 
         const aoa = unpackDays(doc.activitiesSchedule);
-        const price = (typeof doc.computedPrice === 'number')
-            ? doc.computedPrice
-            : computePriceFromAoA(aoa);
+        const price = typeof doc.computedPrice === "number" ? doc.computedPrice : computePriceFromAoA(aoa);
 
         return res.json({
             _id: doc._id,
@@ -423,42 +632,58 @@ app.get('/api/trip-plans/:id', async (req, res) => {
             updatedAt: doc.updatedAt,
             authors: doc.authors,
             miejsceDocelowe: doc.miejsceDocelowe,
+            miejsceStartowe: doc.miejsceStartowe,
+            dataPrzyjazdu: doc.dataPrzyjazdu,
+            dataWyjazdu: doc.dataWyjazdu,
+            standardTransportu: doc.standardTransportu,
+            standardHotelu: doc.standardHotelu,
+            liczbaUczestnikow: doc.liczbaUczestnikow,
+            liczbaOpiekunow: doc.liczbaOpiekunow,
             activitiesSchedule: aoa,
             computedPrice: num(price),
+            photoLink: doc.photoLink ?? null,
         });
     } catch (err) {
-        console.error('GET /api/trip-plans/:id error:', err);
-        return res.status(500).json({ error: 'ServerError' });
+        console.error("GET /api/trip-plans/:id error:", err);
+        return res.status(500).json({ error: "ServerError" });
     }
 });
 
-app.delete('/api/trip-plans/:id', async (req, res) => {
+/**
+ * DELETE /api/trip-plans/:id
+ * Usuwa plan.
+ */
+app.delete("/api/trip-plans/:id", async (req, res) => {
     try {
         const { id } = req.params;
         if (!mongoose.Types.ObjectId.isValid(id)) {
-            return res.status(400).json({ error: 'InvalidObjectId' });
+            return res.status(400).json({ error: "InvalidObjectId" });
         }
 
         const deleted = await TripPlan.findByIdAndDelete(id);
-        if (!deleted) return res.status(404).json({ error: 'NotFound' });
+        if (!deleted) return res.status(404).json({ error: "NotFound" });
 
         return res.json({ ok: true, deletedId: id });
     } catch (err) {
-        console.error('DELETE /api/trip-plans/:id error:', err);
-        return res.status(500).json({ error: 'ServerError' });
+        console.error("DELETE /api/trip-plans/:id error:", err);
+        return res.status(500).json({ error: "ServerError" });
     }
 });
 
-app.get('/api/trip-plans/by-author/:userId', async (req, res) => {
+/**
+ * GET /api/trip-plans/by-author/:userId
+ * Lista planów konkretnego autora (paginacja) – pełne pola.
+ */
+app.get("/api/trip-plans/by-author/:userId", async (req, res) => {
     try {
         const { userId } = req.params;
 
         if (!mongoose.Types.ObjectId.isValid(userId)) {
-            return res.status(400).json({ error: 'InvalidObjectId' });
+            return res.status(400).json({ error: "InvalidObjectId" });
         }
 
-        const page = Math.max(parseInt(req.query.page ?? '1', 10) || 1, 1);
-        const limitRaw = parseInt(req.query.limit ?? '50', 10) || 50;
+        const page = Math.max(parseInt(req.query.page ?? "1", 10) || 1, 1);
+        const limitRaw = parseInt(req.query.limit ?? "50", 10) || 50;
         const limit = Math.min(Math.max(limitRaw, 1), 100);
         const skip = (page - 1) * limit;
 
@@ -469,19 +694,25 @@ app.get('/api/trip-plans/by-author/:userId', async (req, res) => {
             TripPlan.countDocuments(query),
         ]);
 
-        const out = items.map(d => {
+        const out = items.map((d) => {
             const aoa = unpackDays(d.activitiesSchedule);
-            const price = (typeof d.computedPrice === 'number')
-                ? d.computedPrice
-                : computePriceFromAoA(aoa);
+            const price = typeof d.computedPrice === "number" ? d.computedPrice : computePriceFromAoA(aoa);
             return {
                 _id: d._id,
                 createdAt: d.createdAt,
                 updatedAt: d.updatedAt,
                 authors: d.authors,
                 miejsceDocelowe: d.miejsceDocelowe,
+                miejsceStartowe: d.miejsceStartowe,
+                dataPrzyjazdu: d.dataPrzyjazdu,
+                dataWyjazdu: d.dataWyjazdu,
+                standardTransportu: d.standardTransportu,
+                standardHotelu: d.standardHotelu,
+                liczbaUczestnikow: d.liczbaUczestnikow,
+                liczbaOpiekunow: d.liczbaOpiekunow,
                 activitiesSchedule: aoa,
                 computedPrice: num(price),
+                photoLink: d.photoLink ?? null,
             };
         });
 
@@ -493,63 +724,37 @@ app.get('/api/trip-plans/by-author/:userId', async (req, res) => {
             items: out,
         });
     } catch (err) {
-        console.error('GET /api/trip-plans/by-author/:userId error:', err);
-        return res.status(500).json({ error: 'ServerError' });
+        console.error("GET /api/trip-plans/by-author/:userId error:", err);
+        return res.status(500).json({ error: "ServerError" });
     }
 });
 
-// GET /api/users/:userId/name
-// Zwraca { _id, username } dla wskazanego użytkownika
-app.get('/api/users/:userId/name', async (req, res) => {
-    try {
-        const { userId } = req.params;
-
-        if (!mongoose.Types.ObjectId.isValid(userId)) {
-            return res.status(400).json({ error: 'InvalidObjectId' });
-        }
-
-        // pobranie tylko potrzebnych pól
-        const user = await User.findById(userId, { username: 1 }).lean();
-        if (!user) {
-            return res.status(404).json({ error: 'NotFound' });
-        }
-
-        return res.json({ _id: user._id, username: user.username || null });
-    } catch (err) {
-        console.error('GET /api/users/:userId/name error:', err);
-        return res.status(500).json({ error: 'ServerError' });
-    }
-});
-// GET /api/trip-plans/:tripId/by-author/:userId
-// Gdy userId ∈ authors → zwraca plan; inaczej → null.
-app.get('/api/trip-plans/:tripId/by-author/:userId', async (req, res) => {
+/**
+ * GET /api/trip-plans/:tripId/by-author/:userId
+ * Zwraca plan, jeśli userId ∈ authors; inaczej null.
+ */
+app.get("/api/trip-plans/:tripId/by-author/:userId", async (req, res) => {
     try {
         const { tripId, userId } = req.params;
 
-        // Walidacja identyfikatorów
         if (!mongoose.Types.ObjectId.isValid(tripId)) {
-            return res.status(400).json({ error: 'InvalidObjectId', which: 'tripId' });
+            return res.status(400).json({ error: "InvalidObjectId", which: "tripId" });
         }
         if (!mongoose.Types.ObjectId.isValid(userId)) {
-            return res.status(400).json({ error: 'InvalidObjectId', which: 'userId' });
+            return res.status(400).json({ error: "InvalidObjectId", which: "userId" });
         }
 
-        // Jedno zapytanie: plan o danym _id, którego authors zawiera userId
         const doc = await TripPlan.findOne({
             _id: new mongoose.Types.ObjectId(tripId),
             authors: new mongoose.Types.ObjectId(userId),
         }).lean();
 
-        // Brak uprawnień lub brak planu → zwróć null (200)
         if (!doc) {
             return res.json(null);
         }
 
-        // Spójny format odpowiedzi jak w innych endpointach
         const aoa = unpackDays(doc.activitiesSchedule);
-        const price = (typeof doc.computedPrice === 'number')
-            ? doc.computedPrice
-            : computePriceFromAoA(aoa);
+        const price = typeof doc.computedPrice === "number" ? doc.computedPrice : computePriceFromAoA(aoa);
 
         return res.json({
             _id: doc._id,
@@ -557,60 +762,130 @@ app.get('/api/trip-plans/:tripId/by-author/:userId', async (req, res) => {
             updatedAt: doc.updatedAt,
             authors: doc.authors,
             miejsceDocelowe: doc.miejsceDocelowe,
+            miejsceStartowe: doc.miejsceStartowe,
+            dataPrzyjazdu: doc.dataPrzyjazdu,
+            dataWyjazdu: doc.dataWyjazdu,
+            standardTransportu: doc.standardTransportu,
+            standardHotelu: doc.standardHotelu,
+            liczbaUczestnikow: doc.liczbaUczestnikow,
+            liczbaOpiekunow: doc.liczbaOpiekunow,
             activitiesSchedule: aoa,
             computedPrice: num(price),
+            photoLink: doc.photoLink ?? null,
         });
     } catch (err) {
-        console.error('GET /api/trip-plans/:tripId/by-author/:userId error:', err);
-        return res.status(500).json({ error: 'ServerError' });
+        console.error("GET /api/trip-plans/:tripId/by-author/:userId error:", err);
+        return res.status(500).json({ error: "ServerError" });
     }
 });
-// PUT /api/trip-plans/:tripId/by-author/:userId
-// Aktualizuje plan wyjazdu tylko wtedy, gdy userId = req.user._id i userId ∈ authors.
-// Dozwolone modyfikacje: activitiesSchedule (AoA) oraz computedPrice (opcjonalnie).
-app.put('/api/trip-plans/:tripId/by-author/:userId', requireAuth, async (req, res) => {
+
+/**
+ * PUT /api/trip-plans/:tripId/by-author/:userId
+ * Aktualizuje plan, walidując nowe pola (w tym uczestników/opiekunów).
+ */
+app.put("/api/trip-plans/:tripId/by-author/:userId", requireAuth, async (req, res) => {
     try {
         const { tripId, userId } = req.params;
 
-        // Walidacja identyfikatorów
         if (!mongoose.Types.ObjectId.isValid(tripId)) {
-            return res.status(400).json({ error: 'InvalidObjectId', which: 'tripId' });
+            return res.status(400).json({ error: "InvalidObjectId", which: "tripId" });
         }
         if (!mongoose.Types.ObjectId.isValid(userId)) {
-            return res.status(400).json({ error: 'InvalidObjectId', which: 'userId' });
+            return res.status(400).json({ error: "InvalidObjectId", which: "userId" });
         }
-
-        // Spójność sesji z parametrem userId
         if (String(req.user._id) !== String(userId)) {
-            return res.status(403).json({ error: 'Forbidden', message: 'Mismatched user.' });
+            return res.status(403).json({ error: "Forbidden", message: "Mismatched user." });
         }
 
-        // Znajdź plan, którego autorzy zawierają userId
         const plan = await TripPlan.findOne({
             _id: new mongoose.Types.ObjectId(tripId),
             authors: new mongoose.Types.ObjectId(userId),
         });
 
         if (!plan) {
-            // Brak uprawnień lub brak planu
-            return res.status(404).json({ error: 'NotFound' });
+            return res.status(404).json({ error: "NotFound" });
         }
 
-        // Whitelist pól do aktualizacji
-        const { activitiesSchedule, computedPrice } = req.body || {};
-        const updates = {};
+        const {
+            activitiesSchedule,
+            computedPrice,
+            miejsceDocelowe,
+            miejsceStartowe,
+            dataPrzyjazdu,
+            dataWyjazdu,
+            standardTransportu,
+            standardHotelu,
+            liczbaUczestnikow,
+            liczbaOpiekunow,
+        } = req.body || {};
 
-        // Aktualizacja harmonogramu (przyjmujemy AoA i pakujemy do [{activities:...}])
+        const updates = {};
         let aoaForPrice = null;
+
         if (Array.isArray(activitiesSchedule)) {
             updates.activitiesSchedule = packDays(activitiesSchedule);
-            aoaForPrice = activitiesSchedule; // do kalkulacji ceny na backendzie
+            aoaForPrice = activitiesSchedule;
         }
 
-        // Ustalenie ceny do zapisu:
-        // - jeżeli klient podał poprawną liczbę, zapisujemy ją
-        // - w przeciwnym razie liczymy cenę na serwerze z AoA (jeżeli harmonogram jest w payloadzie)
-        if (Object.prototype.hasOwnProperty.call(req.body, 'computedPrice')) {
+        if (miejsceDocelowe !== undefined) {
+            const v = validatePlace(miejsceDocelowe, { fieldName: "miejsceDocelowe" });
+            if (!v.ok) return res.status(400).json({ error: "BadPayload", message: v.message });
+            updates.miejsceDocelowe = miejsceDocelowe;
+        }
+
+        if (miejsceStartowe !== undefined) {
+            const v = validatePlace(miejsceStartowe, { fieldName: "miejsceStartowe" });
+            if (!v.ok) return res.status(400).json({ error: "BadPayload", message: v.message });
+            updates.miejsceStartowe = miejsceStartowe;
+        }
+
+        const hasArr = Object.prototype.hasOwnProperty.call(req.body, "dataPrzyjazdu");
+        const hasDep = Object.prototype.hasOwnProperty.call(req.body, "dataWyjazdu");
+        if (hasArr || hasDep) {
+            const a = hasArr ? dataPrzyjazdu : plan.dataPrzyjazdu;
+            const b = hasDep ? dataWyjazdu : plan.dataWyjazdu;
+            const dv = validateDates(a, b);
+            if (!dv.ok) return res.status(400).json({ error: "BadPayload", message: dv.message });
+            updates.dataPrzyjazdu = dv.a;
+            updates.dataWyjazdu = dv.b;
+        }
+
+        if (Object.prototype.hasOwnProperty.call(req.body, "standardTransportu")) {
+            const trStd = clampInt(standardTransportu, 0, 2);
+            if (trStd === null) {
+                return res
+                    .status(400)
+                    .json({ error: "BadPayload", message: "standardTransportu musi być liczbą całkowitą 0–2." });
+            }
+            updates.standardTransportu = trStd;
+        }
+
+        if (Object.prototype.hasOwnProperty.call(req.body, "standardHotelu")) {
+            const hoStd = clampInt(standardHotelu, 0, 3);
+            if (hoStd === null) {
+                return res
+                    .status(400)
+                    .json({ error: "BadPayload", message: "standardHotelu musi być liczbą całkowitą 0–3." });
+            }
+            updates.standardHotelu = hoStd;
+        }
+
+        if (
+            Object.prototype.hasOwnProperty.call(req.body, "liczbaUczestnikow") ||
+            Object.prototype.hasOwnProperty.call(req.body, "liczbaOpiekunow")
+        ) {
+            const pv = validateParticipants(
+                Object.prototype.hasOwnProperty.call(req.body, "liczbaUczestnikow") ? liczbaUczestnikow : plan.liczbaUczestnikow,
+                Object.prototype.hasOwnProperty.call(req.body, "liczbaOpiekunow") ? liczbaOpiekunow : plan.liczbaOpiekunow
+            );
+            if (!pv.ok) {
+                return res.status(400).json({ error: "BadPayload", message: pv.message });
+            }
+            updates.liczbaUczestnikow = pv.u;
+            updates.liczbaOpiekunow = pv.o;
+        }
+
+        if (Object.prototype.hasOwnProperty.call(req.body, "computedPrice")) {
             const clientPrice = Number(computedPrice);
             if (Number.isFinite(clientPrice) && clientPrice >= 0) {
                 updates.computedPrice = clientPrice;
@@ -618,16 +893,13 @@ app.put('/api/trip-plans/:tripId/by-author/:userId', requireAuth, async (req, re
                 updates.computedPrice = computePriceFromAoA(aoaForPrice);
             }
         } else if (aoaForPrice) {
-            // Gdy zmienił się harmonogram, możemy zaktualizować serverową cenę (jeśli tak chcesz)
-            const serverPrice = computePriceFromAoA(aoaForPrice);
-            updates.computedPrice = serverPrice;
+            updates.computedPrice = computePriceFromAoA(aoaForPrice);
         }
 
         if (!Object.keys(updates).length) {
-            return res.status(400).json({ error: 'NoValidFields', message: 'Brak pól do aktualizacji.' });
+            return res.status(400).json({ error: "NoValidFields", message: "Brak pól do aktualizacji." });
         }
 
-        // Zapis zmian i zwrot spójnej odpowiedzi
         const updated = await TripPlan.findByIdAndUpdate(
             plan._id,
             { $set: updates },
@@ -635,9 +907,7 @@ app.put('/api/trip-plans/:tripId/by-author/:userId', requireAuth, async (req, re
         ).lean();
 
         const aoa = unpackDays(updated.activitiesSchedule);
-        const priceOut = (typeof updated.computedPrice === 'number')
-            ? updated.computedPrice
-            : computePriceFromAoA(aoa);
+        const priceOut = typeof updated.computedPrice === "number" ? updated.computedPrice : computePriceFromAoA(aoa);
 
         return res.json({
             _id: updated._id,
@@ -645,16 +915,164 @@ app.put('/api/trip-plans/:tripId/by-author/:userId', requireAuth, async (req, re
             updatedAt: updated.updatedAt,
             authors: updated.authors,
             miejsceDocelowe: updated.miejsceDocelowe,
+            miejsceStartowe: updated.miejsceStartowe,
+            dataPrzyjazdu: updated.dataPrzyjazdu,
+            dataWyjazdu: updated.dataWyjazdu,
+            standardTransportu: updated.standardTransportu,
+            standardHotelu: updated.standardHotelu,
+            liczbaUczestnikow: updated.liczbaUczestnikow,
+            liczbaOpiekunow: updated.liczbaOpiekunow,
             activitiesSchedule: aoa,
             computedPrice: num(priceOut),
+            photoLink: updated.photoLink ?? null,
         });
     } catch (err) {
-        console.error('PUT /api/trip-plans/:tripId/by-author/:userId error:', err);
-        return res.status(500).json({ error: 'ServerError' });
+        console.error("PUT /api/trip-plans/:tripId/by-author/:userId error:", err);
+        return res.status(500).json({ error: "ServerError" });
     }
 });
 
+// ===================== POMOCNICZY ENDPOINT USER (bez zmian) =====================
 
+app.get("/api/users/:userId/name", async (req, res) => {
+    try {
+        const { userId } = req.params;
+
+        if (!mongoose.Types.ObjectId.isValid(userId)) {
+            return res.status(400).json({ error: "InvalidObjectId" });
+        }
+
+        const user = await User.findById(userId, { username: 1 }).lean();
+        if (!user) {
+            return res.status(404).json({ error: "NotFound" });
+        }
+
+        return res.json({ _id: user._id, username: user.username || null });
+    } catch (err) {
+        console.error("GET /api/users/:userId/name error:", err);
+        return res.status(500).json({ error: "ServerError" });
+    }
+});
+const HighlightedPlanSchema = new mongoose.Schema(
+    {
+        tripPlanId: { type: String, required: true, unique: true, index: true },
+        position: { type: Number, required: true, index: true },
+    },
+    { timestamps: true }
+);
+
+const HighlightedPlan = mongoose.model("HighlightedPlan", HighlightedPlanSchema);
+
+
+// pomocniczo: ustalenie kolejnej pozycji (max + 1)
+async function getNextPosition() {
+    const last = await HighlightedPlan.findOne().sort({ position: -1 }).lean();
+    return last ? last.position + 1 : 1;
+}
+
+/**
+ * POST /highlighted-plans
+ * body: { tripPlanId: string }
+ * Dodaje plan do listy wyróżnionych, na koniec kolejki (najwyższa pozycja).
+ * Jeśli już istnieje – zwraca istniejący dokument (idempotentnie).
+ */
+// GET /highlighted-plans
+// Zwraca wszystkie wyróżnione plany posortowane po 'position' (rosnąco)
+app.get("/highlighted-plans", async (req, res) => {
+    try {
+        const items = await HighlightedPlan
+            .find({})
+            .sort({ position: 1 })       // klucz: tutaj jest sortowanie
+            .lean();
+
+        return res.json({ success: true, data: items });
+    } catch (err) {
+        console.error("GET /highlighted-plans error:", err);
+        return res.status(500).json({ error: "ServerError" });
+    }
+});
+
+/**
+ * DELETE /highlighted-plans/:tripPlanId
+ * Usuwa plan z listy wyróżnionych oraz porządkuje pozycje (kompaktuje luki).
+ */
+app.delete("/highlighted-plans/:tripPlanId", async (req, res) => {
+    try {
+        const { tripPlanId } = req.params;
+        const deleted = await HighlightedPlan.findOneAndDelete({ tripPlanId });
+
+        if (!deleted) {
+            return res.status(404).json({ error: "Nie znaleziono wpisu dla podanego tripPlanId." });
+        }
+
+        // kompaktowanie pozycji po usunięciu (przesunięcie wszystkiego powyżej w dół o 1)
+        await HighlightedPlan.updateMany(
+            { position: { $gt: deleted.position } },
+            { $inc: { position: -1 } }
+        );
+
+        return res.json({ success: true, removed: deleted });
+    } catch (err) {
+        console.error("DELETE /highlighted-plans/:tripPlanId error:", err);
+        return res.status(500).json({ error: "ServerError" });
+    }
+});
+
+/**
+ * POST /highlighted-plans/swap
+ * body: { tripPlanIdA: string, tripPlanIdB: string }
+ * Zamienia miejscami kolejność dwóch wyróżnionych planów.
+ */
+app.post("/highlighted-plans/swap", async (req, res) => {
+    const { tripPlanIdA, tripPlanIdB } = req.body || {};
+    if (
+        !tripPlanIdA || !tripPlanIdB ||
+        typeof tripPlanIdA !== "string" || typeof tripPlanIdB !== "string" ||
+        !tripPlanIdA.trim() || !tripPlanIdB.trim()
+    ) {
+        return res.status(400).json({ error: "Parametry 'tripPlanIdA' i 'tripPlanIdB' są wymagane." });
+    }
+    if (tripPlanIdA === tripPlanIdB) {
+        return res.status(400).json({ error: "Podano identyczne tripPlanId – nie ma czego zamieniać." });
+    }
+
+    const session = await HighlightedPlan.startSession();
+    session.startTransaction();
+    try {
+        const [a, b] = await Promise.all([
+            HighlightedPlan.findOne({ tripPlanId: tripPlanIdA }).session(session),
+            HighlightedPlan.findOne({ tripPlanId: tripPlanIdB }).session(session),
+        ]);
+
+        if (!a || !b) {
+            await session.abortTransaction();
+            session.endSession();
+            return res.status(404).json({ error: "Nie znaleziono jednego lub obu planów do zamiany." });
+        }
+
+        const posA = a.position;
+        const posB = b.position;
+
+        // bezkolizyjna zamiana pozycji w transakcji
+        await HighlightedPlan.updateOne({ _id: a._id }, { $set: { position: -posA } }).session(session);
+        await HighlightedPlan.updateOne({ _id: b._id }, { $set: { position: posA } }).session(session);
+        await HighlightedPlan.updateOne({ _id: a._id }, { $set: { position: posB } }).session(session);
+
+        await session.commitTransaction();
+        session.endSession();
+
+        const after = await HighlightedPlan.find({
+            tripPlanId: { $in: [tripPlanIdA, tripPlanIdB] },
+        }).sort({ position: 1 });
+
+        return res.json({ success: true, data: after });
+    } catch (err) {
+        await session.abortTransaction();
+        session.endSession();
+        console.error("POST /highlighted-plans/swap error:", err);
+        return res.status(500).json({ error: "ServerError" });
+    }
+});
 const port = process.env.PORT || 5007;
 
 app.listen(port, () => {

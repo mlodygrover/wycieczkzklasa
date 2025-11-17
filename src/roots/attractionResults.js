@@ -638,7 +638,6 @@ export const AttractionResultFull = ({
     }
 
 
-
     return (
         <AttractionResultFullOutbox key={attraction.id || actIdx}>
 
@@ -749,7 +748,7 @@ export const AttractionResultFull = ({
                                 <button
                                     className="actionButton"
                                     title="Przesuń w dół"
-                                    disabled={actIdx === lastIdx - 1}   // jeżeli chcesz zablokować na końcu
+                                    disabled={actIdx >= lastIdx - 1}   // jeżeli chcesz zablokować na końcu
                                     onClick={async () => {
                                         if (actIdx !== lastIdx) {
                                             try {

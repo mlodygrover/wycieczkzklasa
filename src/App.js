@@ -48,6 +48,7 @@ import { ProfilePage } from './profilePage.js';
 import TripPlansPicker from './tripPlansPickerTest.js';
 import KonfiguratorLoader from './konfiguratorLoader.js';
 import { PreConfigure } from './preConfigure.js';
+import UnsplashPhotoTest from './unsplashPhotoTest.js';
 
 const teksty = [
   { tyt: "Połącz twój pomysł z naszym doświadczeniem", tekst: "Dzięki konfiguratorowi wycieczek WycieczkaZKlasą, zrealizuj swój pomysł na wyjazd, nie martwiąc się niczym poza pasjonującym programem wyjazdu!" },
@@ -162,10 +163,11 @@ function App() {
     <>
       <div className="App">
         <Router>
+          
           <Menus />
           <Routes>
 
-            <Route path="/" element={<><HomePage trips={exampleTrips} /><TripPlansPicker/></>} />
+            <Route path="/" element={<><HomePage trips={exampleTrips} /><UnsplashPhotoTest/><TripPlansPicker/></>} />
             <Route path="/profil" element={<ProfilePage/>} />
             <Route path="/konfigurator-lounge" element={<PreConfigure/>} />
             <Route path="/login" element={<LoginPage />} />

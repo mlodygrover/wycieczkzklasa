@@ -414,7 +414,6 @@ const AttractionSchema = new mongoose.Schema({
 AttractionSchema.index({ locationGeo: '2dsphere' }); // 🔑 indeks przestrzenny
 const Attraction = mongoose.model("Attraction", AttractionSchema);
 
-
 app.get("/getOneAttraction/:googleId", async (req, res) => {
     try {
         const { googleId } = req.params;
@@ -2521,6 +2520,99 @@ PRZYKŁAD WYJŚCIA (w komendach nie uzywaj spacji):
     }
 });
 
+const UNSPLASH_ACCESS_KEY = process.env.UNSPLASH_ACCESS_KEY;
+const APP_NAME = process.env.UNSPLASH_APP_NAME || "YourApp";
+
+if (!UNSPLASH_ACCESS_KEY) {
+    console.warn("[Unsplash] Brak UNSPLASH_UNSPLASH_ACCESS_KEY w zmiennych środowiskowych.");
+}
+
+/**
+ * GET /api/unsplash/photo?q=poznan
+ * Zwraca jeden wynik wyszukiwania + atrybucję + download_location.
+ */
+app.get("/photo", async (req, res) => {
+    try {
+        const q = String(req.query.q || "").trim();
+        if (!q) return res.status(400).json({ error: "Parametr 'q' jest wymagany." });
+
+        const url = new URL("https://api.unsplash.com/search/photos");
+        url.searchParams.set("query", q);
+        url.searchParams.set("per_page", "1");
+        url.searchParams.set("page", "1");
+        // opcjonalnie:
+        // url.searchParams.set("orientation", "landscape");
+
+        const r = await fetch(url, {
+            headers: { Authorization: `Client-ID ${UNSPLASH_ACCESS_KEY}` },
+        });
+
+        if (!r.ok) {
+            const text = await r.text().catch(() => "");
+            return res.status(r.status).json({ error: text || r.statusText });
+        }
+
+        const data = await r.json();
+        const photo = Array.isArray(data.results) && data.results[0];
+        if (!photo) return res.status(404).json({ error: "Brak wyników dla podanej frazy." });
+
+        // Atrybucja (linki z UTM)
+        const photographerLink = `${photo.user?.links?.html}?utm_source=${encodeURIComponent(APP_NAME)}&utm_medium=referral`;
+        const unsplashLink = `https://unsplash.com/?utm_source=${encodeURIComponent(APP_NAME)}&utm_medium=referral`;
+
+        return res.json({
+            id: photo.id,
+            alt: photo.alt_description || "",
+            src: {
+                thumb: photo.urls.thumb,
+                small: photo.urls.small,
+                regular: photo.urls.regular,
+                full: photo.urls.full,
+            },
+            attribution: {
+                text: `Photo by ${photo.user?.name} on Unsplash`,
+                photographerName: photo.user?.name,
+                photographerProfile: photographerLink,
+                unsplashHomepage: unsplashLink,
+            },
+            // ten adres należy wywołać PRZY pobraniu/ zapisie – to wymóg Unsplash
+            download_location: photo.links?.download_location,
+        });
+    } catch (err) {
+        console.error("/api/unsplash/photo error:", err);
+        return res.status(500).json({ error: "ServerError" });
+    }
+});
+
+/**
+ * POST /api/unsplash/download
+ * Body/Query: download_location=<URL z poprzedniego endpointu>
+ * Rejestruje pobranie w Unsplash (wymóg regulaminu).
+ */
+app.post("/download", express.json(), async (req, res) => {
+    try {
+        const downloadLocation =
+            req.body?.download_location || req.query?.download_location;
+        if (!downloadLocation) {
+            return res.status(400).json({ error: "Parametr 'download_location' jest wymagany." });
+        }
+
+        const r = await fetch(downloadLocation, {
+            headers: { Authorization: `Client-ID ${UNSPLASH_ACCESS_KEY}` },
+        });
+
+        if (!r.ok) {
+            const text = await r.text().catch(() => "");
+            return res.status(r.status).json({ error: text || r.statusText });
+        }
+
+        const data = await r.json();
+        return res.json({ success: true, data });
+    } catch (err) {
+        console.error("/api/unsplash/download error:", err);
+        return res.status(500).json({ error: "ServerError" });
+    }
+});
 
 
 app.listen(PORT, () => {

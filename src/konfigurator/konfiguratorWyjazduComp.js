@@ -169,7 +169,7 @@ export const KonfiguratorWyjazduComp = ({
     setActivityPanelOpened, addActivity, onAttractionTimeChange, swapActivities,
     onTransportChange, timeSchedule, chosenTransportSchedule,
     loading, atrakcje, routeSchedule, activitiesSchedule,
-    liczbaDni, wybranyDzien, setWybranyDzien, checkOut
+    liczbaDni, wybranyDzien, setWybranyDzien, checkOut, miejsceStartowe, liczbaUczestnikow, liczbaOpiekunow, standardTransportu, standardHotelu, dataPrzyjazdu, dataWyjazdu
 }) => {
 
     const [localWybranyDzien, setLocalWybranyDzien] = useState(wybranyDzien);
@@ -184,7 +184,6 @@ export const KonfiguratorWyjazduComp = ({
 
     function validateMiejsceDocelowe(md) {
         if (!md) return 'miejsceDocelowe jest wymagane.';
-        if (!md.googleId) return 'miejsceDocelowe.googleId jest wymagane.';
         if (!md.nazwa) return 'miejsceDocelowe.nazwa jest wymagana.';
         if (!md.location || typeof md.location !== 'object') return 'miejsceDocelowe.location jest wymagane.';
         const { lat, lng } = md.location;
@@ -198,7 +197,7 @@ export const KonfiguratorWyjazduComp = ({
      * Zapisuje plan wraz z computedPrice.
      * Wymaga: activitiesSchedule (array-of-arrays), miejsceDocelowe (obiekt), computedPrice (number).
      */
-    async function saveActivitiesSchedule(activitiesSchedule, miejsceDocelowe, computedPrice) {
+    async function saveActivitiesSchedule(activitiesSchedule, miejsceDocelowe, miejsceStartowe, dataPrzyjazdu, dataWyjazdu, liczbaUczestnikow, liczbaOpiekunow, standardHotelu, standardTransportu, computedPrice) {
         if (!Array.isArray(activitiesSchedule)) {
             throw new Error('Parametr "activitiesSchedule" musi być tablicą.');
         }
@@ -219,6 +218,14 @@ export const KonfiguratorWyjazduComp = ({
                 activitiesSchedule,
                 miejsceDocelowe,
                 computedPrice: priceNum, // <-- wysyłamy cenę
+                miejsceStartowe,
+                dataPrzyjazdu,
+                dataWyjazdu,
+                liczbaUczestnikow,
+                liczbaOpiekunow,
+                standardHotelu,
+                standardTransportu
+
             }),
         });
 
@@ -243,13 +250,15 @@ export const KonfiguratorWyjazduComp = ({
         if (!canSave) return; // bezpieczeństwo
         try {
             setSaving(true);
-            const doc = await saveActivitiesSchedule(activitiesSchedule, miejsceDocelowe, computedPrice);
+            const doc = await saveActivitiesSchedule(activitiesSchedule, miejsceDocelowe, miejsceStartowe, dataPrzyjazdu, dataWyjazdu, liczbaUczestnikow, liczbaOpiekunow, standardHotelu, standardTransportu, computedPrice);
         } catch (e) {
             alert(e.message || 'Wystąpił błąd podczas zapisu planu.');
         } finally {
             setSaving(false);
         }
     };
+    const lastIdx = activitiesSchedule[Math.min(wybranyDzien, activitiesSchedule.length - 1)].length - 1;
+
     return (
         <KonfiguratorWyjazduCompMainbox>
             <div className="konifuguratorMainboxTitle">
@@ -310,7 +319,7 @@ export const KonfiguratorWyjazduComp = ({
             </KonfiguratorNavBar>
 
             <KonfiguratorWyjazduBottom>
-                <KonfiguratorWyjazduOutbox>
+                <KonfiguratorWyjazduOutbox key={activitiesSchedule}>
                     {(!loading && !scheduleLoading && timeSchedule.length) ? (
                         <>
                             <DragDropContext
@@ -318,7 +327,6 @@ export const KonfiguratorWyjazduComp = ({
                                     if (!result.destination) return;
                                     const sourceIndex = result.source.index;
                                     const destIndex = result.destination.index;
-                                    const lastIdx = activitiesSchedule[wybranyDzien].length - 1;
                                     if (destIndex === 0 || destIndex === lastIdx) return;
                                     if (sourceIndex === 0 || sourceIndex === lastIdx) return;
                                     if (sourceIndex !== destIndex) {
@@ -349,7 +357,6 @@ export const KonfiguratorWyjazduComp = ({
                                                             />
                                                         ) : null;
 
-                                                        const lastIdx = activitiesSchedule[Math.min(wybranyDzien, activitiesSchedule.length - 1)].length - 1;
 
                                                         return (
                                                             <React.Fragment key={`${atrakcja.googleId}${idx}` || idx}>
@@ -382,7 +389,7 @@ export const KonfiguratorWyjazduComp = ({
                                                                         >
                                                                             <AttractionResultFull
                                                                                 onAttractionTimeChange={onAttractionTimeChange}
-                                                                                lastIdx={Math.min(wybranyDzien, activitiesSchedule.length - 1)}
+                                                                                lastIdx={lastIdx}
                                                                                 dayIdx={wybranyDzien}
                                                                                 actIdx={idx}
                                                                                 swapActivities={swapActivities}

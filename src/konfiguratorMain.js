@@ -27,6 +27,7 @@ import { time } from "framer-motion";
 
 // === user store (global auth) ===
 import useUserStore, { fetchMe } from "./usercontent";
+import { data } from "react-router-dom";
 
 const testResults = [
     { nazwa: "Poznań", region: "Wielkopolska", kraj: "Polska" },
@@ -846,7 +847,7 @@ const writeStringParam = (key, val) => {
     commitURL(url);
 };
 
-export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportScheduleInit, dataPrzyjazduInit, dataWyjazduInit, standardHoteluInit, standardTransportuInit, miejsceDoceloweInit, miejsceStartoweInit, liczbaUczestnikowInit, liczbaOpiekunówInit, pokojeOpiekunowieInit }) => {
+export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportScheduleInit, dataPrzyjazduInit, dataWyjazduInit, standardHoteluInit, standardTransportuInit, miejsceDoceloweInit, miejsceStartoweInit, liczbaUczestnikowInit, liczbaOpiekunowInit, pokojeOpiekunowieInit }) => {
 
     // ===== INICJALIZACJA STANÓW (z URL -> localStorage -> inity) =====
 
@@ -947,17 +948,17 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
         return (liczbaUczestnikowInit ?? 0);
     });
 
-    const [liczbaOpiekunów, setLiczbaOpiekunów] = useState(() => {
+    const [liczbaOpiekunow, setLiczbaOpiekunow] = useState(() => {
         const fromURL = getInt(readURL().searchParams.get("guardians"));
         if (fromURL != null) return fromURL;
         try {
-            const raw = localStorage.getItem("liczbaOpiekunów");
+            const raw = localStorage.getItem("liczbaOpiekunow");
             if (raw != null) {
                 const n = Number(raw);
                 if (Number.isFinite(n)) return n;
             }
         } catch { }
-        return (liczbaOpiekunówInit ?? 0);
+        return (liczbaOpiekunowInit ?? 0);
     });
 
     const [tripId, setTripId] = useState(() => {
@@ -967,11 +968,7 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
     });
 
     // ===== EFEKTY: zapis do URL + regularny zapis do localStorage =====
-    // tripId -> URL
-    useEffect(() => {
-        writeStringParam("tripId", tripId);
-        console.log("Ustawiam tripId w LS:", tripId);
-    }, [tripId]);
+    
 
     // DESTINATION -> URL + LS
     useEffect(() => {
@@ -1019,9 +1016,9 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
     }, [liczbaUczestnikow]);
 
     useEffect(() => {
-        writeNumberParam("guardians", liczbaOpiekunów);
-        localStorage.setItem("liczbaOpiekunów", String(liczbaOpiekunów));
-    }, [liczbaOpiekunów]);
+        writeNumberParam("guardians", liczbaOpiekunow);
+        localStorage.setItem("liczbaOpiekunow", String(liczbaOpiekunow));
+    }, [liczbaOpiekunow]);
 
     // standards -> URL + LS
     useEffect(() => {
@@ -1037,7 +1034,7 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
     useEffect(() => {
         console.log("TEST1", miejsceDocelowe, miejsceStartowe)
         miejsceDocelowe && localStorage.setItem("miejsceDocelowe", JSON.stringify(miejsceDocelowe))
-    }, [miejsceDocelowe])
+    }, [miejsceDocelowe, miejsceStartowe])
 
     //dane lokalne
     const [settingsOpened, setSettingsOpened] = useState(false);
@@ -1187,7 +1184,7 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
     const [routeSchedule, setRouteSchedule] = useState([])
     const [timeSchedule, setTimeSchedule] = useState([])
     const [activitiesSchedule, setActivitiesSchedule] = useState([[]]);
-
+    const [photoWallpaper, setPhotoWallpaper] = useState("https://images.unsplash.com/photo-1633268456308-72d1c728943c?auto=format&fit=crop&w=1600&q=80")
     const [tripPrice, setTripPrice] = useState(0);
     const [insurancePrice, setInsurancePrice] = useState(0);
     const [computingPrice, setComputingPrice] = useState(false)
@@ -1196,14 +1193,32 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
     useEffect(() => {
         let aborted = false;
 
+        // Bezpieczna konwersja daty (ISO / Date / string) na obiekt Date z godziną 12:00 lokalnie,
+        // żeby uniknąć przesunięć strefowych i krawędzi DST.
+        const toLocalDateNoon = (v) => {
+            if (!v) return null;
+            const d = v instanceof Date ? v : new Date(v);
+            if (Number.isNaN(d.getTime())) return null;
+            return new Date(d.getFullYear(), d.getMonth(), d.getDate(), 12, 0, 0, 0);
+        };
+
         const getFallbackActivities = () => {
             if (activitiesScheduleInit != null) return activitiesScheduleInit;
-            return [[]]
-            const tripKey = makeTripKey("activitiesSchedule", miejsceDocelowe, dataPrzyjazdu, dataWyjazdu);
+
+            const tripKey = makeTripKey(
+                "activitiesSchedule",
+                miejsceDocelowe,
+                dataPrzyjazdu,
+                dataWyjazdu
+            );
+
             try {
+                console.log("ActivitiesSchedule z LS")
                 const raw = localStorage.getItem(tripKey);
                 if (raw) return JSON.parse(raw);
-            } catch { return [[]] }
+            } catch {
+                /* ignore */
+            }
             return [[]];
         };
 
@@ -1222,15 +1237,15 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
             console.log("Próbuję pobrać plan wyjazdu z API dla tripId:", tripId);
 
             let userId =
-                userIdFromStore ??
-                useUserStore.getState?.().user?._id ??
-                null;
+                userIdFromStore ?? useUserStore.getState?.().user?._id ?? null;
 
             if (!userId) {
                 try {
                     const me = await fetchMe().catch(() => null);
                     userId = me?._id ?? useUserStore.getState?.().user?._id ?? null;
-                } catch { }
+                } catch {
+                    /* ignore */
+                }
             }
 
             console.log("Używam userId:", userId);
@@ -1240,17 +1255,60 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
             }
 
             try {
-                const url = `http://localhost:5007/api/trip-plans/${encodeURIComponent(tripId)}/by-author/${encodeURIComponent(userId)}`;
+                const url = `http://localhost:5007/api/trip-plans/${encodeURIComponent(
+                    tripId
+                )}/by-author/${encodeURIComponent(userId)}`;
                 const resp = await fetch(url, { credentials: "include" });
 
                 if (!aborted && resp.ok) {
                     const data = await resp.json();
+
+                    // 1) Harmonogram
                     if (Array.isArray(data?.activitiesSchedule)) {
                         setActivitiesSchedule(data.activitiesSchedule);
-                        console.log("Pobrano plan wyjazdu z API dla tripId:", data.activitiesSchedule);
-                        return;
+                        console.log(
+                            "Pobrano plan wyjazdu z API dla tripId:",
+                            data.activitiesSchedule
+                        );
+                    } else {
+                        // brak poprawnego harmonogramu → fallback
+                        fallback();
                     }
+
+                    // 2) Daty (z lokalną „południową” godziną)
+                    const start = toLocalDateNoon(data?.dataPrzyjazdu);
+                    const end = toLocalDateNoon(data?.dataWyjazdu);
+                    if (start) setDataPrzyjazdu(start);
+                    if (end) setDataWyjazdu(end);
+
+                    // 3) Miejsca
+                    if (data?.miejsceDocelowe) setMiejsceDocelowe(data.miejsceDocelowe);
+                    if (data?.miejsceStartowe) setMiejsceStartowe(data.miejsceStartowe);
+
+                    // 4) Standardy
+                    if (typeof data?.standardTransportu === "number") {
+                        setStandardTransportu(data.standardTransportu);
+                    }
+                    if (typeof data?.standardHotelu === "number") {
+                        setStandardHotelu(data.standardHotelu);
+                    }
+
+                    // 5) Liczebności
+                    if (typeof data?.liczbaUczestnikow === "number") {
+                        setLiczbaUczestnikow(data.liczbaUczestnikow);
+                    }
+                    if (typeof data?.liczbaOpiekunow === "number") {
+                        setLiczbaOpiekunow(data.liczbaOpiekunow);
+                    }
+
+                    // 6) (Opcjonalnie) zdjęcie
+                    if (typeof data?.photoLink === "string") {
+                        setPhotoWallpaper?.(data.photoLink);
+                    }
+
+                    return;
                 }
+
                 return fallback();
             } catch {
                 return fallback();
@@ -1260,7 +1318,9 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
         return () => {
             aborted = true;
         };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
+
 
     const saveTimerRef = useRef(null);
     const saveControllerRef = useRef(null);
@@ -1270,52 +1330,157 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
         String(tripId).trim().length > 0 &&
         Array.isArray(activitiesSchedule);
 
-    const saveTripPlan = useCallback(async (opts = {}) => {
-        if (!canSave()) return;
-        const { signal } = opts;
+    // zakładam, że masz w stanie: miejsceDocelowe, miejsceStartowe, dataWyjazdu (start), dataPowrotu (koniec),
+    // standardTransportu, standardHotelu, activitiesSchedule, tripPrice, insurancePrice, tripId
+    // oraz helper formatYMDLocal(d: Date|string) -> "YYYY-MM-DD" (jak w Twoim kodzie)
+    /**
+ * Zwraca datę w formacie "YYYY-MM-DD" z użyciem CZASU LOKALNEGO,
+ * bez przesunięć strefowych (nie używa UTC).
+ * Przyjmuje Date, timestamp lub parsowalny string; dla niepoprawnego wejścia zwraca "".
+ */
+    function formatYMDLocal(input) {
+        if (!input) return "";
 
-        try {
-            let userId = useUserStore.getState?.().user?._id ?? null;
-            if (!userId) {
-                try {
-                    const me = await fetchMe().catch(() => null);
-                    userId = me?._id ?? useUserStore.getState?.().user?._id ?? null;
-                } catch { /* cicho */ }
-            }
-            if (!userId) return;
+        const d = input instanceof Date ? input : new Date(input);
+        if (isNaN(d)) return "";
 
-            const url = `http://localhost:5007/api/trip-plans/${encodeURIComponent(
-                tripId
-            )}/by-author/${encodeURIComponent(userId)}`;
+        const y = d.getFullYear();
+        const m = String(d.getMonth() + 1).padStart(2, "0");
+        const day = String(d.getDate()).padStart(2, "0");
 
-            const payload = {
-                activitiesSchedule,
-                computedPrice: (tripPrice ?? 0) + (insurancePrice ?? 0),
+        return `${y}-${m}-${day}`;
+    }
+
+    const saveTripPlan = useCallback(
+        async (opts = {}) => {
+
+            console.log("Probuje zapisac...");
+            if (!canSave()) return;
+            const { signal } = opts;
+
+            // prosta konwersja/licznik – frontowe minimum, backend i tak waliduje
+            const toIntOrUndef = (v) => {
+                const n = Number(v);
+                return Number.isFinite(n) ? Math.trunc(n) : undefined;
             };
+            const safeParticipants = (() => {
+                const n = toIntOrUndef(liczbaUczestnikow);
+                return n !== undefined && n >= 1 ? n : undefined; // min 1
+            })();
+            const safeGuardians = (() => {
+                const n = toIntOrUndef(liczbaOpiekunow);
+                return n !== undefined && n >= 0 ? n : undefined; // min 0
+            })();
 
-            const resp = await fetch(url, {
-                method: "PUT",
-                headers: { "Content-Type": "application/json" },
-                credentials: "include",
-                body: JSON.stringify(payload),
-                signal,
-            });
+            try {
+                // ustal userId (jak dotychczas)
+                let userId = useUserStore.getState?.().user?._id ?? null;
+                if (!userId) {
+                    try {
+                        const me = await fetchMe().catch(() => null);
+                        userId = me?._id ?? useUserStore.getState?.().user?._id ?? null;
+                    } catch {
+                        /* cicho */
+                    }
+                }
+                if (!userId) return;
+                if (!tripId) return;
 
-            if (!resp.ok) {
-                console.warn("PUT trip plan failed:", resp.status, await resp.text());
-                return;
+                console.log("Zapisuje plan");
+                const url = `http://localhost:5007/api/trip-plans/${encodeURIComponent(
+                    tripId
+                )}/by-author/${encodeURIComponent(userId)}`;
+
+                const payload = {
+                    // harmonogram (AoA)
+                    activitiesSchedule,
+
+                    // cena łączna
+                    computedPrice: (tripPrice ?? 0) + (insurancePrice ?? 0),
+
+                    // miejsca
+                    miejsceDocelowe: miejsceDocelowe
+                        ? {
+                            nazwa: String(miejsceDocelowe.nazwa || "").trim(),
+                            kraj: miejsceDocelowe.kraj ?? undefined,
+                            wojewodztwo: miejsceDocelowe.wojewodztwo ?? undefined,
+                            priority: miejsceDocelowe.priority ?? 0,
+                            location: {
+                                lat: Number(miejsceDocelowe.location?.lat),
+                                lng: Number(miejsceDocelowe.location?.lng),
+                            },
+                        }
+                        : undefined,
+
+                    miejsceStartowe: miejsceStartowe
+                        ? {
+                            nazwa: String(miejsceStartowe.nazwa || "").trim(),
+                            kraj: miejsceStartowe.kraj ?? undefined,
+                            wojewodztwo: miejsceStartowe.wojewodztwo ?? undefined,
+                            priority: miejsceStartowe.priority ?? 0,
+                            location: {
+                                lat: Number(miejsceStartowe.location?.lat),
+                                lng: Number(miejsceStartowe.location?.lng),
+                            },
+                        }
+                        : undefined,
+
+                    // daty (YYYY-MM-DD)
+                    dataPrzyjazdu: dataPrzyjazdu ? formatYMDLocal(dataPrzyjazdu) : undefined,
+                    dataWyjazdu: dataWyjazdu ? formatYMDLocal(dataWyjazdu) : undefined,
+
+                    // standardy
+                    standardTransportu:
+                        typeof standardTransportu === "number" ? standardTransportu : undefined,
+                    standardHotelu:
+                        typeof standardHotelu === "number" ? standardHotelu : undefined,
+
+                    // NOWE: uczestnicy i opiekunowie
+                    liczbaUczestnikow: safeParticipants,
+                    liczbaOpiekunow: safeGuardians,
+                };
+
+                const resp = await fetch(url, {
+                    method: "PUT",
+                    headers: { "Content-Type": "application/json" },
+                    credentials: "include",
+                    body: JSON.stringify(payload),
+                    signal,
+                });
+
+                if (!resp.ok) {
+                    console.warn("PUT trip plan failed:", resp.status, await resp.text());
+                    return;
+                }
+
+                // opcjonalnie: odczyt zwrotki
+                // const updated = await resp.json();
+                // ... setState(updated) ...
+            } catch (err) {
+                if (err?.name !== "AbortError") {
+                    console.error("PUT trip plan error:", err);
+                }
             }
-        } catch (err) {
-            if (err?.name !== "AbortError") {
-                console.error("PUT trip plan error:", err);
-            }
-        }
-    }, [
-        tripId,
-        activitiesSchedule,
-        tripPrice,
-        insurancePrice,
-    ]);
+        },
+        [
+            tripId,
+            activitiesSchedule,
+            tripPrice,
+            insurancePrice,
+            miejsceDocelowe,
+            miejsceStartowe,
+            dataWyjazdu,
+            dataPrzyjazdu,
+            standardTransportu,
+            standardHotelu,
+
+            // ➜ dodane zależności
+            liczbaUczestnikow,
+            liczbaOpiekunow,
+        ]
+    );
+
+
 
     const queueTripPlanSave = useCallback(() => {
         if (!canSave()) return;
@@ -1352,7 +1517,7 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
                 saveControllerRef.current = null;
             }
         };
-    }, [JSON.stringify(activitiesSchedule), tripPrice, insurancePrice]);
+    }, [JSON.stringify(activitiesSchedule), dataWyjazdu, dataPrzyjazdu, standardHotelu, standardTransportu, liczbaUczestnikow, liczbaOpiekunow, tripPrice, insurancePrice]);
 
     const [chosenTransportSchedule, setChosenTransportSchedule] = useState(() => {
         if (chosenTransportScheduleInit != null) return chosenTransportScheduleInit;
@@ -1973,9 +2138,6 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
         }
     }
 
-    useEffect(() => {
-        console.log("Aktywnosci", activitiesSchedule)
-    }, [activitiesSchedule])
     function addActivity(dayIndex, activity, botAuthor = false) {
         if (konfiguratorLoading) return;
         if (activity?.googleId?.includes("base")) return;
@@ -2044,9 +2206,10 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
         if (
             act1 === 0 ||
             act2 === 0 ||
-            act1 === activitiesSchedule[wybranyDzien].length - 1 ||
-            act2 === activitiesSchedule[wybranyDzien].length - 1
+            act1 === activitiesSchedule[dayIndex].length - 1 ||
+            act2 === activitiesSchedule[dayIndex].length - 1
         ) {
+            
             return;
         }
 
@@ -2242,7 +2405,7 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
         const hasAll =
             Array.isArray(activitiesSchedule) &&
             typeof liczbaUczestnikow === "number" &&
-            typeof liczbaOpiekunów === "number" &&
+            typeof liczbaOpiekunow === "number" &&
             routeSchedule &&
             wybranyHotel;
 
@@ -2257,7 +2420,7 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
                     {
                         activitiesSchedule,
                         liczbaUczestnikow,
-                        liczbaOpiekunow: liczbaOpiekunów,
+                        liczbaOpiekunow: liczbaOpiekunow,
                         routeSchedule,
                         wybranyHotel,
                         chosenTransportSchedule,
@@ -2281,7 +2444,7 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
     }, [
         activitiesSchedule,
         liczbaUczestnikow,
-        liczbaOpiekunów,
+        liczbaOpiekunow,
         routeSchedule,
         wybranyHotel,
     ]);
@@ -2300,7 +2463,7 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
             location: { lat, lng },
         } = miejsceDocelowe;
 
-        const key = `Hotel-${nazwa}-${dataPrzyjazdu}-${dataWyjazdu}-${standardHotelu}-${liczbaUczestnikow}-${liczbaOpiekunów}-${pokojeOpiekunowie}`;
+        const key = `Hotel-${nazwa}-${dataPrzyjazdu}-${dataWyjazdu}-${standardHotelu}-${liczbaUczestnikow}-${liczbaOpiekunow}-${pokojeOpiekunowie}`;
 
         const cachedHotel = localStorage.getItem(key);
         if (cachedHotel) {
@@ -2338,7 +2501,7 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
                         apartsAllowed: standardHotelu > 0 ? false : true,
                         max_pages: 3,
                         uczestnicy: liczbaUczestnikow,
-                        opiekunowie: liczbaOpiekunów,
+                        opiekunowie: liczbaOpiekunow,
                         pokojeOpiekunowie: pokojeOpiekunowie,
                     },
                 });
@@ -2401,7 +2564,7 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
         dataWyjazdu,
         standardHotelu,
         liczbaUczestnikow,
-        liczbaOpiekunów,
+        liczbaOpiekunow,
         pokojeOpiekunowie
     ]);
 
@@ -2466,9 +2629,6 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
 
     const [filtersLeftOpened, setFiltersLeftOpened] = useState(false)
     const [chosenFilters, setChosenFilters] = useState([])
-    useEffect(() => {
-        console.log(miejsceDocelowe)
-    }, [miejsceDocelowe])
     return (
         <>
             <TopKreatorSlider />
@@ -2530,10 +2690,10 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
 
                 <SettingsButton className={wyborGosciOpened ? "chosen" : ""} onClick={() => { setWyborGosciOpened(!wyborGosciOpened); setOffOthers(2) }}>
                     <img height="30px" width="30px" src="../icons/users.svg" />
-                    {liczbaUczestnikow} uczestników, {liczbaOpiekunów} opiekunów
+                    {liczbaUczestnikow} uczestników, {liczbaOpiekunow} opiekunów
                     {wyborGosciOpened && <div className="settingsPopup" onClick={(e) => e.stopPropagation()} >
                         Liczba uczestników
-                        <WyborUczestnikow uczestnicy={liczbaUczestnikow} setUczestnicy={setLiczbaUczestnikow} opiekunowie={liczbaOpiekunów} setOpiekunowie={setLiczbaOpiekunów} />
+                        <WyborUczestnikow uczestnicy={liczbaUczestnikow} setUczestnicy={setLiczbaUczestnikow} opiekunowie={liczbaOpiekunow} setOpiekunowie={setLiczbaOpiekunow} />
                     </div>}
                 </SettingsButton>
 
@@ -2667,7 +2827,7 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
                 </KonfiguratorMainMainboxLeft>
 
                 <KonfiguratorMainMainboxRight>
-                    <KonfiguratorWyjazduComp computedPrice={tripPrice + insurancePrice} computingPrice={computingPrice} miejsceDocelowe={miejsceDocelowe} changeActivity={changeActivity} checkOut={timeToMinutes(wybranyHotel?.checkOut) || 720} changeStartHour={changeStartHour} deleteActivity={deleteActivity} startModifyingAct={startModifyingAct} setActivityPanelOpened={setActivityPanelOpened} onAttractionTimeChange={changeActivityTime} swapActivities={swapActivities} onTransportChange={changeChosenTransport} timeSchedule={timeSchedule} routeSchedule={routeSchedule} chosenTransportSchedule={chosenTransportSchedule} loading={konfiguratorLoading} activitiesSchedule={activitiesSchedule} liczbaDni={liczbaDni} key={`schedule-${liczbaDni}-${konfiguratorLoading}-${timeSchedule}`} wybranyDzien={wybranyDzien} setWybranyDzien={setWybranyDzien} addActivity={addActivity} />
+                    <KonfiguratorWyjazduComp dataPrzyjazdu={dataPrzyjazdu} dataWyjazdu={dataWyjazdu} standardHotelu={standardHotelu} standardTransportu={standardTransportu} liczbaOpiekunow={liczbaOpiekunow} liczbaUczestnikow={liczbaUczestnikow} tripId={tripId} miejsceStartowe={miejsceStartowe} computedPrice={tripPrice + insurancePrice} computingPrice={computingPrice} miejsceDocelowe={miejsceDocelowe} changeActivity={changeActivity} checkOut={timeToMinutes(wybranyHotel?.checkOut) || 720} changeStartHour={changeStartHour} deleteActivity={deleteActivity} startModifyingAct={startModifyingAct} setActivityPanelOpened={setActivityPanelOpened} onAttractionTimeChange={changeActivityTime} swapActivities={swapActivities} onTransportChange={changeChosenTransport} timeSchedule={timeSchedule} routeSchedule={routeSchedule} chosenTransportSchedule={chosenTransportSchedule} loading={konfiguratorLoading} activitiesSchedule={activitiesSchedule} liczbaDni={liczbaDni} key={`schedule-${liczbaDni}-${konfiguratorLoading}-${timeSchedule}`} wybranyDzien={wybranyDzien} setWybranyDzien={setWybranyDzien} addActivity={addActivity} />
                     {activityPanelOpened &&
                         <AddAttractionWrapper>
                             <AddActivityPanelContainer>
@@ -2773,7 +2933,7 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
                         }
                     </SummaryInfoBox>
 
-                    <CostSummary tripPrice={tripPrice} insurancePrice={insurancePrice} liczbaOpiekunow={liczbaOpiekunów} liczbaUczestnikow={liczbaUczestnikow} />
+                    <CostSummary tripPrice={tripPrice} insurancePrice={insurancePrice} liczbaOpiekunow={liczbaOpiekunow} liczbaUczestnikow={liczbaUczestnikow} />
                     <div className="mainboxLeftTitle" style={{ paddingTop: '10px', marginTop: '20px', borderTop: '1px solid #ccc' }}>
                         Podsumowanie dnia
                     </div>
