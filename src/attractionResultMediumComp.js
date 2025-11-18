@@ -331,3 +331,159 @@ const AttractionResultMediumComponent = ({
 };
 
 export default AttractionResultMediumComponent;
+
+const AttractionResultMediumVerifiedComponentMainbox = styled.div`
+    max-width: 300px;
+    width: 90%;
+    min-height: 300px;
+    background-color: red;
+    border-radius: 15px;
+    background-image: URL("../miasta/poznan.jpg");
+    background-size: cover;
+    background-position: center;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: flex-start;
+    padding: 10px;
+    position: relative;
+    overflow: hidden;
+    &::before{
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(180deg, transparent 30%, rgba(0, 0, 0, 0.6) 80%);
+      z-index: 0;
+    }
+    .verifiedLabels{
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        justify-content: flex-start;
+        margin-bottom: auto;
+        gap: 5px;
+        z-index: 1;
+        .categoryIcon{
+            height: 40px;
+            min-width: 40px;
+            
+            background-color: #008d73ff;
+            border-radius: 8px;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+
+            img {
+                filter: brightness(0) invert(1);
+            }
+            &.b{
+                background-color: #0026ffff;
+            }
+        }
+    }
+
+`
+const VerifiedMediumMainbox = styled.div`
+    width: 100%;
+    border-radius: 15px;
+    color: white;
+    padding: 10px 2px;
+    font-size: 14px;
+    font-weight: 600;
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: center;
+    box-sizing: border-box;
+
+    .attractionResultMediumTitleBox{
+        width: 100%;
+        min-height: 50px;
+        display: flex;
+        flex-direction: row;
+        align-items: stretch;
+        justify-content: flex-start;
+        .titleIconBox{
+            width: 50px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        
+        }
+        .titleTextBox{
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            justify-content: center;
+            .attractionResultMediumTitle{
+                font-size: 16px;
+                width: 100%;
+                text-align: left;
+                font-family: Inter, system-ui, -apple-system, sans-serif;
+            }
+            .attractionResultMediumSubtitle{
+                font-size: 12px;
+                color: white;
+                font-weight: 300;
+                text-align: left;
+            }
+        }
+        
+    }
+    .attractionResultMediumAddBox{
+        height: 30px;
+        width: 100%;
+        background-color: #008d73ff;
+        color: #f0f0f0;
+        border-radius: 5px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        font-size: 14px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: 0.3s ease-in-out;
+        box-sizing: border-box;
+        margin: 0;
+        &:hover{
+            background-color: #007a61ff;
+        }
+    }
+    
+`
+export const AttractionResultMediumVerifiedComponent = () => {
+    return (
+        <AttractionResultMediumVerifiedComponentMainbox>
+            <div className="verifiedLabels">
+                <div className="categoryIcon">
+                    <img src="../icons/castle.svg" height='30px' />
+                </div>
+                <div className="categoryIcon b">
+                    <img src="../icons/verified.svg" height='30px' />
+                </div>
+
+
+            </div>
+            <VerifiedMediumMainbox>
+                <div className="attractionResultMediumTitleBox">
+                    <div className="titleTextBox">
+                        <div className="attractionResultMediumTitle">Zamek Królewski</div>
+                        <div className="attractionResultMediumSubtitle">Sofoklesa 32</div>
+                    </div>
+
+
+                </div>
+                <div
+                    className="attractionResultMediumAddBox"
+                >
+                    + Dodaj do dnia
+                </div>
+            </VerifiedMediumMainbox>
+        </AttractionResultMediumVerifiedComponentMainbox>
+    )
+}

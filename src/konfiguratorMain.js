@@ -17,7 +17,7 @@ import { KonfiguratorWyjazduComp, roznicaDni } from "./konfigurator/konfigurator
 import { AddActivityNavButton, AddActivityPanel, AddActivityPanelNav, PanelBoxNav } from "./konfigurator/addActivityPanel";
 import RouteMap from "./routeMap";
 import { parseJSON } from "date-fns";
-import AttractionResultMediumComponent from "./attractionResultMediumComp";
+import AttractionResultMediumComponent, { AttractionResultMediumVerifiedComponent } from "./attractionResultMediumComp";
 import { Checkbox2 } from "./checkbox1";
 import { AlertsBox } from "./konfigurator/alertsBox";
 import { ChatBox } from "./konfigurator/chatBox";
@@ -2924,6 +2924,7 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
                         <div className="googleLogoDiv">
                             <img src="googlelogo.svg" />
                         </div>
+                        <AttractionResultMediumVerifiedComponent/>
                         {atrakcje
                             .filter(atrakcja =>
                                 atrakcja.nazwa.toLowerCase().includes(attractionsSearching.toLowerCase()) ||
