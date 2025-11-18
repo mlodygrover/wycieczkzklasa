@@ -297,10 +297,19 @@ app.get("/searchCity", async (req, res) => {
 });
 
 const uri = "mongodb+srv://wiczjan:Karimbenzema9@cluster0.argoecr.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0";
-mongoose.connect(uri, { useNewUrlParser: true, useUnifiedTopology: true })
-    .then(() => console.log("Połączono z MongoDB"))
-    .catch(err => console.error("Błąd MongoDB:", err));
+mongoose
+    .connect(uri /* w nowych wersjach możesz pominąć useNewUrlParser/useUnifiedTopology */)
+    .then(async () => {
+        console.log("Połączono z MongoDB");
 
+        app.listen(PORT, () => {
+            console.log(`Serwer działa na http://localhost:${PORT}`);
+        });
+    })
+    .catch((err) => {
+        console.error("Błąd MongoDB:", err);
+        process.exit(1);
+    });
 const MiastoSchema = new mongoose.Schema({
     nazwa: { type: String, required: true },
     wojewodztwo: { type: String },
@@ -388,15 +397,43 @@ const AttractionSchema = new mongoose.Schema({
     ikona: String,
     stronaInternetowa: String,
     photos: [String],
-    
-    // 🔹 Nowe pole: warianty oferty (analiza z AI)
+
+    // 🔹 NOWE: źródło lokalizacji
+    locationSource: {
+        type: String,
+        enum: ["Google", "Owner", "Mod", "Admin"],
+        default: "Google",
+    },
+
+    // 🔹 NOWE: źródło danych (np. wariantów oferty)
+    dataSource: {
+        type: String,
+        enum: ["Bot", "Mod", "Owner", "Admin"],
+        default: "Bot",
+    },
+
+    // 🔹 NOWE: daty dodania i ostatniej aktualizacji
+    createdAt: {
+        type: Date,
+        default: Date.now,
+    },
+    updatedAt: {
+        type: Date,
+        default: Date.now,
+    },
+
+    // 🔹 Warianty oferty
     warianty: [
         {
-            nazwaWariantu: { type: String, default: "Zwiedzanie" }, // np. "Trasa A"
+            nazwaWariantu: { type: String, default: "Zwiedzanie" },
             czasZwiedzania: { type: Number, default: null },        // w minutach
             cenaZwiedzania: { type: Number, default: null },        // bilet normalny
             cenaUlgowa: { type: Number, default: null },            // bilet ulgowy
-            interval: { type: String, enum: ["jednorazowo", "za godzinę", "404"], default: "404" },
+            interval: {
+                type: String,
+                enum: ["jednorazowo", "za godzinę", "404"],
+                default: "404",
+            },
             godzinyOtwarcia: {
                 type: [
                     {
@@ -404,14 +441,23 @@ const AttractionSchema = new mongoose.Schema({
                         default: null,
                     },
                 ],
-
                 default: [null, null, null, null, null, null, null],
             },
         },
     ],
 });
 
-AttractionSchema.index({ locationGeo: '2dsphere' }); // 🔑 indeks przestrzenny
+AttractionSchema.index({ locationGeo: '2dsphere' });
+
+// 🔹 aktualizacja updatedAt przy każdym .save()
+AttractionSchema.pre("save", function (next) {
+    this.updatedAt = new Date();
+    if (!this.createdAt) {
+        this.createdAt = this.updatedAt;
+    }
+    next();
+});
+
 const Attraction = mongoose.model("Attraction", AttractionSchema);
 
 app.get("/getOneAttraction/:googleId", async (req, res) => {
@@ -473,18 +519,27 @@ app.get('/attractions/nearby', async (req, res) => {
             {
                 $addFields: {
                     distanceKm: { $round: [{ $divide: ['$distanceMeters', 1000] }, 2] },
+                    // verified = true, jeśli dataSource != "Bot"
+                    verified: { $ne: ['$dataSource', 'Bot'] },
                 },
             },
-            // tylko miejsca z >= 100 opinii
             {
                 $match: {
                     liczbaOpinie: { $gte: 100 },
                 },
             },
-            // sortuj po liczbie opinii malejąco (ew. można dodać tie-breaker po ocenie)
             { $sort: { liczbaOpinie: -1 } },
-            // ogranicz do pierwszych 100
             { $limit: 100 },
+            {
+                // wytnij daty i locationSource z odpowiedzi
+                $project: {
+                    createdAt: 0,
+                    updatedAt: 0,
+                    locationSource: 0,
+                    // opcjonalnie możesz też ukryć samo dataSource:
+                    // dataSource: 0,
+                },
+            },
         ]);
 
         return res.json(items);
@@ -493,6 +548,7 @@ app.get('/attractions/nearby', async (req, res) => {
         return res.status(500).json({ error: 'ServerError' });
     }
 });
+
 // Endpoint: awaryjne dodanie atrakcji z wyliczeniem locationGeo
 app.post('/emergencyAddAttraction', async (req, res) => {
     try {
@@ -508,7 +564,8 @@ app.post('/emergencyAddAttraction', async (req, res) => {
             ikona,
             stronaInternetowa,
             photos,
-            warianty
+            warianty,
+            dataSource,
         } = req.body || {};
 
         if (!parentPlaceId || !googleId) {
@@ -528,6 +585,18 @@ app.post('/emergencyAddAttraction', async (req, res) => {
 
         const locationGeo = { type: 'Point', coordinates: [lng, lat] };
 
+        // Bezpieczna normalizacja źródeł
+        const allowedLocationSources = ["Google", "Owner", "Mod", "Admin"];
+        const allowedDataSources = ["Bot", "Mod", "Owner", "Admin"];
+
+        const normalizedLocationSource = allowedLocationSources.includes(locationSource)
+            ? locationSource
+            : undefined; // użyje domyślnej wartości ze schematu
+
+        const normalizedDataSource = allowedDataSources.includes(dataSource)
+            ? dataSource
+            : undefined; // użyje domyślnej wartości ze schematu
+
         const doc = new Attraction({
             parentPlaceId,
             googleId,
@@ -541,7 +610,10 @@ app.post('/emergencyAddAttraction', async (req, res) => {
             ikona,
             stronaInternetowa,
             photos,
-            warianty
+            warianty,
+            locationSource: normalizedLocationSource,
+            dataSource: normalizedDataSource,
+            // createdAt / updatedAt ustawi pre('save')
         });
 
         await doc.save();
@@ -551,6 +623,7 @@ app.post('/emergencyAddAttraction', async (req, res) => {
         return res.status(500).json({ error: 'ServerError' });
     }
 });
+
 
 
 const getPlaceDetails = async (placeId) => {
@@ -577,7 +650,7 @@ app.post("/addAttraction", async (req, res) => {
             adres,
             ocena,
             liczbaOpinie,
-            lokalizacja,       // { lat, lng } – pozostaje bez zmian w schemacie
+            lokalizacja,       // { lat, lng }
             typy,
             ikona,
             stronaInternetowa,
@@ -599,7 +672,6 @@ app.post("/addAttraction", async (req, res) => {
         const lat = Number(lokalizacja?.lat);
         const lng = Number(lokalizacja?.lng);
         if (Number.isFinite(lat) && Number.isFinite(lng)) {
-            // prosta walidacja zakresu
             if (lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
                 locationGeo = { type: "Point", coordinates: [lng, lat] };
             } else {
@@ -614,12 +686,16 @@ app.post("/addAttraction", async (req, res) => {
             adres,
             ocena,
             liczbaOpinie,
-            lokalizacja,          // zachowujemy stare pole
-            locationGeo,          // NOWE pole – używane do zapytań geospatial
+            lokalizacja,
+            locationGeo,
             typy,
             ikona,
             stronaInternetowa,
-            photos
+            photos,
+            // Automatycznie z Google → oznaczamy źródła:
+            locationSource: "Google",
+            dataSource: "Bot",      // dane (np. warianty) uzupełniane przez bota/AI
+            // createdAt / updatedAt ustawi pre('save')
         });
 
         await newAttraction.save();
@@ -638,6 +714,7 @@ app.post("/addAttraction", async (req, res) => {
 
 
 
+
 app.get("/getAttractions", async (req, res) => {
     const { placeId, lat, lng } = req.query;
     const parentPlaceId = placeId;
@@ -650,10 +727,10 @@ app.get("/getAttractions", async (req, res) => {
         // 1️⃣ Sprawdzenie w bazie
         const attractionsFromDb = await Attraction.find({ parentPlaceId });
         if (attractionsFromDb.length >= 50) {
-            //console.log("ZWRACAM Z DB")
             return res.json(attractionsFromDb);
         }
-        console.log("KAFELKUJE")
+
+        console.log("KAFELKUJE");
         // 2️⃣ Przygotowanie kafelków
         const R = 0.18; // ~20 km w stopniach
         const centerLat = parseFloat(lat);
@@ -667,13 +744,12 @@ app.get("/getAttractions", async (req, res) => {
         ];
 
         const allGoogleAttractions = [];
-        const types = ["tourist_attraction", "museum"]; // 🔹 typy do wyszukania
+        const types = ["tourist_attraction", "museum"];
 
         for (const offset of offsets) {
             const tileLat = centerLat + offset.latOffset;
             const tileLng = centerLng + offset.lngOffset;
 
-            // 🔁 dla każdego typu wyszukujemy osobno
             for (const type of types) {
                 let nextPageToken = null;
                 let page = 0;
@@ -691,17 +767,19 @@ app.get("/getAttractions", async (req, res) => {
 
                     if (data.status !== "OK" && data.status !== "ZERO_RESULTS") break;
 
-                    // 🔹 Filtrowanie wyników — pomijamy hotele i galerie handlowe
                     const filteredResults = (data.results || []).filter(place => {
                         const types = place.types || [];
-                        return !types.includes("shopping_mall") && !types.includes("lodging") && !types.includes("store") && !types.includes("furniture_store") && !types.includes("home_goods_store");
+                        return !types.includes("shopping_mall")
+                            && !types.includes("lodging")
+                            && !types.includes("store")
+                            && !types.includes("furniture_store")
+                            && !types.includes("home_goods_store");
                     });
 
                     for (const place of filteredResults) {
 
-                        // 🔹 unikalność po place_id
                         if (!allGoogleAttractions.some(a => a.googleId === place.place_id)) {
-                            const website = await getPlaceDetails(place.place_id); // <- pobranie strony
+                            const website = await getPlaceDetails(place.place_id);
                             allGoogleAttractions.push({
                                 placeId,
                                 googleId: place.place_id,
@@ -722,7 +800,6 @@ app.get("/getAttractions", async (req, res) => {
                     page++;
 
                     if (nextPageToken) {
-                        // Google wymaga ~2s opóźnienia zanim next_page_token zacznie działać
                         await new Promise(resolve => setTimeout(resolve, 2000));
                     }
                 } while (nextPageToken && page < 3);
@@ -734,7 +811,14 @@ app.get("/getAttractions", async (req, res) => {
         for (const attr of allGoogleAttractions) {
             const exists = await Attraction.findOne({ googleId: attr.googleId });
             if (!exists) {
-                const newAttr = new Attraction({ ...attr, parentPlaceId: placeId });
+                const newAttr = new Attraction({
+                    ...attr,
+                    parentPlaceId: placeId,
+                    // Źródła: dane i lokalizacja z Google/bota
+                    locationSource: "Google",
+                    dataSource: "Bot",
+                    // createdAt / updatedAt ustawi pre('save')
+                });
                 await newAttr.save();
                 newAttractions.push(newAttr);
             }
@@ -746,7 +830,6 @@ app.get("/getAttractions", async (req, res) => {
             ...newAttractions.map(a => a.toObject()),
         ];
 
-        // 🔹 Sortowanie po liczbie opinii (najpopularniejsze na górze)
         allAttractions.sort((a, b) => (b.liczbaOpinie || 0) - (a.liczbaOpinie || 0));
 
         res.json(allAttractions);
@@ -755,6 +838,7 @@ app.get("/getAttractions", async (req, res) => {
         res.status(500).json({ error: "Błąd serwera." });
     }
 });
+
 
 
 
@@ -1889,7 +1973,7 @@ app.get("/update-offer", async (req, res) => {
         return res.status(400).json({ error: "Brak wymaganego parametru ?googleId=" });
     }
 
-    // --- PRE-TEST: szybka próba zaklasyfikowania jako darmowa/statyczna atrakcja ---
+    // --- PRE-TEST: statyczna / darmowa atrakcja ---
     try {
         if (nazwa) {
             const label = [nazwa, miasto].filter(Boolean).join(" w ");
@@ -1900,6 +1984,11 @@ app.get("/update-offer", async (req, res) => {
                     return res.status(404).json({ error: `Nie znaleziono atrakcji o googleId: ${googleId}` });
                 }
                 attraction.warianty = [{ nazwa: "bezplatne", cenaZwiedzania: 0, czasZwiedzania: preTest }];
+
+                // 🔹 dane pochodzą z bota (AI), aktualizujemy metadane:
+                attraction.dataSource = "Bot";
+                attraction.updatedAt = new Date();
+
                 await attraction.save();
                 return res.json({
                     success: true,
@@ -1925,16 +2014,15 @@ app.get("/update-offer", async (req, res) => {
                 let flattenedVariants = [];
 
                 if (link) {
-                    // a) Próba parsera /place-offer z twardym limitem 2 min
+                    // a) Próba parsera /place-offer z limitem 2 min
                     try {
                         const controller = new AbortController();
-                        const timer = setTimeout(() => controller.abort("PLACE_OFFER_TIMEOUT"), 120_000); // 2 min
+                        const timer = setTimeout(() => controller.abort("PLACE_OFFER_TIMEOUT"), 120_000);
 
                         let response;
                         try {
                             response = await axios.get("http://localhost:5006/place-offer", {
                                 params: { links: link },
-                                // timeout także 2 min – podwójne zabezpieczenie (axios + AbortController)
                                 timeout: 120_000,
                                 signal: controller.signal,
                             });
@@ -1945,7 +2033,6 @@ app.get("/update-offer", async (req, res) => {
                         const { warianty } = response?.data || {};
                         flattenedVariants = flattenWarianty(warianty);
                     } catch (e) {
-                        // Timeout lub inny błąd parsera — przechodzimy do fallbacku
                         const isTimeout =
                             e === "PLACE_OFFER_TIMEOUT" ||
                             e?.code === "ECONNABORTED" ||
@@ -1984,6 +2071,11 @@ app.get("/update-offer", async (req, res) => {
                 }
 
                 attraction.warianty = flattenedVariants;
+
+                // 🔹 metadane: dane ofertowe pochodzą od bota
+                attraction.dataSource = "Bot";
+                attraction.updatedAt = new Date();
+
                 await attraction.save();
 
                 return res.json({
@@ -2005,6 +2097,8 @@ app.get("/update-offer", async (req, res) => {
             }
         });
 });
+
+
 
 
 
@@ -2624,8 +2718,72 @@ app.post("/download", express.json(), async (req, res) => {
         return res.status(500).json({ error: "ServerError" });
     }
 });
+async function backupAttractionsCollection() {
+    const db = mongoose.connection.db;
+
+    const source = db.collection("attractions");
+    const backupName = `attractions_backup_${new Date().toISOString().slice(0, 10).replace(/-/g, "")}`;
+    const backup = db.collection(backupName);
+
+    // Jeżeli backup już istnieje i coś w nim jest – nie rób drugiego
+    const existingCount = await backup.countDocuments().catch(() => 0);
+    if (existingCount > 0) {
+        console.log(`ℹ️ Backup ${backupName} już istnieje, pomijam kopiowanie.`);
+        return;
+    }
+
+    console.log(`📦 Tworzę backup kolekcji attractions → ${backupName}...`);
+
+    const cursor = source.find({});
+    const batch = [];
+    const BATCH_SIZE = 1000;
+
+    while (await cursor.hasNext()) {
+        const doc = await cursor.next();
+        batch.push(doc);
+
+        if (batch.length >= BATCH_SIZE) {
+            await backup.insertMany(batch);
+            batch.length = 0;
+        }
+    }
+    if (batch.length > 0) {
+        await backup.insertMany(batch);
+    }
+
+    console.log(`✅ Backup ukończony: ${backupName}`);
+}
+
+// 🔹 MIGRACJA META-DANYCH ATTRACTION
+// Uruchom JEDNORAZOWO (np. po starcie serwera w trybie maintenance, albo w osobnym skrypcie)
+async function migrateAttractionMeta() {
+    const now = new Date();
+
+    // 1️⃣ Najpierw backup
+    await backupAttractionsCollection();
+
+    // 2️⃣ Dopiero potem migracja pól
+    await Attraction.updateMany(
+        { createdAt: { $exists: false } },
+        { $set: { createdAt: now } }
+    );
+
+    await Attraction.updateMany(
+        { updatedAt: { $exists: false } },
+        { $set: { updatedAt: now } }
+    );
+
+    await Attraction.updateMany(
+        { locationSource: { $exists: false } },
+        { $set: { locationSource: "Google" } }
+    );
+
+    await Attraction.updateMany(
+        { dataSource: { $exists: false } },
+        { $set: { dataSource: "Bot" } }
+    );
+
+    console.log("✅ Migracja AttractionMeta zakończona.");
+}
 
 
-app.listen(PORT, () => {
-    console.log(`Serwer działa na http://localhost:${PORT}`);
-});
