@@ -388,7 +388,7 @@ const AttractionSchema = new mongoose.Schema({
     ikona: String,
     stronaInternetowa: String,
     photos: [String],
-
+    
     // 🔹 Nowe pole: warianty oferty (analiza z AI)
     warianty: [
         {
@@ -1678,7 +1678,6 @@ const PPLX_ENDPOINT = "https://api.perplexity.ai/chat/completions";
 const PPLX_MODELS = [
     "sonar-pro",
     "sonar",
-    "sonar-small-online"
 ];
 
 function buildPrompt(nazwa) {
@@ -1886,17 +1885,15 @@ function flattenWarianty(warianty) {
 app.get("/update-offer", async (req, res) => {
     const { googleId, link, miasto, nazwa } = req.query;
 
-    // link jest opcjonalny; wymagamy tylko googleId
     if (!googleId) {
         return res.status(400).json({ error: "Brak wymaganego parametru ?googleId=" });
     }
 
-    // --- PRE-TEST: czy to „statyczna” (bezpłatna, publiczna) atrakcja ---
+    // --- PRE-TEST: szybka próba zaklasyfikowania jako darmowa/statyczna atrakcja ---
     try {
         if (nazwa) {
             const label = [nazwa, miasto].filter(Boolean).join(" w ");
             const preTest = await askChatIfStatic(label);
-            console.log(nazwa, preTest)
             if (Number.isFinite(preTest) && preTest > 0) {
                 const attraction = await Attraction.findOne({ googleId });
                 if (!attraction) {
@@ -1913,7 +1910,7 @@ app.get("/update-offer", async (req, res) => {
         }
     } catch (e) {
         console.error("askChatIfStatic pre-check error:", e?.message || e);
-        // Nie przerywamy — lecimy dalej do kolejki
+        // kontynuujemy normalny przepływ
     }
 
     // --- GŁÓWNY PRZEPŁYW W KOLEJCE ---
@@ -1928,25 +1925,42 @@ app.get("/update-offer", async (req, res) => {
                 let flattenedVariants = [];
 
                 if (link) {
-                    // a) Mamy link → najpierw własny parser /place-offer
+                    // a) Próba parsera /place-offer z twardym limitem 2 min
                     try {
-                        const response = await axios.get("http://localhost:5006/place-offer", {
-                            params: { links: link },
-                            timeout: 1_200_000,
-                        });
-                        const { warianty } = response.data || {};
+                        const controller = new AbortController();
+                        const timer = setTimeout(() => controller.abort("PLACE_OFFER_TIMEOUT"), 120_000); // 2 min
+
+                        let response;
+                        try {
+                            response = await axios.get("http://localhost:5006/place-offer", {
+                                params: { links: link },
+                                // timeout także 2 min – podwójne zabezpieczenie (axios + AbortController)
+                                timeout: 120_000,
+                                signal: controller.signal,
+                            });
+                        } finally {
+                            clearTimeout(timer);
+                        }
+
+                        const { warianty } = response?.data || {};
                         flattenedVariants = flattenWarianty(warianty);
                     } catch (e) {
-                        console.error("place-offer error:", e?.message || e);
+                        // Timeout lub inny błąd parsera — przechodzimy do fallbacku
+                        const isTimeout =
+                            e === "PLACE_OFFER_TIMEOUT" ||
+                            e?.code === "ECONNABORTED" ||
+                            /aborted|timeout/i.test(String(e?.message || e));
+                        if (isTimeout) {
+                            console.warn("place-offer timeout po 2 minutach — uruchamiam fallback Perplexity");
+                        } else {
+                            console.error("place-offer error:", e?.message || e);
+                        }
                         flattenedVariants = [];
                     }
 
-                    // b) jeśli brak wyników po parserze → Perplexity
+                    // b) Fallback: Perplexity, jeśli parser nic nie zwrócił
                     if (!Array.isArray(flattenedVariants) || flattenedVariants.length === 0) {
-                        const qName =
-                            [nazwa, miasto].filter(Boolean).join(" w ") ||
-                            attraction.nazwa ||
-                            "obiekt";
+                        const qName = [nazwa, miasto].filter(Boolean).join(" w ") || attraction.nazwa || "obiekt";
                         try {
                             const alt = await askPerplexityForAttraction(qName);
                             flattenedVariants = Array.isArray(alt) ? flattenWarianty(alt) : [];
@@ -1957,11 +1971,8 @@ app.get("/update-offer", async (req, res) => {
                         }
                     }
                 } else {
-                    // Brak linku → od razu Perplexity (pomijamy analizę strony)
-                    const qName =
-                        [nazwa, miasto].filter(Boolean).join(" w ") ||
-                        attraction.nazwa ||
-                        "obiekt";
+                    // Brak linku → od razu Perplexity
+                    const qName = [nazwa, miasto].filter(Boolean).join(" w ") || attraction.nazwa || "obiekt";
                     try {
                         const alt = await askPerplexityForAttraction(qName);
                         flattenedVariants = Array.isArray(alt) ? flattenWarianty(alt) : [];
@@ -2227,7 +2238,7 @@ async function getHotels({
         "x-rapidapi-host": "booking-com15.p.rapidapi.com",
         "x-rapidapi-key":
             process.env.RAPIDAPI_KEY ||
-            "5678365077msh7ef633b67e5a401p1ffa1fjsnd1d3fbe26a25",
+            "a7f6e3af723msh46ab5643b63deacp1ab5b6jsn428825fe714d",
     };
 
     const allHotels = [];
@@ -2336,7 +2347,7 @@ app.get("/findHotel", async (req, res) => {
                     "x-rapidapi-host": "booking-com15.p.rapidapi.com",
                     "x-rapidapi-key":
                         process.env.RAPIDAPI_KEY ||
-                        "5678365077msh7ef633b67e5a401p1ffa1fjsnd1d3fbe26a25",
+                        "a7f6e3af723msh46ab5643b63deacp1ab5b6jsn428825fe714d",
                 },
                 timeout: 10000,
             }

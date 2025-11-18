@@ -1,7 +1,7 @@
 import { Clock, MapPin, Plane } from "lucide-react";
-import React from "react"
+import React, { useState, useMemo } from "react"
 import styled from "styled-components"
-
+import { Link } from "react-router-dom";
 
 const trips = {
     planned: [
@@ -172,76 +172,6 @@ const SummaryTripsMainbox = styled.div`
     grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
   }
 `;
-
-const SummaryTripCardMainbox = styled.div`
-  height: 400px;
-  border-radius: 12px;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden; 
-  border: 1px solid #eaeaea;
-  .summaryTripCardImg {
-    height: 200px;      /* dokładnie połowa wysokości karty */
-    position: relative;
-  }
-
-  .summaryTripCardImg img {
-    display: block;
-    width: 100%;
-    height: 100%;
-    object-fit: cover;          /* wypełnij bez rozciągania (może przyciąć) */
-  }
-
-  .summaryTripCardDesc {
-    flex: 1;            /* druga połowa karty */
-    padding: 12px;
-    box-sizing: border-box;
-    display: flex;
-    flex-direction: column;
-    align-items: stretch;
-    justify-content: flex-start;
-    .summaryTripTitle{
-        text-align: left;
-        font-size: 18px;
-        font-weight: 700;
-        font-family: 'Inter';
-        letter-spacing: -0.01em;
-    }
-    .summaryTripSubtitle{
-        text-align: left;
-        font-size: 14px;
-        font-weight: 500;
-        font-family: 'Inter';
-        letter-spacing: -0.01em;
-        color: #808080;
-    }
-    .summaryTripRow{
-        display: flex;
-        align-items: flex-start;
-        text-align: left;
-        gap: 5px;
-        font-size: 14px;
-        color: #808080;
-        margin-top: 8px;
-        font-weight: 500;
-
-        svg {
-            color: #808080;
-        }
-    }
-    .summaryTripStatus{
-        margin-right: auto;
-        background-color: black;
-        color: white;
-        font-weight: 500;
-        padding: 4px 6px;
-        margin-top: auto;
-        border-radius: 5px;
-        font-size: 12px;
-
-    }
-  }
-`;
 const statusLabel = (status) => {
     switch (status) {
         case 'planned':
@@ -256,20 +186,105 @@ const statusLabel = (status) => {
             return 'Status';
     }
 };
+const SummaryTripCardMainbox = styled(Link)`
+  height: 400px;
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid #eaeaea;
+  text-decoration: none;
+  color: inherit;
+
+  .summaryTripCardImg {
+    height: 200px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .summaryTripCardImg img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: 0.3s ease-in-out;
+  }
+
+  .summaryTripCardDesc {
+    flex: 1;
+    padding: 12px;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    justify-content: flex-start;
+
+    .summaryTripTitle {
+      text-align: left;
+      font-size: 18px;
+      font-weight: 700;
+      font-family: "Inter";
+      letter-spacing: -0.01em;
+    }
+    .summaryTripSubtitle {
+      text-align: left;
+      font-size: 14px;
+      font-weight: 500;
+      font-family: "Inter";
+      letter-spacing: -0.01em;
+      color: #808080;
+    }
+    .summaryTripRow {
+      display: flex;
+      align-items: flex-start;
+      text-align: left;
+      gap: 5px;
+      font-size: 14px;
+      color: #808080;
+      margin-top: 8px;
+      font-weight: 500;
+
+      svg {
+        color: #808080;
+      }
+    }
+    .summaryTripStatus {
+      margin-right: auto;
+      background-color: black;
+      color: white;
+      font-weight: 500;
+      padding: 4px 6px;
+      margin-top: auto;
+      border-radius: 5px;
+      font-size: 12px;
+    }
+  }
+    transition: 0.3s ease-in-out;
+    &:hover{
+        background-color: #f6f6f6;
+        .summaryTripCardImg{
+            img{
+                transform: scale(1.06);     
+            }
+        }
+    }
+`;
 
 export const SummaryTripCard = ({ trip }) => {
+    // poprawny URL do Link: preferuj _id, potem id
+    const urlLink = useMemo(() => {
+        const rawId = trip?._id ?? trip?.id;
+        return `/konfigurator-lounge/?tripId=${encodeURIComponent(String(rawId ?? ""))}`;
+    }, [trip?._id, trip?.id]);
+
     return (
-        <SummaryTripCardMainbox>
+        <SummaryTripCardMainbox to={urlLink}>
             <div className="summaryTripCardImg">
-                <img src={trip.image} />
+                <img src={trip.image} alt={trip.title || "Wyjazd"} />
             </div>
             <div className="summaryTripCardDesc">
-                <div className="summaryTripTitle">
-                    {trip.title}
-                </div>
-                <div className="summaryTripSubtitle">
-                    {trip.destination}
-                </div>
+                <div className="summaryTripTitle">{trip.title}</div>
+                <div className="summaryTripSubtitle">{trip.destination}</div>
                 <div className="summaryTripRow">
                     <Clock size={16} />
                     {trip.date}
@@ -278,9 +293,7 @@ export const SummaryTripCard = ({ trip }) => {
                     <MapPin size={16} />
                     {trip.days} dni
                 </div>
-                <div className="summaryTripStatus">
-                    {statusLabel(trip.status)}
-                </div>
+                <div className="summaryTripStatus">{statusLabel(trip.status)}</div>
             </div>
         </SummaryTripCardMainbox>
     );

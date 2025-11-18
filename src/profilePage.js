@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useState, useEffect } from "react";
 import styled from "styled-components";
 import useUserStore from "./usercontent";
 import TripsSection from "./tripsSection";
@@ -6,7 +6,61 @@ import { SummaryTrips } from "./summaryTripCard";
 
 
 // sampleTrips.js
+// --- helpers: lokalne "południe" i zero-padding ---
+const atLocalNoon = (d) => {
+    const dt = d instanceof Date ? d : new Date(d);
+    if (Number.isNaN(dt)) return null;
+    return new Date(dt.getFullYear(), dt.getMonth(), dt.getDate(), 12, 0, 0, 0);
+};
+const pad2 = (n) => String(n).padStart(2, "0");
 
+// Polskie skróty miesięcy (WIELKIE LITERY)
+const MIES_KROT = ["STY", "LUT", "MAR", "KWI", "MAJ", "CZE", "LIP", "SIE", "WRZ", "PAŹ", "LIS", "GRU"];
+
+/**
+ * Różnica dni między dwiema datami (koniec - start), w dniach całkowitych.
+ * Liczone po datach lokalnych (południe), więc brak błędów przy zmianie czasu.
+ * Zwraca 0, jeśli ten sam dzień lub koniec < start.
+ */
+export function diffDaysLocal(start, end) {
+    const s = atLocalNoon(start);
+    const e = atLocalNoon(end);
+    if (!s || !e) return 0;
+    const MS_PER_DAY = 24 * 60 * 60 * 1000;
+    const diff = Math.round((e - s) / MS_PER_DAY);
+    return Math.max(0, diff);
+}
+
+/**
+ * Format zakresu dat w stylu:
+ *  - ten sam miesiąc/rok: "17–20 GRU 2025"
+ *  - różne miesiące, ten sam rok: "28 GRU – 02 STY 2025"
+ *  - różne lata: "28 GRU 2025 – 02 STY 2026"
+ */
+export function formatTripRangePL(start, end) {
+    const s = atLocalNoon(start);
+    const e = atLocalNoon(end);
+    if (!s || !e) return "";
+
+    const sd = pad2(s.getDate());
+    const sm = MIES_KROT[s.getMonth()];
+    const sy = s.getFullYear();
+
+    const ed = pad2(e.getDate());
+    const em = MIES_KROT[e.getMonth()];
+    const ey = e.getFullYear();
+
+    if (sy === ey && s.getMonth() === e.getMonth()) {
+        // ten sam miesiąc i rok
+        return `${sd}–${ed} ${em} ${ey}`;
+    }
+    if (sy === ey) {
+        // różne miesiące, ten sam rok
+        return `${sd} ${sm} – ${ed} ${em} ${ey}`;
+    }
+    // różne lata
+    return `${sd} ${sm} ${sy} – ${ed} ${em} ${ey}`;
+}
 export const trips = {
     planned: [
         {
@@ -428,6 +482,91 @@ export const ProfilePage = () => {
 
     const srcSet = useMemo(() => buildSrcSet(profilePic), [profilePic]);
 
+    // ⬇️ NOWE: stan na wyjazdy użytkownika + loading/error
+    const [userTrips, setUserTrips] = useState([]);
+    const [userTripsLoading, setUserTripsLoading] = useState(false);
+    const [userTripsError, setUserTripsError] = useState(null);
+
+    // ⬇️ NOWY useEffect: pobiera WSZYSTKIE strony wyników dla user._id
+    useEffect(() => {
+        if (!user?._id) {
+            setUserTrips([]);
+            return;
+        }
+
+        const ac = new AbortController();
+
+        (async () => {
+            setUserTripsLoading(true);
+            setUserTripsError(null);
+
+            try {
+                const limit = 50;
+                let page = 1;
+                let total = null;
+                const collected = [];
+
+                while (true) {
+                    const qs = new URLSearchParams({ page: String(page), limit: String(limit) });
+                    const resp = await fetch(
+                        `http://localhost:5007/api/trip-plans/by-author/${encodeURIComponent(user._id)}?${qs}`,
+                        {
+                            method: "GET",
+                            credentials: "include",
+                            headers: { Accept: "application/json" },
+                            signal: ac.signal,
+                        }
+                    );
+
+                    if (!resp.ok) {
+                        const text = await resp.text().catch(() => "");
+                        throw new Error(`Fetch failed (${resp.status}): ${text || resp.statusText}`);
+                    }
+
+                    const json = await resp.json();
+                    const items = Array.isArray(json?.items) ? json.items : [];
+
+                    collected.push(...items);
+                    if (total == null) total = Number(json?.total ?? items.length);
+
+                    const haveAll = collected.length >= total;
+                    const noMore = items.length < limit || items.length === 0;
+                    if (haveAll || noMore) break;
+
+                    page += 1;
+                }
+
+                // 👉 transformacja danych z API -> karty na UI
+                const mapped = collected.map((p) => {
+                    const destName = p?.miejsceDocelowe?.nazwa?.trim() || "Miejsce docelowe";
+                    const dateStr = formatTripRangePL(p?.dataPrzyjazdu, p?.dataWyjazdu);
+                    const daysCnt = diffDaysLocal(p?.dataPrzyjazdu, p?.dataWyjazdu) + 1; // zakres inkluzywny
+
+                    return {
+                        id: p?._id,                                   // identyfikator
+                        title: `Wyjazd do ${destName}`,               // tytuł
+                        destination: destName,                        // docelowa
+                        date: dateStr,                                // np. "17–20 GRU 2025"
+                        days: Number.isFinite(daysCnt) ? daysCnt : 1, // liczba dni
+                        status: "sketch",                             // lub inny status, jeśli go masz
+                        image: p?.photoLink ||                        // fallback obrazka
+                            "https://images.unsplash.com/photo-1633268456308-72d1c728943c?auto=format&fit=crop&w=1600&q=80",
+                        // możesz dołożyć dodatkowe pola, jeśli komponenty ich wymagają
+                    };
+                });
+                console.log("TEST1", mapped)
+                setUserTrips(mapped);
+            } catch (err) {
+                if (err?.name !== "AbortError") {
+                    setUserTripsError(err?.message || "Fetch error");
+                }
+            } finally {
+                setUserTripsLoading(false);
+            }
+        })();
+
+        return () => ac.abort();
+    }, [user?._id]);
     return (
         <ProfilePageMainbox>
             {/* Header z danymi użytkownika */}
@@ -474,23 +613,23 @@ export const ProfilePage = () => {
 
             {/* Sekcje treści dla zakładek – wstaw tu swoje komponenty */}
             {activeTab === "overview" && (
-                <>  
+                <>
                     <SectionTitle>
                         Stworzone wyjazdy
                     </SectionTitle>
-                    <SummaryTrips tripsLocal={trips.sketched}/>
+                    <SummaryTrips tripsLocal={userTrips || []} />
                     <SectionTitle>
                         Wyjazdy zaplanowane
                     </SectionTitle>
-                    <SummaryTrips tripsLocal={trips.planned}/>
+                    <SummaryTrips tripsLocal={trips.planned} />
                     <SectionTitle>
                         Wyjazdy oczekujące zatwierdzenia
                     </SectionTitle>
-                    <SummaryTrips tripsLocal={trips.pending}/>
+                    <SummaryTrips tripsLocal={trips.pending} />
                     <SectionTitle>
                         Wyjazdy zrealizowane
                     </SectionTitle>
-                    <SummaryTrips tripsLocal={trips.completed}/>
+                    <SummaryTrips tripsLocal={trips.completed} />
                     {/*
                     <TripsSection title="Zaplanowane wyjazdy" trips={trips.planned} />
                     <TripsSection title="Zrealizowane wyjazdy" trips={trips.completed} />

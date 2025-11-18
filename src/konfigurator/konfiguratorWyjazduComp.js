@@ -169,7 +169,7 @@ export const KonfiguratorWyjazduComp = ({
     setActivityPanelOpened, addActivity, onAttractionTimeChange, swapActivities,
     onTransportChange, timeSchedule, chosenTransportSchedule,
     loading, atrakcje, routeSchedule, activitiesSchedule,
-    liczbaDni, wybranyDzien, setWybranyDzien, checkOut, miejsceStartowe, liczbaUczestnikow, liczbaOpiekunow, standardTransportu, standardHotelu, dataPrzyjazdu, dataWyjazdu
+    liczbaDni, wybranyDzien, setWybranyDzien, checkOut, miejsceStartowe, liczbaUczestnikow, liczbaOpiekunow, standardTransportu, standardHotelu, dataPrzyjazdu, dataWyjazdu, hasPendingAutoSave, handleSaveClick,
 }) => {
 
     const [localWybranyDzien, setLocalWybranyDzien] = useState(wybranyDzien);
@@ -251,12 +251,14 @@ export const KonfiguratorWyjazduComp = ({
         try {
             setSaving(true);
             const doc = await saveActivitiesSchedule(activitiesSchedule, miejsceDocelowe, miejsceStartowe, dataPrzyjazdu, dataWyjazdu, liczbaUczestnikow, liczbaOpiekunow, standardHotelu, standardTransportu, computedPrice);
+            console.log("Zapisano", doc)
         } catch (e) {
             alert(e.message || 'Wystąpił błąd podczas zapisu planu.');
         } finally {
             setSaving(false);
         }
     };
+
     const lastIdx = activitiesSchedule[Math.min(wybranyDzien, activitiesSchedule.length - 1)].length - 1;
 
     return (
@@ -277,8 +279,8 @@ export const KonfiguratorWyjazduComp = ({
                     </PriceBadge>
 
                     <SaveButton
-                        onClick={handleSave}
-                        disabled={!canSave}
+                        onClick={handleSaveClick}
+                        disabled={!hasPendingAutoSave}
                         title={
                             computingPrice
                                 ? 'Poczekaj aż zakończy się liczenie ceny'
@@ -359,11 +361,10 @@ export const KonfiguratorWyjazduComp = ({
 
 
                                                         return (
-                                                            <React.Fragment key={`${atrakcja.googleId}${idx}` || idx}>
+                                                            <React.Fragment key={`${atrakcja.googleId}-${wybranyDzien}-${idx}`}>
                                                                 {routeAbove}
                                                                 <Draggable
-                                                                    key={`${atrakcja.googleId}_${idx}_${wybranyDzien}` || String(idx)}
-                                                                    draggableId={atrakcja.googleId || String(idx)}
+                                                                    draggableId={`${atrakcja.googleId}-${wybranyDzien}-${idx}`} // UNIKALNE W OBRĘBIE LISTY
                                                                     index={idx}
                                                                     isDragDisabled={idx === 0 || idx === lastIdx}
                                                                 >
@@ -375,7 +376,6 @@ export const KonfiguratorWyjazduComp = ({
                                                                             style={{
                                                                                 display: "flex",
                                                                                 flexDirection: "column",
-                                                                                justifyContent: "flex-start",
                                                                                 alignItems: "flex-end",
                                                                                 width: "100%",
                                                                                 maxWidth: "1000px",
@@ -405,6 +405,7 @@ export const KonfiguratorWyjazduComp = ({
                                                                     )}
                                                                 </Draggable>
                                                             </React.Fragment>
+
                                                         );
                                                     })}
                                                 {provided.placeholder}

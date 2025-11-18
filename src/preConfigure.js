@@ -4,7 +4,8 @@ import { Tab, TabsContainer } from './profilePage';
 import { PreConfigureSketch } from './preConfSketch';
 import { Settings } from 'lucide-react';
 import useUserStore, { fetchMe } from './usercontent.js';
-import { useNavigate } from 'react-router-dom';
+import EyeCheckbox from './eyeCheckbox.js';
+import { PreConfigureParticipants } from './preConfigureParticipants.js';
 
 /* ===================== LAYOUT ===================== */
 const PreConfigureMainbox = styled.div`
@@ -66,6 +67,8 @@ const PreConfigureHeaderWrapper = styled.div`
     flex-direction: row;
     align-items: center;
     justify-content: center;
+    gap: 5px;
+    flex-wrap: wrap;
     @media screen and (max-width: 800px){
       margin-top: 10px;
       justify-content: flex-start;
@@ -87,12 +90,23 @@ const PreConfigureHeaderWrapper = styled.div`
       gap: 5px;
       cursor: pointer;
       transition: background-color 0.3s ease;
+      &.b{
+      background-color: white;
+      color: black;
+        &.privatePlan{
+            color: #d0d0d0;
+        }
+      &:hover{
+        background-color: #f0f0f0;
+      }
+      }
       &:hover{
         background-color: #333333;
       }
       @media screen and (max-width: 800px){
         font-size: 12px;
         height: 35px;
+        width: 90%;
         svg{
           width: 16px;
         }
@@ -111,7 +125,8 @@ const PreConfigureHeader = styled.div`
 
   .preConfigureHeaderImage{
     width: 100%;
-    height: 400px;
+    height: 600px;
+    max-height: 50vh;
     border-radius: 50px;
     overflow: hidden;
     img{
@@ -149,52 +164,11 @@ const parseYMDLocal = (s) => {
 };
 
 /* ===================== API (trip plan) ===================== */
-export async function fetchTripPlanForCurrentUser(tripId, { signal } = {}) {
-    if (!tripId || !String(tripId).trim()) {
-        throw new Error('tripId is required');
-    }
-
-    let userId = useUserStore.getState?.().user?._id ?? null;
-    if (!userId) {
-        try {
-            const me = await fetchMe().catch(() => null);
-            userId = me?._id ?? useUserStore.getState?.().user?._id ?? null;
-        } catch {
-            // ignore
-        }
-    }
-
-    if (!userId) return null;
-
-    const url = `http://localhost:5007/api/trip-plans/${encodeURIComponent(tripId)}/by-author/${encodeURIComponent(userId)}`;
-
-    const resp = await fetch(url, {
-        method: 'GET',
-        credentials: 'include',
-        headers: { Accept: 'application/json' },
-        signal,
-    });
-
-    if (resp.ok) {
-        return await resp.json();
-    }
-
-    if (resp.status === 404) {
-        return null;
-    }
-
-    const text = await resp.text().catch(() => '');
-    throw new Error(`Fetch failed (${resp.status}): ${text || resp.statusText}`);
-}
-
-/* ===================== API HELPERS ===================== */
 export async function fetchTripPlanById(tripId, { signal } = {}) {
     if (!tripId || !String(tripId).trim()) {
         throw new Error('tripId is required');
     }
-
     const url = `http://localhost:5007/api/trip-plans/${encodeURIComponent(tripId)}`;
-
     const resp = await fetch(url, {
         method: 'GET',
         credentials: 'include',
@@ -202,25 +176,20 @@ export async function fetchTripPlanById(tripId, { signal } = {}) {
         signal,
     });
 
-    if (resp.status === 404) {
-        return null;
-    }
+    if (resp.status === 404) return null;
     if (!resp.ok) {
         const text = await resp.text().catch(() => '');
         throw new Error(`Fetch failed (${resp.status}): ${text || resp.statusText}`);
     }
 
-    const data = await resp.json();
-    console.log("Synchronizacja z planem", data)
-    return data;
+    return await resp.json();
 }
+
 export async function fetchDownloadedTripPlan(tripId, { signal } = {}) {
     if (!tripId || !String(tripId).trim()) {
         throw new Error("tripId is required");
     }
-
     const url = `http://localhost:5007/download/trip-plan?tripId=${encodeURIComponent(tripId)}`;
-
     const resp = await fetch(url, {
         method: "GET",
         credentials: "include",
@@ -233,7 +202,6 @@ export async function fetchDownloadedTripPlan(tripId, { signal } = {}) {
         const text = await resp.text().catch(() => "");
         throw new Error(`Fetch failed (${resp.status}): ${text || resp.statusText}`);
     }
-
     return await resp.json(); // { computedPrice, miejsceDocelowe, standardTransportu, standardHotelu, activitiesSchedule, photoLink }
 }
 
@@ -243,13 +211,9 @@ const toNumber = (v) => {
     return Number.isFinite(n) ? n : null;
 };
 
-/**
- * Odczyt stanu z URL (UWAGA: arr = WYJAZD, dep = POWRÓT po Twojej zmianie).
- */
 const readFromUrl = () => {
     const sp = new URLSearchParams(window.location.search);
 
-    // DEST
     const miejsceDocelowe = {
         nazwa: sp.get('destName') || '',
         location: {
@@ -258,7 +222,6 @@ const readFromUrl = () => {
         },
     };
 
-    // START – pełny zestaw metadanych
     const miejsceStartowe = {
         nazwa: sp.get('startName') || '',
         country: sp.get('startCountry') || null,
@@ -271,11 +234,10 @@ const readFromUrl = () => {
         },
     };
 
-    // DATY – arr (wyjazd), dep (powrót) — PARSUJEMY JAKO LOKALNE
+    // Uwaga: arr = WYJAZD (start), dep = POWRÓT (koniec)
     const dataWyjazdu = parseYMDLocal(sp.get('arr'));
     const dataPowrotu = parseYMDLocal(sp.get('dep'));
 
-    // LICZBY
     const liczbaUczestnikow = Number.isFinite(Number(sp.get('guests')))
         ? Number(sp.get('guests'))
         : 1;
@@ -283,7 +245,6 @@ const readFromUrl = () => {
         ? Number(sp.get('guardians'))
         : 0;
 
-    // STANDARDY
     const standardHotelu = Number.isFinite(Number(sp.get('hotelStd')))
         ? Number(sp.get('hotelStd'))
         : 1;
@@ -291,7 +252,6 @@ const readFromUrl = () => {
         ? Number(sp.get('transportStd'))
         : 1;
 
-    // Sterowanie pobraniem planu
     const downloadPlan = sp.get('downloadPlan') || null;
     const tripId = sp.get('tripId') || null;
 
@@ -309,20 +269,15 @@ const readFromUrl = () => {
     };
 };
 
-/**
- * Zapis stanu do URL (arr = wyjazd, dep = powrót) bez UTC-konwersji.
- */
 const writeToUrl = (state) => {
     const sp = new URLSearchParams(window.location.search);
 
-    // DEST
     sp.set('destName', state.miejsceDocelowe?.nazwa || '');
     const dLat = state.miejsceDocelowe?.location?.lat ?? '';
     const dLng = state.miejsceDocelowe?.location?.lng ?? '';
     if (dLat !== '') sp.set('destLat', String(dLat)); else sp.delete('destLat');
     if (dLng !== '') sp.set('destLng', String(dLng)); else sp.delete('destLng');
 
-    // START (z metadanymi)
     sp.set('startName', state.miejsceStartowe?.nazwa || '');
     const sLat = state.miejsceStartowe?.location?.lat ?? '';
     const sLng = state.miejsceStartowe?.location?.lng ?? '';
@@ -338,21 +293,16 @@ const writeToUrl = (state) => {
     startId ? sp.set('startId', startId) : sp.delete('startId');
     startGoogleId ? sp.set('startGoogleId', startGoogleId) : sp.delete('startGoogleId');
 
-    // DATY – arr (wyjazd), dep (powrót) — FORMATUJEMY JAKO LOKALNE YYYY-MM-DD
     const arr = formatYMDLocal(state.dataWyjazdu);
     const dep = formatYMDLocal(state.dataPowrotu);
     arr ? sp.set('arr', arr) : sp.delete('arr');
     dep ? sp.set('dep', dep) : sp.delete('dep');
 
-    // LICZBY
     sp.set('guests', String(state.liczbaUczestnikow ?? 1));
     sp.set('guardians', String(state.liczbaOpiekunow ?? 0));
-
-    // STANDARDY
     sp.set('hotelStd', String(state.standardHotelu ?? 1));
     sp.set('transportStd', String(state.standardTransportu ?? 1));
 
-    // downloadPlan / tripId pozostają bez zmian
     const newUrl = `${window.location.pathname}?${sp.toString()}`;
     window.history.replaceState(null, '', newUrl);
 };
@@ -368,52 +318,85 @@ export const PreConfigure = (
     standardHoteluInit = 1,
     standardTransportuInit = 1
 ) => {
-    // 1) Wczytanie z URL (jeżeli brak – użycie initów)
+    // 1) Wczytaj domyślne wartości z URL
     const urlDefaults = useMemo(readFromUrl, []);
+    const hasTripIdInUrl = Boolean(urlDefaults.tripId && String(urlDefaults.tripId).trim());
 
+    // 2) Sterujące: tripId i downloadPlan jako STAN
+    const [downloadPlan, setDownloadPlan] = useState(urlDefaults.downloadPlan || null);
+    const [tripId, setTripId] = useState(urlDefaults.tripId || null);
+
+    // 2.1) Flaga gotowości (blokuje sync do URL do czasu pobrania planu, jeśli jest tripId)
+    const [planReady, setPlanReady] = useState(!tripId);
+
+    // 3) Stany formularza – jeśli jest tripId, zaczynamy „puste” i nadpisze je plan
     const [miejsceDocelowe, setMiejsceDocelowe] = useState(
-        urlDefaults.miejsceDocelowe?.nazwa
-            ? urlDefaults.miejsceDocelowe
-            : {
-                nazwa: miejsceDoceloweInit.nazwa || '',
-                location: {
-                    lat: miejsceDoceloweInit.location?.lat ?? null,
-                    lng: miejsceDoceloweInit.location?.lng ?? null,
-                },
-            }
+        hasTripIdInUrl
+            ? { nazwa: '', location: { lat: null, lng: null } }
+            : (urlDefaults.miejsceDocelowe?.nazwa
+                ? urlDefaults.miejsceDocelowe
+                : {
+                    nazwa: miejsceDoceloweInit.nazwa || '',
+                    location: {
+                        lat: miejsceDoceloweInit.location?.lat ?? null,
+                        lng: miejsceDoceloweInit.location?.lng ?? null,
+                    },
+                })
     );
-
     const [miejsceStartowe, setMiejsceStartowe] = useState(
-        urlDefaults.miejsceStartowe?.nazwa
-            ? urlDefaults.miejsceStartowe
-            : {
-                nazwa: miejsceStartoweInit.nazwa || '',
-                country: null,
-                region: null,
-                id: null,
-                googleId: null,
-                location: {
-                    lat: miejsceStartoweInit.location?.lat ?? null,
-                    lng: miejsceStartoweInit.location?.lng ?? null,
-                },
-            }
+        hasTripIdInUrl
+            ? { nazwa: '', country: null, region: null, id: null, googleId: null, location: { lat: null, lng: null } }
+            : (urlDefaults.miejsceStartowe?.nazwa
+                ? urlDefaults.miejsceStartowe
+                : {
+                    nazwa: miejsceStartoweInit.nazwa || '',
+                    country: null,
+                    region: null,
+                    id: null,
+                    googleId: null,
+                    location: {
+                        lat: miejsceStartoweInit.location?.lat ?? null,
+                        lng: miejsceStartoweInit.location?.lng ?? null,
+                    },
+                })
+    );
+    const [dataWyjazdu, setDataWyjazdu] = useState(hasTripIdInUrl ? null : (urlDefaults.dataWyjazdu ?? dataWyjazduInit));
+    const [dataPowrotu, setDataPowrotu] = useState(hasTripIdInUrl ? null : (urlDefaults.dataPowrotu ?? dataPowrotuInit));
+
+    const [liczbaUczestnikow, setLiczbaUczestnikow] = useState(
+        hasTripIdInUrl
+            ? liczbaUczestnikowInit
+            : (urlDefaults.liczbaUczestnikow && urlDefaults.liczbaUczestnikow !== 0
+                ? urlDefaults.liczbaUczestnikow
+                : liczbaUczestnikowInit)
+    );
+    const [liczbaOpiekunow, setLiczbaOpiekunow] = useState(
+        hasTripIdInUrl ? liczbaOpiekunowInit : (urlDefaults.liczbaOpiekunow ?? liczbaOpiekunowInit)
+    );
+    const [standardHotelu, setStandardHotelu] = useState(
+        hasTripIdInUrl ? standardHoteluInit : (urlDefaults.standardHotelu ?? standardHoteluInit)
+    );
+    const [standardTransportu, setStandardTransportu] = useState(
+        hasTripIdInUrl ? standardTransportuInit : (urlDefaults.standardTransportu ?? standardTransportuInit)
     );
 
-    const [dataWyjazdu, setDataWyjazdu] = useState(urlDefaults.dataWyjazdu ?? dataWyjazduInit);
-    const [dataPowrotu, setDataPowrotu] = useState(urlDefaults.dataPowrotu ?? dataPowrotuInit);
-    const [liczbaUczestnikow, setLiczbaUczestnikow] = useState(
-        urlDefaults.liczbaUczestnikow && urlDefaults.liczbaUczestnikow !== 0
-            ? urlDefaults.liczbaUczestnikow
-            : liczbaUczestnikowInit
+    const [photoWallpaper, setPhotoWallpaper] = useState(
+        "https://images.unsplash.com/photo-1633268456308-72d1c728943c?auto=format&fit=crop&w=1600&q=80"
     );
-    const [liczbaOpiekunow, setLiczbaOpiekunow] = useState(urlDefaults.liczbaOpiekunow ?? liczbaOpiekunowInit);
-    const [standardHotelu, setStandardHotelu] = useState(urlDefaults.standardHotelu ?? standardHoteluInit);
-    const [standardTransportu, setStandardTransportu] = useState(urlDefaults.standardTransportu ?? standardTransportuInit);
-    const [photoWallpaper, setPhotoWallpaper] = useState("https://images.unsplash.com/photo-1633268456308-72d1c728943c?auto=format&fit=crop&w=1600&q=80")
+    const [publicPlan, setPublicPlan] = useState(true)
     const [selectedMenu, setSelectedMenu] = useState(0);
 
-    // 2) Synchronizacja stanu → URL (bez przeładowania)
+    // 4) Stany / błędy planów
+    const [synchronisedPlan, setsynchronisedPlan] = useState(null);
+    const [downloadedPlan, setDownloadedPlan] = useState(null); // opcjonalne użycie
+    const [planError, setPlanError] = useState(null);
+    const [planLoading, setPlanLoading] = useState(false);
+    const [downloadedLoading, setDownloadedLoading] = useState(false);
+    const [downloadedError, setDownloadedError] = useState(null);
+
+    // 5) Sync stanu → URL (bez przeładowania), dopiero gdy planReady
     useEffect(() => {
+        if (!planReady) return;
         writeToUrl({
             miejsceDocelowe,
             miejsceStartowe,
@@ -425,6 +408,7 @@ export const PreConfigure = (
             standardTransportu,
         });
     }, [
+        planReady,
         miejsceDocelowe,
         miejsceStartowe,
         dataWyjazdu,
@@ -435,16 +419,11 @@ export const PreConfigure = (
         standardTransportu,
     ]);
 
-    // 3) Parametry sterujące pobraniem planu – przekazujemy do PreConfigureSketch
-    const downloadPlan = urlDefaults.downloadPlan || null;
-    const tripId = urlDefaults.tripId || null;
-
-    // === stan na link do konfiguratora ===
+    // 6) Link do konfiguratora – buduj po planReady
     const [konfiguratorUrl, setKonfiguratorUrl] = useState('');
-
-    // === aktualizacja linku przy zmianach danych ===
-    // === aktualizacja linku przy zmianach danych ===
     useEffect(() => {
+        if (!planReady) return;
+
         const sp = new URLSearchParams();
 
         // start*
@@ -455,23 +434,19 @@ export const PreConfigure = (
         if (Number.isFinite(sLng)) sp.set('startLng', String(sLng));
         if (miejsceStartowe?.country) sp.set('startCountry', String(miejsceStartowe.country));
         if (miejsceStartowe?.region) sp.set('startRegion', String(miejsceStartowe.region));
-        if (
-            miejsceStartowe?.id !== undefined &&
-            miejsceStartowe?.id !== null &&
-            String(miejsceStartowe.id).trim() !== ''
-        ) {
+        if (miejsceStartowe?.id !== undefined && miejsceStartowe?.id !== null && String(miejsceStartowe.id).trim() !== '') {
             sp.set('startId', String(miejsceStartowe.id));
         }
         if (miejsceStartowe?.googleId) sp.set('startGoogleId', String(miejsceStartowe.googleId));
 
-        // DEST (nowe — obsługa miejsca docelowego w linku)
+        // DEST
         if (miejsceDocelowe?.nazwa) sp.set('destName', String(miejsceDocelowe.nazwa));
         const dLat = Number(miejsceDocelowe?.location?.lat);
         const dLng = Number(miejsceDocelowe?.location?.lng);
         if (Number.isFinite(dLat)) sp.set('destLat', String(dLat));
         if (Number.isFinite(dLng)) sp.set('destLng', String(dLng));
 
-        // daty: arr = wyjazd, dep = powrót (format lokalny, bez UTC)
+        // daty
         const arr = formatYMDLocal(dataWyjazdu);
         const dep = formatYMDLocal(dataPowrotu);
         if (arr) sp.set('arr', arr);
@@ -483,14 +458,15 @@ export const PreConfigure = (
         if (Number.isFinite(standardHotelu)) sp.set('hotelStd', String(standardHotelu));
         if (Number.isFinite(standardTransportu)) sp.set('transportStd', String(standardTransportu));
 
-        // opcjonalnie tripId
+        // opcjonalnie tripId / downloadPlan
         if (tripId && String(tripId).trim()) sp.set('tripId', String(tripId));
+        if (downloadPlan && String(downloadPlan).trim()) sp.set('downloadPlan', String(downloadPlan));
 
         const base = `${window.location.origin}/konfigurator`;
         const url = sp.toString() ? `${base}?${sp.toString()}` : base;
         setKonfiguratorUrl(url);
     }, [
-        // ➜ dodajemy także miejsceDocelowe do zależności
+        planReady,
         miejsceDocelowe,
         miejsceStartowe,
         dataWyjazdu,
@@ -500,19 +476,14 @@ export const PreConfigure = (
         standardHotelu,
         standardTransportu,
         tripId,
+        downloadPlan,
     ]);
-    // stan na pobrany plan (opcjonalnie — jeśli chcesz go gdzieś wyświetlać/przekazać)
-    const [synchronisedPlan, setsynchronisedPlan] = useState(null);
-    const [downloadedPlan, setDownloadedPlan] = useState(null)
-    const [planError, setPlanError] = useState(null);
-    const [planLoading, setPlanLoading] = useState(false);
-    const [downloadedLoading, setDownloadedLoading] = useState(false);
-    const [downloadedError, setDownloadedError] = useState(null);
 
-
+    // 7) Pobierz plan po tripId
     useEffect(() => {
         if (!tripId) {
             setsynchronisedPlan(null);
+            setPlanReady(true); // brak planu → od razu gotowe
             return;
         }
 
@@ -523,25 +494,23 @@ export const PreConfigure = (
         (async () => {
             try {
                 const plan = await fetchTripPlanById(tripId, { signal: ac.signal });
-                setsynchronisedPlan(plan);           // masz dane w stanie
-                console.log("Pobrany plan", plan); // tu już realne dane
+                setsynchronisedPlan(plan);
             } catch (e) {
                 if (e.name !== "AbortError") {
-                    console.error("Błąd pobierania planu:", e);
                     setPlanError(e.message || "Fetch error");
                 }
             } finally {
                 setPlanLoading(false);
+                setPlanReady(true);
             }
         })();
 
         return () => ac.abort();
     }, [tripId]);
-    // efekt: gdy w URL jest downloadPlan (ID planu do "odczytu"), pobierz i nałóż wartości
+
+    // 8) Jeżeli w URL jest downloadPlan, a nie ma tripId – pobierz plan „do odczytu”
     useEffect(() => {
         if (!downloadPlan || !String(downloadPlan).trim()) return;
-
-        // OPCJONALNE: gdy priorytet ma tripId (plan autora), nie uruchamiaj downloadPlan
         if (tripId && String(tripId).trim()) return;
 
         const ac = new AbortController();
@@ -550,26 +519,23 @@ export const PreConfigure = (
 
         (async () => {
             try {
-                // UWAGA: używamy downloadPlan jako ID!
                 const dp = await fetchDownloadedTripPlan(downloadPlan, { signal: ac.signal });
+                setDownloadedPlan(dp);
                 if (!dp) return;
 
                 const {
-                    miejsceDocelowe,
-                    standardHotelu,
-                    standardTransportu,
+                    miejsceDocelowe: md,
+                    standardHotelu: sh,
+                    standardTransportu: st,
                     photoLink,
-                    // computedPrice, activitiesSchedule – dostępne w odpowiedzi,
-                    // ale ten komponent nie ma na nie lokalnych stanów.
                 } = dp;
 
-                if (miejsceDocelowe) setMiejsceDocelowe(miejsceDocelowe);
-                if (Number.isFinite(standardHotelu)) setStandardHotelu(standardHotelu);
-                if (Number.isFinite(standardTransportu)) setStandardTransportu(standardTransportu);
+                if (md) setMiejsceDocelowe(md);
+                if (Number.isFinite(sh)) setStandardHotelu(sh);
+                if (Number.isFinite(st)) setStandardTransportu(st);
                 if (typeof photoLink === "string" && photoLink.trim()) setPhotoWallpaper(photoLink);
             } catch (e) {
                 if (e?.name !== "AbortError") {
-                    console.error("Błąd pobierania downloadedPlan:", e);
                     setDownloadedError(e?.message || "Fetch error");
                 }
             } finally {
@@ -580,14 +546,13 @@ export const PreConfigure = (
         return () => ac.abort();
     }, [downloadPlan, tripId]);
 
+    // 9) Nałóż dane z pobranego planu na lokalny stan
     const toLocalDateNoon = (iso) => {
         if (!iso) return null;
         const d = new Date(iso);
         if (Number.isNaN(d)) return null;
-        // Budujemy nową datę w CZASIE LOKALNYM, na południe:
         return new Date(d.getFullYear(), d.getMonth(), d.getDate(), 12, 0, 0, 0);
     };
-    // pomocnicze: liczby + zakresy
     const toIntOrNull = (v) => {
         const n = Number(v);
         return Number.isFinite(n) ? Math.round(n) : null;
@@ -598,8 +563,8 @@ export const PreConfigure = (
     useEffect(() => {
         if (!synchronisedPlan) return;
 
-        const start = toLocalDateNoon(synchronisedPlan.dataPrzyjazdu);   // początek
-        const end = toLocalDateNoon(synchronisedPlan.dataWyjazdu);     // koniec
+        const start = toLocalDateNoon(synchronisedPlan.dataPrzyjazdu); // = wyjazd
+        const end = toLocalDateNoon(synchronisedPlan.dataWyjazdu);     // = powrót
 
         const miejsceDoceloweSource = synchronisedPlan.miejsceDocelowe;
         const miejsceStartoweSource = synchronisedPlan.miejsceStartowe;
@@ -607,47 +572,219 @@ export const PreConfigure = (
         const standardHoteluSourceRaw = synchronisedPlan.standardHotelu;
         const liczbaUczestnikowSourceRaw = synchronisedPlan.liczbaUczestnikow;
         const liczbaOpiekunowSourceRaw = synchronisedPlan.liczbaOpiekunow;
-
-
-        const photoWallpaperSource = synchronisedPlan.photoLink; // jeśli dodasz stan na tapetę, ustawisz go tutaj
-
-        // daty
+        const photoWallpaperSource = synchronisedPlan.photoLink;
+        const publicPlanSource = synchronisedPlan.public;
         if (start) setDataWyjazdu(start);
         if (end) setDataPowrotu(end);
 
-        // miejsca
         if (miejsceDoceloweSource) setMiejsceDocelowe(miejsceDoceloweSource);
         if (miejsceStartoweSource) setMiejsceStartowe(miejsceStartoweSource);
 
-        // standardy z zakresem (hotel 0–3, transport 0–2)
         const stdTrans = clamp(toIntOrNull(standardTransportuSourceRaw), 0, 2);
         const stdHotel = clamp(toIntOrNull(standardHoteluSourceRaw), 0, 3);
         if (stdTrans != null) setStandardTransportu(stdTrans);
         if (stdHotel != null) setStandardHotelu(stdHotel);
 
-        // liczby osób (sensowne minimum: 0 opiekunów, 1 uczestnik)
         const guests = toIntOrNull(liczbaUczestnikowSourceRaw);
         const guardians = toIntOrNull(liczbaOpiekunowSourceRaw);
-
-        if (guests != null && guests > 0) { setLiczbaUczestnikow(guests) };
+        if (guests != null && guests > 0) setLiczbaUczestnikow(guests);
         if (guardians != null && guardians >= 0) setLiczbaOpiekunow(guardians);
 
-        // jeśli w przyszłości dodasz stan dla zdjęcia nagłówka:
         if (photoWallpaperSource) setPhotoWallpaper(photoWallpaperSource);
+        if (typeof publicPlanSource === "boolean") {
+            setPublicPlan(publicPlanSource);
+        }
 
     }, [synchronisedPlan]);
 
+    // 10) Helper: ustaw/zmień tripId w URL i w stanie
+    function writeTripIdToUrl(newId) {
+        const sp = new URLSearchParams(window.location.search);
+        if (newId && String(newId).trim()) sp.set("tripId", String(newId));
+        else sp.delete("tripId");
+        const newUrl = `${window.location.pathname}?${sp.toString()}`;
+        window.history.replaceState(null, "", newUrl);
+        setTripId(newId ?? null);
+    }
+
+    // 11) Autozapis (PUT/POST) — tylko dla zalogowanych
+    async function saveOrCreateTripPlan({ signal } = {}) {
+        // sprawdzenie zalogowania
+        let userId = useUserStore.getState?.().user?._id ?? null;
+        if (!userId) {
+            try {
+                const me = await fetchMe().catch(() => null);
+                userId = me?._id ?? useUserStore.getState?.().user?._id ?? null;
+            } catch { /* ignore */ }
+        }
+        if (!userId) return;
+
+        const payload = {
+            miejsceDocelowe: miejsceDocelowe?.nazwa
+                ? {
+                    nazwa: String(miejsceDocelowe.nazwa || "").trim(),
+                    location: {
+                        lat: Number(miejsceDocelowe.location?.lat),
+                        lng: Number(miejsceDocelowe.location?.lng),
+                    },
+                }
+                : undefined,
+            miejsceStartowe: miejsceStartowe?.nazwa
+                ? {
+                    nazwa: String(miejsceStartowe.nazwa || "").trim(),
+                    country: miejsceStartowe.country ?? undefined,
+                    region: miejsceStartowe.region ?? undefined,
+                    id: miejsceStartowe.id ?? undefined,
+                    googleId: miejsceStartowe.googleId ?? undefined,
+                    location: {
+                        lat: Number(miejsceStartowe.location?.lat),
+                        lng: Number(miejsceStartowe.location?.lng),
+                    },
+                }
+                : undefined,
+            // mapowanie: dataPrzyjazdu = start, dataWyjazdu = koniec
+            dataPrzyjazdu: dataWyjazdu ? formatYMDLocal(dataWyjazdu) : undefined,
+            dataWyjazdu: dataPowrotu ? formatYMDLocal(dataPowrotu) : undefined,
+            standardHotelu: Number.isFinite(standardHotelu) ? standardHotelu : undefined,
+            standardTransportu: Number.isFinite(standardTransportu) ? standardTransportu : undefined,
+            liczbaUczestnikow: Number.isFinite(liczbaUczestnikow) ? liczbaUczestnikow : undefined,
+            liczbaOpiekunow: Number.isFinite(liczbaOpiekunow) ? liczbaOpiekunow : undefined,
+            public: typeof publicPlan === "boolean" ? publicPlan : undefined,
+        };
+
+        const currentTripId = new URLSearchParams(window.location.search).get("tripId");
+        const base = "http://localhost:5007";
+
+        if (currentTripId && String(currentTripId).trim()) {
+            // PUT
+            try {
+                const resp = await fetch(`${base}/api/trip-plans/${encodeURIComponent(currentTripId)}`, {
+                    method: "PUT",
+                    headers: { "Content-Type": "application/json" },
+                    credentials: "include",
+                    body: JSON.stringify(payload),
+                    signal,
+                });
+                if (resp.ok) {
+                    const updated = await resp.json().catch(() => null);
+                    if (updated?.photoLink) setPhotoWallpaper(updated.photoLink);
+                }
+            } catch { /* ignore */ }
+            return;
+        }
+
+        // POST – utwórz i ustaw tripId w URL + stanie
+        try {
+            const resp = await fetch(`${base}/api/trip-plans`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                credentials: "include",
+                body: JSON.stringify(payload),
+                signal,
+            });
+            if (!resp.ok) return;
+            const created = await resp.json().catch(() => null);
+            const newId = created?._id;
+            if (newId) {
+                writeTripIdToUrl(newId);
+                try {
+                    const plan = await fetchTripPlanById(newId, { signal });
+                    if (plan?.photoLink) setPhotoWallpaper(plan.photoLink);
+                } catch { /* ignore */ }
+            }
+        } catch { /* ignore */ }
+    }
+
+    // === Walidacja ===
+    const isFiniteNumber = (v) => typeof v === "number" && Number.isFinite(v);
+    const isNonEmptyString = (s) => typeof s === "string" && s.trim().length > 0;
+    const isValidDate = (d) => {
+        if (d === null || d === undefined || d === "") return false;
+        const dt = d instanceof Date ? d : new Date(d);
+        return !Number.isNaN(dt.getTime());
+    };
+    const isValidDateRange = (start, end) => {
+        if (!isValidDate(start) || !isValidDate(end)) return false;
+        const s = start instanceof Date ? start : new Date(start);
+        const e = end instanceof Date ? end : new Date(end);
+        return e >= s;
+    };
+    const isValidLocation = (loc) => {
+        if (!loc || typeof loc !== "object") return false;
+        if (loc.lat === null || loc.lat === undefined) return false;
+        if (loc.lng === null || loc.lng === undefined) return false;
+        const lat = Number(loc.lat);
+        const lng = Number(loc.lng);
+        return Number.isFinite(lat) && Number.isFinite(lng);
+    };
+    const isValidPlace = (place) =>
+        !!place &&
+        isNonEmptyString(place.nazwa) &&
+        isValidLocation(place.location);
+
+    function isValidPreconfigureState({
+        miejsceDocelowe,
+        miejsceStartowe,
+        dataWyjazdu,
+        dataPowrotu,
+        liczbaUczestnikow,
+        liczbaOpiekunow,
+        standardHotelu,
+        standardTransportu,
+    }) {
+        if (!isValidPlace(miejsceDocelowe)) return false;
+        if (!isValidPlace(miejsceStartowe)) return false;
+        if (!isValidDateRange(dataWyjazdu, dataPowrotu)) return false;
+        if (!isFiniteNumber(liczbaUczestnikow) || liczbaUczestnikow <= 0) return false;
+        if (!isFiniteNumber(liczbaOpiekunow) || liczbaOpiekunow < 0) return false;
+        if (!isFiniteNumber(standardHotelu) || standardHotelu < 0 || standardHotelu > 3) return false;
+        if (!isFiniteNumber(standardTransportu) || standardTransportu < 0 || standardTransportu > 2) return false;
+        return true;
+    }
+
+    // 12) Autozapis – tylko gdy stan jest poprawny i planReady
     useEffect(() => {
-        console.log("Tapeta", photoWallpaper)
-    }, [photoWallpaper])
+        if (!planReady) return;
+        const ac = new AbortController();
+
+        const canSave = isValidPreconfigureState({
+            miejsceDocelowe,
+            miejsceStartowe,
+            dataWyjazdu,
+            dataPowrotu,
+            liczbaUczestnikow,
+            liczbaOpiekunow,
+            standardHotelu,
+            standardTransportu,
+        });
+
+        if (canSave) {
+            (async () => {
+                await saveOrCreateTripPlan({ signal: ac.signal });
+            })();
+        }
+
+        return () => ac.abort();
+    }, [
+        planReady,
+        miejsceDocelowe,
+        miejsceStartowe,
+        dataWyjazdu,
+        dataPowrotu,
+        liczbaUczestnikow,
+        liczbaOpiekunow,
+        standardHotelu,
+        standardTransportu,
+        publicPlan,
+        // UWAGA: nie odczytuj tripId z URL wprost w deps; bazujemy na stanie tripId
+        tripId,
+    ]);
+
     return (
         <PreConfigureMainbox>
             <PreConfigureHeader key={photoWallpaper}>
                 <div className="preConfigureHeaderImage">
-                    <img
-                        src={photoWallpaper}
-                        alt="Pre Configure Header"
-                    />
+                    <img src={photoWallpaper} alt="Pre Configure Header" />
                 </div>
 
                 <PreConfigureHeaderWrapper>
@@ -662,6 +799,10 @@ export const PreConfigure = (
                             <Settings size={20} />
                             Konfigurator
                         </a>
+                        <a className={publicPlan ? "preConfigureButton b" : "preConfigureButton b privatePlan"} onClick={() => setPublicPlan(!publicPlan)}>
+                            <EyeCheckbox ifChecked={publicPlan} />
+                            Plan publiczny
+                        </a>
                     </div>
                 </PreConfigureHeaderWrapper>
             </PreConfigureHeader>
@@ -674,7 +815,6 @@ export const PreConfigure = (
 
             {selectedMenu === 0 && (
                 <PreConfigureSketch
-                    // wartości (zewnętrzne)
                     miejsceDocelowe={miejsceDocelowe}
                     miejsceStartowe={miejsceStartowe}
                     dataWyjazdu={dataWyjazdu}
@@ -683,7 +823,6 @@ export const PreConfigure = (
                     liczbaOpiekunow={liczbaOpiekunow}
                     standardHotelu={standardHotelu}
                     standardTransportu={standardTransportu}
-                    // settery (zewnętrzne)
                     setMiejsceDocelowe={setMiejsceDocelowe}
                     setMiejsceStartowe={setMiejsceStartowe}
                     setDataWyjazdu={setDataWyjazdu}
@@ -692,7 +831,10 @@ export const PreConfigure = (
                     setLiczbaOpiekunow={setLiczbaOpiekunow}
                     setStandardHotelu={setStandardHotelu}
                     setStandardTransportu={setStandardTransportu}
-
+                />
+            )}
+            {selectedMenu === 1 && (
+                <PreConfigureParticipants
                 />
             )}
         </PreConfigureMainbox>

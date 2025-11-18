@@ -316,7 +316,7 @@ export function TeacherOfferBanner({
                 </div>
                 <h2 className="destinationSlider-title">System współpracy otwarty na szkoły!</h2>
                 <p className="destinationSlider-subtitle">
-                    Odkryj, jak nasza platforma może ułatwić organizację wycieczek klasowych i przynieść korzyści Twojej szkole.
+                    Od
                 </p>
             </ComponentHeader>
             <Container>

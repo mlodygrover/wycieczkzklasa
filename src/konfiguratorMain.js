@@ -966,9 +966,17 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
         if (fromURL != null) return fromURL;
         return "";
     });
+    const [downloadPlan, setDownloadPlan] = useState(() => {
+        const fromURL = getStr(readURL().searchParams.get("downloadPlan"));
+        if (fromURL != null) {
+            return fromURL
+        }
+        return "";
+    });
 
+    const [liczbaDni, setLiczbaDni] = useState(0)
     // ===== EFEKTY: zapis do URL + regularny zapis do localStorage =====
-    
+
 
     // DESTINATION -> URL + LS
     useEffect(() => {
@@ -1032,7 +1040,6 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
     }, [standardTransportu]);
 
     useEffect(() => {
-        console.log("TEST1", miejsceDocelowe, miejsceStartowe)
         miejsceDocelowe && localStorage.setItem("miejsceDocelowe", JSON.stringify(miejsceDocelowe))
     }, [miejsceDocelowe, miejsceStartowe])
 
@@ -1167,7 +1174,6 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
                 }
 
                 const data = await resp.json();
-                console.log("✅ /attractions/nearby result:", JSON.parse(cached), data);
                 setAtrakcje(data);
             } catch (err) {
                 if (err.name !== "AbortError") {
@@ -1179,7 +1185,7 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
         return () => controller.abort();
     }, [miejsceDocelowe?.location?.lat, miejsceDocelowe?.location?.lng]);
 
-    const [wybranyHotel, setWybranyHotel] = useState({ stars: 3, nazwa: "Ibis Budget", adres: "Koszalińska 45", checkIn: '14:00', checkOut: '11:00', cena: 100 })
+    const [wybranyHotel, setWybranyHotel] = useState({ stars: 3, nazwa: "Hotel w Mieście", adres: "", checkIn: '14:00', checkOut: '11:00', cena: 100 * liczbaDni * (liczbaOpiekunow + liczbaUczestnikow) * (standardHotelu + 1) % 4 })
 
     const [routeSchedule, setRouteSchedule] = useState([])
     const [timeSchedule, setTimeSchedule] = useState([])
@@ -1193,8 +1199,7 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
     useEffect(() => {
         let aborted = false;
 
-        // Bezpieczna konwersja daty (ISO / Date / string) na obiekt Date z godziną 12:00 lokalnie,
-        // żeby uniknąć przesunięć strefowych i krawędzi DST.
+        // Bezpieczna konwersja daty → Date (lokalnie godz. 12:00)
         const toLocalDateNoon = (v) => {
             if (!v) return null;
             const d = v instanceof Date ? v : new Date(v);
@@ -1213,7 +1218,6 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
             );
 
             try {
-                console.log("ActivitiesSchedule z LS")
                 const raw = localStorage.getItem(tripKey);
                 if (raw) return JSON.parse(raw);
             } catch {
@@ -1224,95 +1228,109 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
 
         const fallback = () => {
             if (!aborted) {
-                console.log("Używam fallbacku dla activitiesSchedule");
                 setActivitiesSchedule(getFallbackActivities());
             }
         };
-
         (async () => {
-            if (!tripId || String(tripId).trim() === "") {
-                return fallback();
-            }
 
-            console.log("Próbuję pobrać plan wyjazdu z API dla tripId:", tripId);
+            const hasTripId = !!tripId && String(tripId).trim() !== "";
+            const hasDownloadPlan = !!downloadPlan && String(downloadPlan).trim() !== "";
 
-            let userId =
-                userIdFromStore ?? useUserStore.getState?.().user?._id ?? null;
-
-            if (!userId) {
+            // 1) PRIORYTET: pełna synchronizacja po tripId (plan autora)
+            if (hasTripId) {
                 try {
-                    const me = await fetchMe().catch(() => null);
-                    userId = me?._id ?? useUserStore.getState?.().user?._id ?? null;
+
+                    let userId = userIdFromStore ?? useUserStore.getState?.().user?._id ?? null;
+                    if (!userId) {
+                        try {
+                            const me = await fetchMe().catch(() => null);
+                            userId = me?._id ?? useUserStore.getState?.().user?._id ?? null;
+                        } catch { /* ignore */ }
+                    }
+
+                    if (!userId) {
+                        return fallback();
+                    }
+
+                    const url = `http://localhost:5007/api/trip-plans/${encodeURIComponent(
+                        tripId
+                    )}/by-author/${encodeURIComponent(userId)}`;
+
+                    const resp = await fetch(url, { credentials: "include" });
+                    if (!aborted && resp.ok) {
+                        const data = await resp.json();
+
+                        // 1) Harmonogram
+                        if (Array.isArray(data?.activitiesSchedule) && data.activitiesSchedule.every(Array.isArray) && data?.activitiesSchedule.length > 0) {
+                            setActivitiesSchedule(data.activitiesSchedule); // ← tu bez nawiasów!
+                        } else {
+                            fallback();
+                        }
+
+
+
+                        // 2) Daty
+                        const start = toLocalDateNoon(data?.dataPrzyjazdu);
+                        const end = toLocalDateNoon(data?.dataWyjazdu);
+                        if (start) setDataPrzyjazdu(start);
+                        if (end) setDataWyjazdu(end);
+
+                        // 3) Miejsca
+                        if (data?.miejsceDocelowe) setMiejsceDocelowe(data.miejsceDocelowe);
+                        if (data?.miejsceStartowe) setMiejsceStartowe(data.miejsceStartowe);
+
+                        // 4) Standardy
+                        if (typeof data?.standardTransportu === "number") setStandardTransportu(data.standardTransportu);
+                        if (typeof data?.standardHotelu === "number") setStandardHotelu(data.standardHotelu);
+
+                        // 5) Liczebności
+                        if (typeof data?.liczbaUczestnikow === "number") setLiczbaUczestnikow(data.liczbaUczestnikow);
+                        if (typeof data?.liczbaOpiekunow === "number") setLiczbaOpiekunow(data.liczbaOpiekunow);
+
+                        // 6) Zdjęcie (opcjonalnie)
+                        if (typeof data?.photoLink === "string") setPhotoWallpaper?.(data.photoLink);
+
+                        return; // zakończ po obsłudze tripId
+                    }
+
+                    return fallback();
                 } catch {
-                    /* ignore */
+                    return fallback();
                 }
             }
 
-            console.log("Używam userId:", userId);
+            // 2) JEŚLI NIE MA tripId → próbujemy downloadPlan (ustawiamy TYLKO activitiesSchedule i miejsceDocelowe)
+            if (hasDownloadPlan) {
+                try {
+                    console.log("Pobieram plan (downloadPlan):", downloadPlan);
+                    const url = `http://localhost:5007/api/trip-plans/${encodeURIComponent(downloadPlan)}`;
+                    const resp = await fetch(url, { method: "GET", credentials: "include" });
 
-            if (!userId) {
-                return fallback();
-            }
+                    if (!aborted && resp.ok) {
+                        const data = await resp.json();
 
-            try {
-                const url = `http://localhost:5007/api/trip-plans/${encodeURIComponent(
-                    tripId
-                )}/by-author/${encodeURIComponent(userId)}`;
-                const resp = await fetch(url, { credentials: "include" });
+                        if (Array.isArray(data?.activitiesSchedule)) {
+                            setActivitiesSchedule(data.activitiesSchedule);
+                        } else {
+                            // brak poprawnego harmonogramu → fallback
+                            return fallback();
+                        }
 
-                if (!aborted && resp.ok) {
-                    const data = await resp.json();
-
-                    // 1) Harmonogram
-                    if (Array.isArray(data?.activitiesSchedule)) {
-                        setActivitiesSchedule(data.activitiesSchedule);
-                        console.log(
-                            "Pobrano plan wyjazdu z API dla tripId:",
-                            data.activitiesSchedule
-                        );
-                    } else {
-                        // brak poprawnego harmonogramu → fallback
-                        fallback();
+                        if (data?.miejsceDocelowe) {
+                            setMiejsceDocelowe(data.miejsceDocelowe);
+                        }
+                        writeStringParam("downloadPlan", "")
+                        return;
                     }
 
-                    // 2) Daty (z lokalną „południową” godziną)
-                    const start = toLocalDateNoon(data?.dataPrzyjazdu);
-                    const end = toLocalDateNoon(data?.dataWyjazdu);
-                    if (start) setDataPrzyjazdu(start);
-                    if (end) setDataWyjazdu(end);
-
-                    // 3) Miejsca
-                    if (data?.miejsceDocelowe) setMiejsceDocelowe(data.miejsceDocelowe);
-                    if (data?.miejsceStartowe) setMiejsceStartowe(data.miejsceStartowe);
-
-                    // 4) Standardy
-                    if (typeof data?.standardTransportu === "number") {
-                        setStandardTransportu(data.standardTransportu);
-                    }
-                    if (typeof data?.standardHotelu === "number") {
-                        setStandardHotelu(data.standardHotelu);
-                    }
-
-                    // 5) Liczebności
-                    if (typeof data?.liczbaUczestnikow === "number") {
-                        setLiczbaUczestnikow(data.liczbaUczestnikow);
-                    }
-                    if (typeof data?.liczbaOpiekunow === "number") {
-                        setLiczbaOpiekunow(data.liczbaOpiekunow);
-                    }
-
-                    // 6) (Opcjonalnie) zdjęcie
-                    if (typeof data?.photoLink === "string") {
-                        setPhotoWallpaper?.(data.photoLink);
-                    }
-
-                    return;
+                    return fallback();
+                } catch {
+                    return fallback();
                 }
-
-                return fallback();
-            } catch {
-                return fallback();
             }
+
+            // 3) Brak obu identyfikatorów → fallback
+            return fallback();
         })();
 
         return () => {
@@ -1320,6 +1338,7 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
         };
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
+
 
 
     const saveTimerRef = useRef(null);
@@ -1350,55 +1369,34 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
 
         return `${y}-${m}-${day}`;
     }
+    const [hasPendingAutoSave, setHasPendingAutoSave] = useState(false);
+
 
     const saveTripPlan = useCallback(
         async (opts = {}) => {
-
-            console.log("Probuje zapisac...");
-            if (!canSave()) return;
+            if (!canSave() || !tripId) return;
             const { signal } = opts;
 
-            // prosta konwersja/licznik – frontowe minimum, backend i tak waliduje
             const toIntOrUndef = (v) => {
                 const n = Number(v);
                 return Number.isFinite(n) ? Math.trunc(n) : undefined;
             };
             const safeParticipants = (() => {
                 const n = toIntOrUndef(liczbaUczestnikow);
-                return n !== undefined && n >= 1 ? n : undefined; // min 1
+                return n !== undefined && n >= 1 ? n : undefined;
             })();
             const safeGuardians = (() => {
                 const n = toIntOrUndef(liczbaOpiekunow);
-                return n !== undefined && n >= 0 ? n : undefined; // min 0
+                return n !== undefined && n >= 0 ? n : undefined;
             })();
 
             try {
-                // ustal userId (jak dotychczas)
-                let userId = useUserStore.getState?.().user?._id ?? null;
-                if (!userId) {
-                    try {
-                        const me = await fetchMe().catch(() => null);
-                        userId = me?._id ?? useUserStore.getState?.().user?._id ?? null;
-                    } catch {
-                        /* cicho */
-                    }
-                }
-                if (!userId) return;
-                if (!tripId) return;
-
-                console.log("Zapisuje plan");
-                const url = `http://localhost:5007/api/trip-plans/${encodeURIComponent(
-                    tripId
-                )}/by-author/${encodeURIComponent(userId)}`;
+                // Nie pobieramy/meblujemy userId – serwer korzysta z req.user
+                const url = `http://localhost:5007/api/trip-plans/${encodeURIComponent(tripId)}`;
 
                 const payload = {
-                    // harmonogram (AoA)
                     activitiesSchedule,
-
-                    // cena łączna
                     computedPrice: (tripPrice ?? 0) + (insurancePrice ?? 0),
-
-                    // miejsca
                     miejsceDocelowe: miejsceDocelowe
                         ? {
                             nazwa: String(miejsceDocelowe.nazwa || "").trim(),
@@ -1411,7 +1409,6 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
                             },
                         }
                         : undefined,
-
                     miejsceStartowe: miejsceStartowe
                         ? {
                             nazwa: String(miejsceStartowe.nazwa || "").trim(),
@@ -1424,25 +1421,21 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
                             },
                         }
                         : undefined,
-
-                    // daty (YYYY-MM-DD)
                     dataPrzyjazdu: dataPrzyjazdu ? formatYMDLocal(dataPrzyjazdu) : undefined,
                     dataWyjazdu: dataWyjazdu ? formatYMDLocal(dataWyjazdu) : undefined,
-
-                    // standardy
-                    standardTransportu:
-                        typeof standardTransportu === "number" ? standardTransportu : undefined,
-                    standardHotelu:
-                        typeof standardHotelu === "number" ? standardHotelu : undefined,
-
-                    // NOWE: uczestnicy i opiekunowie
+                    standardTransportu: typeof standardTransportu === "number" ? standardTransportu : undefined,
+                    standardHotelu: typeof standardHotelu === "number" ? standardHotelu : undefined,
                     liczbaUczestnikow: safeParticipants,
                     liczbaOpiekunow: safeGuardians,
                 };
 
                 const resp = await fetch(url, {
                     method: "PUT",
-                    headers: { "Content-Type": "application/json" },
+                    headers: {
+                        "Content-Type": "application/json",
+                        // (opcjonalnie) CSRF:
+                        // "X-CSRF-Token": getCsrfTokenSomehow(),
+                    },
                     credentials: "include",
                     body: JSON.stringify(payload),
                     signal,
@@ -1450,12 +1443,7 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
 
                 if (!resp.ok) {
                     console.warn("PUT trip plan failed:", resp.status, await resp.text());
-                    return;
                 }
-
-                // opcjonalnie: odczyt zwrotki
-                // const updated = await resp.json();
-                // ... setState(updated) ...
             } catch (err) {
                 if (err?.name !== "AbortError") {
                     console.error("PUT trip plan error:", err);
@@ -1473,17 +1461,155 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
             dataPrzyjazdu,
             standardTransportu,
             standardHotelu,
-
-            // ➜ dodane zależności
             liczbaUczestnikow,
             liczbaOpiekunow,
         ]
     );
+    // === RĘCZNY ZAPIS (bez naruszania autozapisu dla istniejącego tripId) ===
+    const API_BASE = "http://localhost:5007";
 
+    // ⬇️ NOWE: anulowanie oczekującego autozapisu
+    const cancelQueuedAutoSave = useCallback(() => {
+        if (saveTimerRef.current) {
+            clearTimeout(saveTimerRef.current);
+            saveTimerRef.current = null;
+        }
+        if (saveControllerRef.current) {
+            try { saveControllerRef.current.abort(); } catch { }
+            saveControllerRef.current = null;
+        }
+        setHasPendingAutoSave(false); // ⬅️ nowa linia
+    }, []);
+    const buildTripPayload = useCallback(() => {
+        const toIntOrUndef = (v) => {
+            const n = Number(v);
+            return Number.isFinite(n) ? Math.trunc(n) : undefined;
+        };
+        const safeParticipants = (() => {
+            const n = toIntOrUndef(liczbaUczestnikow);
+            return n !== undefined && n >= 1 ? n : undefined;
+        })();
+        const safeGuardians = (() => {
+            const n = toIntOrUndef(liczbaOpiekunow);
+            return n !== undefined && n >= 0 ? n : undefined;
+        })();
 
+        return {
+            activitiesSchedule,
+            computedPrice: (tripPrice ?? 0) + (insurancePrice ?? 0),
+            miejsceDocelowe: miejsceDocelowe
+                ? {
+                    nazwa: String(miejsceDocelowe.nazwa || "").trim(),
+                    kraj: miejsceDocelowe.kraj ?? undefined,
+                    wojewodztwo: miejsceDocelowe.wojewodztwo ?? undefined,
+                    priority: miejsceDocelowe.priority ?? 0,
+                    location: {
+                        lat: Number(miejsceDocelowe.location?.lat),
+                        lng: Number(miejsceDocelowe.location?.lng),
+                    },
+                }
+                : undefined,
+            miejsceStartowe: miejsceStartowe
+                ? {
+                    nazwa: String(miejsceStartowe.nazwa || "").trim(),
+                    kraj: miejsceStartowe.kraj ?? undefined,
+                    wojewodztwo: miejsceStartowe.wojewodztwo ?? undefined,
+                    priority: miejsceStartowe.priority ?? 0,
+                    location: {
+                        lat: Number(miejsceStartowe.location?.lat),
+                        lng: Number(miejsceStartowe.location?.lng),
+                    },
+                }
+                : undefined,
+            dataPrzyjazdu: dataPrzyjazdu ? formatYMDLocal(dataPrzyjazdu) : undefined,
+            dataWyjazdu: dataWyjazdu ? formatYMDLocal(dataWyjazdu) : undefined,
+            standardTransportu: typeof standardTransportu === "number" ? standardTransportu : undefined,
+            standardHotelu: typeof standardHotelu === "number" ? standardHotelu : undefined,
+            liczbaUczestnikow: safeParticipants,
+            liczbaOpiekunow: safeGuardians,
+        };
+    }, [
+        activitiesSchedule,
+        tripPrice,
+        insurancePrice,
+        miejsceDocelowe,
+        miejsceStartowe,
+        dataPrzyjazdu,
+        dataWyjazdu,
+        standardTransportu,
+        standardHotelu,
+        liczbaUczestnikow,
+        liczbaOpiekunow,
+    ]);
 
+    async function checkMe() {
+        try {
+            const r = await fetch(`${API_BASE}/api/me`, { credentials: "include" });
+            if (!r.ok) return null;
+            return await r.json(); // { authenticated, user }
+        } catch {
+            return null;
+        }
+    }
+
+    /**
+     * Ręczny zapis:
+     * - jeśli jest tripId → natychmiast PUT (korzystamy z istniejącego saveTripPlan)
+     * - jeśli brak tripId i user zalogowany → POST (tworzymy nowy), ustawiamy tripId w stanie + URL
+     * - jeśli user niezalogowany → zachowujemy payload w localStorage i przekierowujemy na /login
+     */
+    const handleSaveClick = useCallback(async () => {
+        // ⬇️ ANULUJ autozapis zanim wykonasz ręczny zapis
+        cancelQueuedAutoSave();
+
+        const me = await checkMe();
+        const payload = buildTripPayload();
+
+        // 1) mamy tripId → natychmiastowa aktualizacja
+        if (tripId && String(tripId).trim() !== "") {
+            const ctrl = new AbortController();
+            await saveTripPlan({ signal: ctrl.signal });
+            return;
+        }
+
+        // 2) brak tripId
+        if (!me?.authenticated) {
+            localStorage.setItem("pendingTripPayload", JSON.stringify(payload));
+            localStorage.setItem("pendingRedirectAfterLogin", window.location.href);
+            window.location.href = "/login";
+            return;
+        }
+
+        // 3) zalogowany → utwórz nowy plan
+        try {
+            const resp = await fetch(`${API_BASE}/api/trip-plans`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                credentials: "include",
+                body: JSON.stringify(payload),
+            });
+            const created = await resp.json().catch(() => null);
+
+            if (!resp.ok) {
+                console.warn("POST /api/trip-plans failed:", resp.status, created || (await resp.text()));
+                return;
+            }
+            if (created?._id) {
+                setTripId(created._id);
+                writeStringParam("tripId", created._id);
+            }
+        } catch (err) {
+            console.error("Manual save (POST) error:", err);
+        }
+    }, [tripId, buildTripPayload, saveTripPlan, cancelQueuedAutoSave]);
+
+    // Autozapis pozostaje bez zmian
     const queueTripPlanSave = useCallback(() => {
-        if (!canSave()) return;
+        if (!canSave()) {
+            // nic do zapisania → brak oczekującego autozapisu
+            setHasPendingAutoSave(false);
+            return;
+        }
 
         if (saveTimerRef.current) {
             clearTimeout(saveTimerRef.current);
@@ -1495,15 +1621,21 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
         }
 
         saveControllerRef.current = new AbortController();
+        setHasPendingAutoSave(true); // ⬅️ mamy zaplanowany autozapis
 
         saveTimerRef.current = setTimeout(() => {
             const ctrl = saveControllerRef.current;
             saveTimerRef.current = null;
+            // autozapis startuje – traktujemy jak „już nie oczekuje”
+            setHasPendingAutoSave(false); // ⬅️ autozapis się wykonuje/wykonał
+
             saveTripPlan({ signal: ctrl?.signal }).finally(() => {
                 saveControllerRef.current = null;
             });
         }, 20000);
     }, [saveTripPlan]);
+
+
 
     useEffect(() => {
         queueTripPlanSave();
@@ -1516,6 +1648,7 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
                 try { saveControllerRef.current.abort(); } catch { }
                 saveControllerRef.current = null;
             }
+            setHasPendingAutoSave(false);
         };
     }, [JSON.stringify(activitiesSchedule), dataWyjazdu, dataPrzyjazdu, standardHotelu, standardTransportu, liczbaUczestnikow, liczbaOpiekunow, tripPrice, insurancePrice]);
 
@@ -1597,7 +1730,6 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
         }
     }, [activitiesSchedule, startHours]);
 
-    const [liczbaDni, setLiczbaDni] = useState(0)
     const [wybranyDzien, setWybranyDzien] = useState(0)
     const [konfiguratorLoading, setKonfiguratorLoading] = useState(false);
     const [lastDaySwap, setLastDaySwap] = useState(-1)
@@ -1831,8 +1963,8 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
                 const act = newTab[i][j];
                 if (hotelIds.includes(act.googleId)) {
                     act.lokalizacja = {
-                        lat: wybranyHotel?.lat || wybranyHotel?.location?.lat || 52.2297,
-                        lng: wybranyHotel?.lng || wybranyHotel?.location?.lng || 21.0122,
+                        lat: wybranyHotel?.lat || wybranyHotel?.location?.lat || miejsceDocelowe?.location?.lat || 52.2297,
+                        lng: wybranyHotel?.lng || wybranyHotel?.location?.lng || miejsceDocelowe?.location?.lng || 21.0122,
                     };
                     act.adres = wybranyHotel?.adres || wybranyHotel?.nazwa || miejsceDocelowe?.nazwa || "";
                 }
@@ -2146,19 +2278,22 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
         }
         const needsAlert = !activity?.warianty?.length && !botAuthor && !activity?.googleId.includes("dAct_");
 
-        if (!activity?.warianty?.length) {
-            console.log("Aktualizuje oferte dla ", activity.nazwa);
+        const isUnverified = !activity?.warianty?.length; // true dla undefined lub []
+        const isBase = typeof activity?.googleId === "string" && activity.googleId.startsWith("dAct_");
+
+        if (isUnverified && !isBase) {
+            console.log("Aktualizuję ofertę dla", activity?.nazwa);
 
             updateOffer({
                 googleId: activity.googleId,
                 link: activity.stronaInternetowa ?? null,
                 delayMs: 0,
-                nazwa: activity.nazwa
+                nazwa: activity.nazwa,
             }).catch((err) => {
                 console.error("❌ updateOffer error:", err?.message || err);
             });
 
-            setChangeActivities(prev =>
+            setChangeActivities((prev) =>
                 prev.includes(activity.googleId) ? prev : [...prev, activity.googleId]
             );
         }
@@ -2209,7 +2344,7 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
             act1 === activitiesSchedule[dayIndex].length - 1 ||
             act2 === activitiesSchedule[dayIndex].length - 1
         ) {
-            
+
             return;
         }
 
@@ -2274,6 +2409,8 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
     }
 
     useEffect(() => {
+        if (!dataPrzyjazdu || !dataWyjazdu) return;
+
         setKonfiguratorLoading(true)
         const handler = setTimeout(() => {
             const days = roznicaDni(dataPrzyjazdu, dataWyjazdu) > 0
@@ -2537,7 +2674,6 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
                 };
 
                 localStorage.setItem(key, JSON.stringify(hotelData));
-                console.log(`💾 Zapisano hotel w localStorage jako "${key}"`);
 
                 setWybranyHotel(hotelData);
             } catch (error) {
@@ -2827,7 +2963,8 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
                 </KonfiguratorMainMainboxLeft>
 
                 <KonfiguratorMainMainboxRight>
-                    <KonfiguratorWyjazduComp dataPrzyjazdu={dataPrzyjazdu} dataWyjazdu={dataWyjazdu} standardHotelu={standardHotelu} standardTransportu={standardTransportu} liczbaOpiekunow={liczbaOpiekunow} liczbaUczestnikow={liczbaUczestnikow} tripId={tripId} miejsceStartowe={miejsceStartowe} computedPrice={tripPrice + insurancePrice} computingPrice={computingPrice} miejsceDocelowe={miejsceDocelowe} changeActivity={changeActivity} checkOut={timeToMinutes(wybranyHotel?.checkOut) || 720} changeStartHour={changeStartHour} deleteActivity={deleteActivity} startModifyingAct={startModifyingAct} setActivityPanelOpened={setActivityPanelOpened} onAttractionTimeChange={changeActivityTime} swapActivities={swapActivities} onTransportChange={changeChosenTransport} timeSchedule={timeSchedule} routeSchedule={routeSchedule} chosenTransportSchedule={chosenTransportSchedule} loading={konfiguratorLoading} activitiesSchedule={activitiesSchedule} liczbaDni={liczbaDni} key={`schedule-${liczbaDni}-${konfiguratorLoading}-${timeSchedule}`} wybranyDzien={wybranyDzien} setWybranyDzien={setWybranyDzien} addActivity={addActivity} />
+
+                    <KonfiguratorWyjazduComp handleSaveClick={handleSaveClick} hasPendingAutoSave={hasPendingAutoSave} dataPrzyjazdu={dataPrzyjazdu} dataWyjazdu={dataWyjazdu} standardHotelu={standardHotelu} standardTransportu={standardTransportu} liczbaOpiekunow={liczbaOpiekunow} liczbaUczestnikow={liczbaUczestnikow} tripId={tripId} miejsceStartowe={miejsceStartowe} computedPrice={tripPrice + insurancePrice} computingPrice={computingPrice} miejsceDocelowe={miejsceDocelowe} changeActivity={changeActivity} checkOut={timeToMinutes(wybranyHotel?.checkOut) || 720} changeStartHour={changeStartHour} deleteActivity={deleteActivity} startModifyingAct={startModifyingAct} setActivityPanelOpened={setActivityPanelOpened} onAttractionTimeChange={changeActivityTime} swapActivities={swapActivities} onTransportChange={changeChosenTransport} timeSchedule={timeSchedule} routeSchedule={routeSchedule} chosenTransportSchedule={chosenTransportSchedule} loading={konfiguratorLoading} activitiesSchedule={activitiesSchedule} liczbaDni={liczbaDni} key={`schedule-${liczbaDni}-${konfiguratorLoading}-${timeSchedule}`} wybranyDzien={wybranyDzien} setWybranyDzien={setWybranyDzien} addActivity={addActivity} />
                     {activityPanelOpened &&
                         <AddAttractionWrapper>
                             <AddActivityPanelContainer>

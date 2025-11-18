@@ -68,16 +68,23 @@ export const RouteMap = ({ schedule }) => {
   const [points, setPoints] = useState([]);
 
   useEffect(() => {
-    if (schedule && schedule.length > 0) {
-      const pts = schedule.map(item => ({
-        lat: item.lokalizacja.lat,
-        lng: item.lokalizacja.lng
-      }));
+    if (Array.isArray(schedule) && schedule.length > 0) {
+      const pts = schedule
+        .map((item) => {
+          const lat = item?.lokalizacja?.lat;
+          const lng = item?.lokalizacja?.lng;
+
+          return {
+            lat: Number.isFinite(Number(lat)) ? Number(lat) : 52,
+            lng: Number.isFinite(Number(lng)) ? Number(lng) : 16,
+          };
+        });
       setPoints(pts);
     } else {
       setPoints([]);
     }
   }, [schedule]);
+
 
   if (!points.length) {
     return <Loader />;

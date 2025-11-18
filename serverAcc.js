@@ -277,6 +277,8 @@ const TripPlanSchema = new mongoose.Schema(
 
         activitiesSchedule: { type: [DaySchema], default: [] },
         photoLink: { type: String, default: null },
+
+        public: { type: Boolean, default: true },
     },
     { timestamps: true, versionKey: false }
 );
@@ -431,6 +433,7 @@ async function fetchUnsplashPhotoLinkForDestination(
 }
 
 // ===================== ENDPOINTY TRIP PLANS =====================
+// ===================== GET /download/trip-plan =====================
 // GET /download/trip-plan?tripId=<ObjectId>
 app.get("/download/trip-plan", requireAuth, async (req, res) => {
     try {
@@ -440,7 +443,6 @@ app.get("/download/trip-plan", requireAuth, async (req, res) => {
             return res.status(400).json({ error: "InvalidObjectId", which: "tripId" });
         }
 
-        // Pobieramy tylko potrzebne pola + upewniamy się, że user jest autorem
         const doc = await TripPlan.findOne({
             _id: new mongoose.Types.ObjectId(tripId),
             authors: req.user._id,
@@ -452,12 +454,8 @@ app.get("/download/trip-plan", requireAuth, async (req, res) => {
             return res.status(404).json({ error: "NotFound" });
         }
 
-        // U Ciebie istnieje helper `unpackDays`; jeśli jest w tym module – użyj bezpośrednio:
-        // const activitiesAoA = unpackDays(doc.activitiesSchedule);
-        //
-        // Jeżeli piszesz endpoint w osobnym pliku bez importu helpera, możesz rozpakować defensywnie:
         const activitiesAoA = Array.isArray(doc.activitiesSchedule)
-            ? doc.activitiesSchedule.map(d => Array.isArray(d?.activities) ? d.activities : [])
+            ? doc.activitiesSchedule.map((d) => (Array.isArray(d?.activities) ? d.activities : []))
             : [];
 
         res.status(200).json({
@@ -473,6 +471,7 @@ app.get("/download/trip-plan", requireAuth, async (req, res) => {
         res.status(500).json({ error: "ServerError" });
     }
 });
+
 
 /**
  * POST /api/trip-plans
@@ -491,14 +490,27 @@ app.post("/api/trip-plans", async (req, res) => {
             liczbaUczestnikow,
             liczbaOpiekunow,
             computedPrice,
+            public: publicFromClient, // <-- NOWE
         } = req.body || {};
 
         if (!req.user?._id) {
             return res.status(401).json({ error: "Unauthorized", message: "Musisz być zalogowany." });
         }
 
-        if (!Array.isArray(activitiesSchedule)) {
-            return res.status(400).json({ error: "BadPayload", message: "activitiesSchedule musi być tablicą tablic." });
+        // activitiesSchedule – opcjonalne
+        let packedSchedule;
+        if (typeof activitiesSchedule !== "undefined") {
+            if (!Array.isArray(activitiesSchedule)) {
+                return res
+                    .status(400)
+                    .json({ error: "BadPayload", message: "activitiesSchedule musi być tablicą tablic." });
+            }
+            if (!activitiesSchedule.every(Array.isArray)) {
+                return res
+                    .status(400)
+                    .json({ error: "BadPayload", message: "Każdy dzień w activitiesSchedule musi być tablicą." });
+            }
+            packedSchedule = packDays(activitiesSchedule);
         }
 
         const destVal = validatePlace(miejsceDocelowe, { fieldName: "miejsceDocelowe" });
@@ -513,10 +525,14 @@ app.post("/api/trip-plans", async (req, res) => {
         const trStd = clampInt(standardTransportu, 0, 2);
         const hoStd = clampInt(standardHotelu, 0, 3);
         if (trStd === null) {
-            return res.status(400).json({ error: "BadPayload", message: "standardTransportu musi być liczbą całkowitą 0–2." });
+            return res
+                .status(400)
+                .json({ error: "BadPayload", message: "standardTransportu musi być liczbą całkowitą 0–2." });
         }
         if (hoStd === null) {
-            return res.status(400).json({ error: "BadPayload", message: "standardHotelu musi być liczbą całkowitą 0–3." });
+            return res
+                .status(400)
+                .json({ error: "BadPayload", message: "standardHotelu musi być liczbą całkowitą 0–3." });
         }
 
         const pv = validateParticipants(liczbaUczestnikow, liczbaOpiekunow);
@@ -524,16 +540,34 @@ app.post("/api/trip-plans", async (req, res) => {
             return res.status(400).json({ error: "BadPayload", message: pv.message });
         }
 
+        // Cena
         const clientPrice = Number(computedPrice);
-        const serverPrice = computePriceFromAoA(activitiesSchedule);
-        const priceToSave = Number.isFinite(clientPrice) && clientPrice >= 0 ? clientPrice : serverPrice;
-        if (Number.isFinite(clientPrice) && clientPrice !== serverPrice) {
-            console.warn("[PRICE MISMATCH] client:", clientPrice, "server:", serverPrice);
+        const hasClientPrice = Number.isFinite(clientPrice) && clientPrice >= 0;
+
+        let serverPrice = null;
+        if (typeof activitiesSchedule !== "undefined") {
+            serverPrice = computePriceFromAoA(activitiesSchedule);
+        }
+
+        let priceToSave;
+        if (hasClientPrice) {
+            priceToSave = clientPrice;
+            if (serverPrice != null && clientPrice !== serverPrice) {
+                console.warn("[PRICE MISMATCH] client:", clientPrice, "server:", serverPrice);
+            }
+        } else {
+            priceToSave = serverPrice != null ? serverPrice : undefined;
         }
 
         const photoLink = await fetchUnsplashPhotoLinkForDestination(miejsceDocelowe.nazwa);
 
-        const created = await TripPlan.create({
+        // public: domyślnie true, ale jeśli klient prześle false → nadpisujemy
+        let publicValue;
+        if (typeof publicFromClient === "boolean") {
+            publicValue = publicFromClient;
+        }
+
+        const createDoc = {
             authors: [req.user._id],
             miejsceDocelowe,
             miejsceStartowe,
@@ -543,28 +577,20 @@ app.post("/api/trip-plans", async (req, res) => {
             standardHotelu: hoStd,
             liczbaUczestnikow: pv.u,
             liczbaOpiekunow: pv.o,
-            activitiesSchedule: packDays(activitiesSchedule),
             computedPrice: priceToSave,
             photoLink: photoLink || null,
-        });
+        };
 
-        return res.status(201).json({
-            _id: created._id,
-            createdAt: created.createdAt,
-            updatedAt: created.updatedAt,
-            authors: created.authors,
-            miejsceDocelowe: created.miejsceDocelowe,
-            miejsceStartowe: created.miejsceStartowe,
-            dataPrzyjazdu: created.dataPrzyjazdu,
-            dataWyjazdu: created.dataWyjazdu,
-            standardTransportu: created.standardTransportu,
-            standardHotelu: created.standardHotelu,
-            liczbaUczestnikow: created.liczbaUczestnikow,
-            liczbaOpiekunow: created.liczbaOpiekunow,
-            activitiesSchedule: unpackDays(created.activitiesSchedule),
-            computedPrice: num(created.computedPrice),
-            photoLink: created.photoLink,
-        });
+        if (typeof packedSchedule !== "undefined") {
+            createDoc.activitiesSchedule = packedSchedule;
+        }
+        if (typeof publicValue === "boolean") {
+            createDoc.public = publicValue;
+        }
+
+        const created = await TripPlan.create(createDoc);
+
+        return res.status(201).json({ _id: created._id });
     } catch (err) {
         if (err?.name === "ValidationError") {
             return res.status(400).json({ error: "ValidationError", details: err.errors });
@@ -583,7 +609,8 @@ app.get("/api/trip-plans", async (_req, res) => {
         const docs = await TripPlan.find().sort({ createdAt: -1 }).lean();
         const out = docs.map((d) => {
             const aoa = unpackDays(d.activitiesSchedule);
-            const price = typeof d.computedPrice === "number" ? d.computedPrice : computePriceFromAoA(aoa);
+            const price =
+                typeof d.computedPrice === "number" ? d.computedPrice : computePriceFromAoA(aoa);
             return {
                 _id: d._id,
                 createdAt: d.createdAt,
@@ -600,6 +627,7 @@ app.get("/api/trip-plans", async (_req, res) => {
                 activitiesSchedule: aoa,
                 computedPrice: num(price),
                 photoLink: d.photoLink ?? null,
+                public: typeof d.public === "boolean" ? d.public : true,
             };
         });
         return res.json(out);
@@ -608,6 +636,7 @@ app.get("/api/trip-plans", async (_req, res) => {
         return res.status(500).json({ error: "ServerError" });
     }
 });
+
 
 /**
  * GET /api/trip-plans/:id
@@ -624,7 +653,8 @@ app.get("/api/trip-plans/:id", async (req, res) => {
         if (!doc) return res.status(404).json({ error: "NotFound" });
 
         const aoa = unpackDays(doc.activitiesSchedule);
-        const price = typeof doc.computedPrice === "number" ? doc.computedPrice : computePriceFromAoA(aoa);
+        const price =
+            typeof doc.computedPrice === "number" ? doc.computedPrice : computePriceFromAoA(aoa);
 
         return res.json({
             _id: doc._id,
@@ -642,12 +672,14 @@ app.get("/api/trip-plans/:id", async (req, res) => {
             activitiesSchedule: aoa,
             computedPrice: num(price),
             photoLink: doc.photoLink ?? null,
+            public: typeof doc.public === "boolean" ? doc.public : true,
         });
     } catch (err) {
         console.error("GET /api/trip-plans/:id error:", err);
         return res.status(500).json({ error: "ServerError" });
     }
 });
+
 
 /**
  * DELETE /api/trip-plans/:id
@@ -674,12 +706,22 @@ app.delete("/api/trip-plans/:id", async (req, res) => {
  * GET /api/trip-plans/by-author/:userId
  * Lista planów konkretnego autora (paginacja) – pełne pola.
  */
-app.get("/api/trip-plans/by-author/:userId", async (req, res) => {
+// Wersja z autoryzacją – tylko właściciel może zobaczyć swoje plany
+app.get("/api/trip-plans/by-author/:userId", requireAuth, async (req, res) => {
     try {
         const { userId } = req.params;
 
+        // Walidacja ObjectId
         if (!mongoose.Types.ObjectId.isValid(userId)) {
             return res.status(400).json({ error: "InvalidObjectId" });
+        }
+
+        // Sprawdzenie, czy zalogowany user to ten sam, którego plany pobieramy
+        if (!req.user?._id) {
+            return res.status(401).json({ error: "Unauthenticated" });
+        }
+        if (String(req.user._id) !== String(userId)) {
+            return res.status(403).json({ error: "Forbidden" });
         }
 
         const page = Math.max(parseInt(req.query.page ?? "1", 10) || 1, 1);
@@ -696,7 +738,9 @@ app.get("/api/trip-plans/by-author/:userId", async (req, res) => {
 
         const out = items.map((d) => {
             const aoa = unpackDays(d.activitiesSchedule);
-            const price = typeof d.computedPrice === "number" ? d.computedPrice : computePriceFromAoA(aoa);
+            const price =
+                typeof d.computedPrice === "number" ? d.computedPrice : computePriceFromAoA(aoa);
+
             return {
                 _id: d._id,
                 createdAt: d.createdAt,
@@ -713,6 +757,7 @@ app.get("/api/trip-plans/by-author/:userId", async (req, res) => {
                 activitiesSchedule: aoa,
                 computedPrice: num(price),
                 photoLink: d.photoLink ?? null,
+                public: typeof d.public === "boolean" ? d.public : true,
             };
         });
 
@@ -728,6 +773,70 @@ app.get("/api/trip-plans/by-author/:userId", async (req, res) => {
         return res.status(500).json({ error: "ServerError" });
     }
 });
+// Publiczna lista planów konkretnego autora – tylko te z public: true
+app.get("/api/trip-plans/public/by-author/:userId", async (req, res) => {
+    try {
+        const { userId } = req.params;
+
+        if (!mongoose.Types.ObjectId.isValid(userId)) {
+            return res.status(400).json({ error: "InvalidObjectId" });
+        }
+
+        const page = Math.max(parseInt(req.query.page ?? "1", 10) || 1, 1);
+        const limitRaw = parseInt(req.query.limit ?? "50", 10) || 50;
+        const limit = Math.min(Math.max(limitRaw, 1), 100);
+        const skip = (page - 1) * limit;
+
+        const query = {
+            authors: new mongoose.Types.ObjectId(userId),
+            public: true,
+        };
+
+        const [items, total] = await Promise.all([
+            TripPlan.find(query).sort({ createdAt: -1 }).skip(skip).limit(limit).lean(),
+            TripPlan.countDocuments(query),
+        ]);
+
+        const out = items.map((d) => {
+            const aoa = unpackDays(d.activitiesSchedule);
+            const price =
+                typeof d.computedPrice === "number" ? d.computedPrice : computePriceFromAoA(aoa);
+
+            return {
+                _id: d._id,
+                createdAt: d.createdAt,
+                updatedAt: d.updatedAt,
+                authors: d.authors,
+                miejsceDocelowe: d.miejsceDocelowe,
+                miejsceStartowe: d.miejsceStartowe,
+                dataPrzyjazdu: d.dataPrzyjazdu,
+                dataWyjazdu: d.dataWyjazdu,
+                standardTransportu: d.standardTransportu,
+                standardHotelu: d.standardHotelu,
+                liczbaUczestnikow: d.liczbaUczestnikow,
+                liczbaOpiekunow: d.liczbaOpiekunow,
+                activitiesSchedule: aoa,
+                computedPrice: num(price),
+                photoLink: d.photoLink ?? null,
+                public: typeof d.public === "boolean" ? d.public : true,
+            };
+        });
+
+        return res.json({
+            total,
+            page,
+            limit,
+            count: out.length,
+            items: out,
+        });
+    } catch (err) {
+        console.error("GET /api/trip-plans/public/by-author/:userId error:", err);
+        return res.status(500).json({ error: "ServerError" });
+    }
+});
+
+
+
 
 /**
  * GET /api/trip-plans/:tripId/by-author/:userId
@@ -754,7 +863,8 @@ app.get("/api/trip-plans/:tripId/by-author/:userId", async (req, res) => {
         }
 
         const aoa = unpackDays(doc.activitiesSchedule);
-        const price = typeof doc.computedPrice === "number" ? doc.computedPrice : computePriceFromAoA(aoa);
+        const price =
+            typeof doc.computedPrice === "number" ? doc.computedPrice : computePriceFromAoA(aoa);
 
         return res.json({
             _id: doc._id,
@@ -772,6 +882,7 @@ app.get("/api/trip-plans/:tripId/by-author/:userId", async (req, res) => {
             activitiesSchedule: aoa,
             computedPrice: num(price),
             photoLink: doc.photoLink ?? null,
+            public: typeof doc.public === "boolean" ? doc.public : true,
         });
     } catch (err) {
         console.error("GET /api/trip-plans/:tripId/by-author/:userId error:", err);
@@ -779,27 +890,24 @@ app.get("/api/trip-plans/:tripId/by-author/:userId", async (req, res) => {
     }
 });
 
+
 /**
  * PUT /api/trip-plans/:tripId/by-author/:userId
  * Aktualizuje plan, walidując nowe pola (w tym uczestników/opiekunów).
  */
-app.put("/api/trip-plans/:tripId/by-author/:userId", requireAuth, async (req, res) => {
+// Wymaga middleware’u, który ustawia req.user (np. requireAuth)
+// ===================== PUT /api/trip-plans/:tripId =====================
+app.put("/api/trip-plans/:tripId", requireAuth, async (req, res) => {
     try {
-        const { tripId, userId } = req.params;
+        const { tripId } = req.params;
 
         if (!mongoose.Types.ObjectId.isValid(tripId)) {
             return res.status(400).json({ error: "InvalidObjectId", which: "tripId" });
         }
-        if (!mongoose.Types.ObjectId.isValid(userId)) {
-            return res.status(400).json({ error: "InvalidObjectId", which: "userId" });
-        }
-        if (String(req.user._id) !== String(userId)) {
-            return res.status(403).json({ error: "Forbidden", message: "Mismatched user." });
-        }
 
         const plan = await TripPlan.findOne({
             _id: new mongoose.Types.ObjectId(tripId),
-            authors: new mongoose.Types.ObjectId(userId),
+            authors: new mongoose.Types.ObjectId(req.user._id),
         });
 
         if (!plan) {
@@ -817,28 +925,71 @@ app.put("/api/trip-plans/:tripId/by-author/:userId", requireAuth, async (req, re
             standardHotelu,
             liczbaUczestnikow,
             liczbaOpiekunow,
+            public: publicFromClient, // <-- NOWE
         } = req.body || {};
 
         const updates = {};
         let aoaForPrice = null;
 
-        if (Array.isArray(activitiesSchedule)) {
+        const isAoA = (x) => Array.isArray(x) && x.every(Array.isArray);
+        const samePlace = (a, b) => {
+            if (!a || !b) return false;
+            const n1 = (a.nazwa || "").trim().toLowerCase();
+            const n2 = (b.nazwa || "").trim().toLowerCase();
+            const la = Number(a?.location?.lat),
+                lb = Number(b?.location?.lat);
+            const ga = Number(a?.location?.lng),
+                gb = Number(b?.location?.lng);
+            const sameName = n1 === n2 && n1.length > 0;
+            const sameCoords =
+                Number.isFinite(la) &&
+                Number.isFinite(lb) &&
+                Number.isFinite(ga) &&
+                Number.isFinite(gb) &&
+                la === lb &&
+                ga === gb;
+            return sameName && sameCoords;
+        };
+        const makeSlug = (s) =>
+            String(s || "")
+                .normalize("NFKD")
+                .replace(/[\u0300-\u036f]/g, "")
+                .replace(/[^a-zA-Z0-9\s-]/g, "")
+                .trim()
+                .replace(/\s+/g, "-")
+                .toLowerCase()
+                .slice(0, 80);
+
+        // activitiesSchedule
+        if (Object.prototype.hasOwnProperty.call(req.body, "activitiesSchedule")) {
+            if (!isAoA(activitiesSchedule)) {
+                return res.status(400).json({
+                    error: "BadPayload",
+                    message: "activitiesSchedule musi być tablicą tablic (dni).",
+                });
+            }
             updates.activitiesSchedule = packDays(activitiesSchedule);
             aoaForPrice = activitiesSchedule;
         }
 
-        if (miejsceDocelowe !== undefined) {
+        // miejsceDocelowe
+        let destinationChanged = false;
+        if (Object.prototype.hasOwnProperty.call(req.body, "miejsceDocelowe")) {
             const v = validatePlace(miejsceDocelowe, { fieldName: "miejsceDocelowe" });
             if (!v.ok) return res.status(400).json({ error: "BadPayload", message: v.message });
+
+            destinationChanged = !samePlace(plan.miejsceDocelowe, miejsceDocelowe);
             updates.miejsceDocelowe = miejsceDocelowe;
         }
 
-        if (miejsceStartowe !== undefined) {
+        // miejsceStartowe
+        if (Object.prototype.hasOwnProperty.call(req.body, "miejsceStartowe")) {
             const v = validatePlace(miejsceStartowe, { fieldName: "miejsceStartowe" });
             if (!v.ok) return res.status(400).json({ error: "BadPayload", message: v.message });
             updates.miejsceStartowe = miejsceStartowe;
         }
 
+        // daty
         const hasArr = Object.prototype.hasOwnProperty.call(req.body, "dataPrzyjazdu");
         const hasDep = Object.prototype.hasOwnProperty.call(req.body, "dataWyjazdu");
         if (hasArr || hasDep) {
@@ -850,41 +1001,49 @@ app.put("/api/trip-plans/:tripId/by-author/:userId", requireAuth, async (req, re
             updates.dataWyjazdu = dv.b;
         }
 
+        // standardTransportu
         if (Object.prototype.hasOwnProperty.call(req.body, "standardTransportu")) {
             const trStd = clampInt(standardTransportu, 0, 2);
             if (trStd === null) {
-                return res
-                    .status(400)
-                    .json({ error: "BadPayload", message: "standardTransportu musi być liczbą całkowitą 0–2." });
+                return res.status(400).json({
+                    error: "BadPayload",
+                    message: "standardTransportu musi być liczbą całkowitą 0–2.",
+                });
             }
             updates.standardTransportu = trStd;
         }
 
+        // standardHotelu
         if (Object.prototype.hasOwnProperty.call(req.body, "standardHotelu")) {
             const hoStd = clampInt(standardHotelu, 0, 3);
             if (hoStd === null) {
-                return res
-                    .status(400)
-                    .json({ error: "BadPayload", message: "standardHotelu musi być liczbą całkowitą 0–3." });
+                return res.status(400).json({
+                    error: "BadPayload",
+                    message: "standardHotelu musi być liczbą całkowitą 0–3.",
+                });
             }
             updates.standardHotelu = hoStd;
         }
 
+        // uczestnicy / opiekunowie
         if (
             Object.prototype.hasOwnProperty.call(req.body, "liczbaUczestnikow") ||
             Object.prototype.hasOwnProperty.call(req.body, "liczbaOpiekunow")
         ) {
             const pv = validateParticipants(
-                Object.prototype.hasOwnProperty.call(req.body, "liczbaUczestnikow") ? liczbaUczestnikow : plan.liczbaUczestnikow,
-                Object.prototype.hasOwnProperty.call(req.body, "liczbaOpiekunow") ? liczbaOpiekunow : plan.liczbaOpiekunow
+                Object.prototype.hasOwnProperty.call(req.body, "liczbaUczestnikow")
+                    ? liczbaUczestnikow
+                    : plan.liczbaUczestnikow,
+                Object.prototype.hasOwnProperty.call(req.body, "liczbaOpiekunow")
+                    ? liczbaOpiekunow
+                    : plan.liczbaOpiekunow
             );
-            if (!pv.ok) {
-                return res.status(400).json({ error: "BadPayload", message: pv.message });
-            }
+            if (!pv.ok) return res.status(400).json({ error: "BadPayload", message: pv.message });
             updates.liczbaUczestnikow = pv.u;
             updates.liczbaOpiekunow = pv.o;
         }
 
+        // computedPrice
         if (Object.prototype.hasOwnProperty.call(req.body, "computedPrice")) {
             const clientPrice = Number(computedPrice);
             if (Number.isFinite(clientPrice) && clientPrice >= 0) {
@@ -896,18 +1055,58 @@ app.put("/api/trip-plans/:tripId/by-author/:userId", requireAuth, async (req, re
             updates.computedPrice = computePriceFromAoA(aoaForPrice);
         }
 
-        if (!Object.keys(updates).length) {
-            return res.status(400).json({ error: "NoValidFields", message: "Brak pól do aktualizacji." });
+        // public
+        if (Object.prototype.hasOwnProperty.call(req.body, "public")) {
+            if (typeof publicFromClient === "boolean") {
+                updates.public = publicFromClient;
+            } else {
+                return res.status(400).json({
+                    error: "BadPayload",
+                    message: "Pole 'public' musi być typu boolean (true/false).",
+                });
+            }
         }
 
-        const updated = await TripPlan.findByIdAndUpdate(
-            plan._id,
-            { $set: updates },
-            { new: true, runValidators: true }
-        ).lean();
+        // jeżeli zmieniło się miejsce docelowe → odśwież zdjęcie i slug
+        if (destinationChanged && miejsceDocelowe?.nazwa) {
+            try {
+                const photoLink = await fetchUnsplashPhotoLinkForDestination(
+                    miejsceDocelowe.nazwa
+                );
+                if (photoLink) {
+                    updates.photoLink = photoLink;
+                }
+            } catch (e) {
+                console.warn(
+                    "Nie udało się pobrać photoLink dla nowego miejsca docelowego:",
+                    e?.message || e
+                );
+            }
 
-        const aoa = unpackDays(updated.activitiesSchedule);
-        const priceOut = typeof updated.computedPrice === "number" ? updated.computedPrice : computePriceFromAoA(aoa);
+            const slug = makeSlug(miejsceDocelowe.nazwa);
+            updates.urlSlug = slug;
+            // optionalnie, jeśli trzymasz pełny URL:
+            // updates.publicUrl = `/plany/${slug}-${plan._id.toString()}`;
+        }
+
+        if (!Object.keys(updates).length) {
+            return res
+                .status(400)
+                .json({ error: "NoValidFields", message: "Brak pól do aktualizacji." });
+        }
+
+        const updated = await TripPlan.findByIdAndUpdate(plan._id, { $set: updates }, {
+            new: true,
+            runValidators: true,
+        }).lean();
+
+        const aoa = updated.activitiesSchedule ? unpackDays(updated.activitiesSchedule) : null;
+        const priceOut =
+            typeof updated.computedPrice === "number"
+                ? updated.computedPrice
+                : aoa
+                    ? computePriceFromAoA(aoa)
+                    : null;
 
         return res.json({
             _id: updated._id,
@@ -923,14 +1122,19 @@ app.put("/api/trip-plans/:tripId/by-author/:userId", requireAuth, async (req, re
             liczbaUczestnikow: updated.liczbaUczestnikow,
             liczbaOpiekunow: updated.liczbaOpiekunow,
             activitiesSchedule: aoa,
-            computedPrice: num(priceOut),
+            computedPrice: priceOut != null ? num(priceOut) : null,
             photoLink: updated.photoLink ?? null,
+            public: typeof updated.public === "boolean" ? updated.public : true,
+            urlSlug: updated.urlSlug ?? undefined,
+            publicUrl: updated.publicUrl ?? undefined,
         });
     } catch (err) {
-        console.error("PUT /api/trip-plans/:tripId/by-author/:userId error:", err);
+        console.error("PUT /api/trip-plans/:tripId error:", err);
         return res.status(500).json({ error: "ServerError" });
     }
 });
+
+
 
 // ===================== POMOCNICZY ENDPOINT USER (bez zmian) =====================
 

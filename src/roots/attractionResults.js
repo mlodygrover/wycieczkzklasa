@@ -699,7 +699,7 @@ export const AttractionResultFull = ({
                         {actIdx == 0 && <IncreaseButton onClick={() => setLocalStartTime((localStartTime - 10) % 1440)}><img src="../icons/minus-white.svg" height={'15px'} /></IncreaseButton>}
                         <div className="activityTime">
                             <Clock size={16} />
-                            {isNaN(minutesToTime(localStartTime)) ? minutesToTime(localStartTime) : <Loader2 />}
+                            {isNaN(minutesToTime(localStartTime)) ? minutesToTime(localStartTime % 1440) : <Loader2 />}
                         </div>
 
                         {actIdx == 0 && <IncreaseButton onClick={() => setLocalStartTime(localStartTime + 10 < checkOut ? (localStartTime + 10) % 1440 : localStartTime)} > <img src="../icons/plus-white.svg" height="15px" alt="Zwiększ" /> </IncreaseButton>}

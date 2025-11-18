@@ -517,9 +517,6 @@ export const PreConfigureSketch = ({
 }) => {
     const [selectedMenu, setSelectedMenu] = useState(0);
     const [showMapModal, setShowMapModal] = useState(null);
-    useEffect(()=>{
-        console.log('Miejsce docelowe changed:', miejsceDocelowe);
-    }, [miejsceDocelowe])
     return (
         <MainContainer>
             <ContentWrapper>
