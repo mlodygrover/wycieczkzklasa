@@ -727,7 +727,6 @@ const InputPairBMainbox = styled.div`
 const KonfiguratorPhotoWithSettings = styled.div`
     margin-top: 100px;
     width: 98%;
-    max-width: 1800px;
     background-color: red;
     height: 600px;
     max-height: 50vh;

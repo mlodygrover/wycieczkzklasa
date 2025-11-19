@@ -176,6 +176,14 @@ function App() {
               path="/konfigurator"
               element={
                 <KonfiguratorLoader/>
+                
+              }
+            />
+            <Route
+              path="/konfigurator/old"
+              element={
+                <KreatorWyjazdu/>
+                
               }
             />
             <Route path="*" element={<Navigate to="/" replace />} />
