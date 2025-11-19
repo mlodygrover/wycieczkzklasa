@@ -28,6 +28,8 @@ import { time } from "framer-motion";
 // === user store (global auth) ===
 import useUserStore, { fetchMe } from "./usercontent";
 import { data } from "react-router-dom";
+import AttractionsMap from "./attractionMap";
+import { Bed, Calendar, CalendarDays, Edit, Edit2, Hotel, Moon, Rocket, TramFront, Users } from "lucide-react";
 
 const testResults = [
     { nazwa: "Poznań", region: "Wielkopolska", kraj: "Polska" },
@@ -177,53 +179,94 @@ const namesTransportTab = ["Transport zbiorowy", "Wynajęty autokar", "Własny"]
 const namesHotelsTab = ["Ośrodki kolonijne", "Hotele 2/3 gwiazdkowe", "Hotele premium", "Własny"]
 const KonfiguratorMainMainbox = styled.div`
     width: 100%;
-    min-height: 1000px;
+    /* usuń min-height, jeśli chcesz, żeby wysokość wynikała z prawej kolumny
+       (albo zostaw, jeśli minimum 1000px jest Ci potrzebne) */
+    /* min-height: 1000px; */
     display: flex;
     flex-direction: row;
-    aling-items: stretch;
+    align-items: stretch;          /* <=== poprawka */
     justify-content: flex-start;
     position: relative;
     margin-top: 20px;
+    border-top: 1px solid lightgray;
     @media screen and (max-width: 1000px){
         flex-direction: column;
     }
-`
+`;
+
 const KonfiguratorMainMainboxLeft = styled.div`
     width: 300px;
+    flex: 0 0 300px;
     border-right: 1px solid lightgray;
+
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    align-items: center;
+
+    /* NIE UŻYWAMY tu już min/max-height */
+    /* &.a { min-height: 1500px; } – usunięte */
+
     &.right{
+
+    padding-top: 10px;
         border-right: none;
         border-left: 1px solid lightgray;
     }
+
+    /* ważne: lewa kolumna ma stałą wysokość z JS, a nadmiar treści przewija się w .listBox */
+    overflow: hidden;
+
     .listBox {
         width: 100%;
+        flex: 1 1 auto;
+        min-height: 0;
+        overflow-y: auto;
         margin: 0 auto;
         display: flex;
         flex-direction: column;
         gap: 5px;
         align-items: center;
         justify-content: flex-start;
+        /* Firefox */
+        scrollbar-width: none;
+
+        /* Internet Explorer / stary Edge */
+        -ms-overflow-style: none;
+    }
+
+    /* Chrome, Safari, nowy Edge (webkit) */
+    .listBox::-webkit-scrollbar {
+        display: none;
     }
     .listBox--hidden {
         display: none;
     }
+
     .googleLogoDiv{
-        margin-top: 5px;
+        margin-top: 15px;
+        border-top: 1px solid #d4d4d4;
+        padding-top: 5px;
         width: 90%;
         display: flex;
         align-items: center;
+        font-weight: 600;
+        font-family: 'Inter';
+        font-size: 22px;
+        &.b{
+            color: #5E5E5E;
+            border-bottom: 1px solid  #d0d0d0;
+        }
     }
-    display: flex;
-    flex-direction: column;
-    justify-content: flex-start;
-    align-items: center;
-    overflow-y: auto;
+
     @media screen and (max-width: 1000px){
         width: 100%;
         &.a{
             display: none;
         }
     }
+
     .mainboxLeftTitle{
         width: 90%;
         display: flex;
@@ -233,6 +276,7 @@ const KonfiguratorMainMainboxLeft = styled.div`
         font-size: 18px;
         font-weight: 400;
     }  
+
     .mainboxLeftInput{
         width: 90%;
         height: 35px;
@@ -244,6 +288,7 @@ const KonfiguratorMainMainboxLeft = styled.div`
         justify-content: flex-start;
         padding-left: 10px;
         box-sizing: border-box;
+        flex-shrink: 0;
         input{
             box-sizing: border-box;
             flex: 1;
@@ -264,6 +309,8 @@ const KonfiguratorMainMainboxLeft = styled.div`
         justify-content: flex-start;
         margin: 5px auto;
         gap: 5px;
+
+        flex-shrink: 0;
         .mainboxLeftFilterHeader{
             display: flex;
             align-items: center;
@@ -469,7 +516,9 @@ const KonfiguratorMainMainboxRight = styled.div`
     display: flex;
     align-items: center;
     justify-content: center;
-`
+    align-self: stretch;      /* <=== dopilnuj rozciągnięcia */
+`;
+
 export const KonfiguratorRadioButton = styled.div`
     width: 45px;
     height: 45px;
@@ -487,32 +536,38 @@ export const KonfiguratorRadioButton = styled.div`
     }
 `
 const SettingsButton = styled.div`
-    width: 200px;
+    flex: 1;
     height: 50px;
     position: relative;
     cursor: pointer;
-    border-bottom: 3px solid lightgray;
+    border-bottom: 3px solid white;
     transition: 0.3s ease-in-out;
     display: flex;
     align-items: center;
     justify-content: center;
     text-align: left;
-    font-size: 12px;
+    font-size: 15px;
     padding: 2px 5px;
-    font-weight: 300;
+    font-weight: 600;
     gap: 2px;
+    color: white;
+    svg{
+        flex-shrink: 0;
+    }
     &.chosen{
         border-bottom: 3px solid #008d73ff;
     }
     &:hover{
         border-bottom: 3px solid #008d73ff;
     }
+    @media screen and (max-width: 1400px){
+        font-size: 12px;
+       
+    }
     @media screen and (max-width: 1100px){
-        border-bottom: none;
-        border-left: 2px solid lightgray;
-        &:hover{
-            border-bottom: none;
-            border-left: 2px solid #008d73ff;
+     svg {
+            width: 20px;
+            height: 20px;
         }
     }
     .settingsPopup{
@@ -537,42 +592,16 @@ const SettingsButton = styled.div`
 const KonfiguratorMainSettings = styled.div`
     width: 100%;
     min-height: 80px;
-    background-color: #f6f6f6;
-    border-bottom: 1px solid lightgray;
     display: flex;
     flex-direction: row;
     align-items: center;
     justify-content: center;
-    gap: 8px;
     flex-wrap: wrap;
     transition: 0.3s ease-in-out;
-    .iconEditBox{
-        width: 45px;
-        height: 45px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
+    @media screen and (max-width: 1000px){
+        display: none;
     }
-    @media screen and (max-width: 1200px){
-        flex-direction: column;
-        justify-content: flex-start;
-        min-height: 0;
-        &.opened{
-            height: 400px;
-        }
-        &.closed{
-            height: 45px;
-            overflow: hidden;
-        }
-        .iconEditBox{
-            width: 100%;
-            transition: 0.3s ease-in-out;
-            &:hover{
-                background-color: #e0e0e0;
-                cursor: pointer;
-            }
-        }
-    }
+
 `
 
 const AddAttractionWrapper = styled.div`
@@ -695,7 +724,75 @@ const InputPairBMainbox = styled.div`
         font-size: 12px;
     }
 `
+const KonfiguratorPhotoWithSettings = styled.div`
+    margin-top: 100px;
+    width: 98%;
+    max-width: 1800px;
+    background-color: red;
+    height: 600px;
+    max-height: 50vh;
+    border-radius: 50px;
+    background-size: cover;        /* odpowiednik object-fit: cover */
+    background-position: center;   /* wycentrowanie */
+    background-repeat: no-repeat;  /* bez powtarzania */
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: flex-end;
+    padding: 20px;
+    box-sizing: border-box;
+    &::before {
+        border-radius: inherit;
+        content: '';
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(180deg, transparent 50%, rgba(0, 0, 0, 0.56) 90%);
+    }
+    .wyjazdNazwa {
+        color: white;
+        display: flex;
+        align-items: center;
+        justify-content: flex-start;
+        text-align: left;
+        font-size: 52px;
+        font-weight: 900;
+        z-index: 3;
+        gap: 10px;
+        text-shadow: 0 2px 14px rgba(0, 0, 0, 1);
+        max-width: 100%;
+        svg{
+            flex-shrink: 0;
+        }
+        @media screen and (max-width: 600px){
+            font-size: 25px;
+            svg{
+                width: 20px;
+            }
+        }
+    }
 
+    .wyjazdNazwaInput {
+        display: inline-block;
+        max-width: 100%;
+        white-space: normal;
+        font: inherit;
+        color: white;
+        outline: none;
+        direction: ltr;
+        text-align: left;
+        svg{
+            flex-shrink: 0;
+        }
+       
+    }
+
+
+
+
+
+
+`
 const minimum = (a, b) => {
     if (a < b) return a;
     return b;
@@ -973,7 +1070,7 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
         }
         return "";
     });
-
+    const [nazwaWyjazdu, setNazwaWyjazdu] = useState("Wyjazd do Poznań")
     const [liczbaDni, setLiczbaDni] = useState(0)
     // ===== EFEKTY: zapis do URL + regularny zapis do localStorage =====
 
@@ -2765,14 +2862,167 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
 
     const [filtersLeftOpened, setFiltersLeftOpened] = useState(false)
     const [chosenFilters, setChosenFilters] = useState([])
+    const mainRef = useRef(null);
+    const leftRef = useRef(null);
+    const centerRef = useRef(null); // KonfiguratorMainMainboxRight
+    const rightRef = useRef(null);  // prawa kolumna (KonfiguratorMainMainboxLeft z className="right")
+
+    const [leftHeight, setLeftHeight] = useState(1500);
+    useEffect(() => {
+        const updateHeights = () => {
+            if (!centerRef.current && !rightRef.current) return;
+
+            const centerH = centerRef.current?.scrollHeight || 0;
+            const rightH = rightRef.current?.scrollHeight || 0;
+
+            const otherColsHeight = Math.max(centerH, rightH);
+
+            // Minimalnie 1500, ale jeśli inne kolumny wyższe – dopasuj się do nich
+            const target = Math.max(1500, otherColsHeight || 0);
+
+            setLeftHeight(target);
+        };
+
+        updateHeights();
+        window.addEventListener("resize", updateHeights);
+
+        return () => window.removeEventListener("resize", updateHeights);
+    }, [
+        activitiesSchedule,
+        routeSchedule,
+        timeSchedule,
+        liczbaUczestnikow,
+        liczbaOpiekunow,
+        standardHotelu,
+        standardTransportu,
+        miejsceDocelowe,
+        miejsceStartowe,
+    ]);
+    const titleRef = useRef(null);
+
+    useEffect(() => {
+        // ustaw wartość początkową TYLKO raz (lub gdy zewnętrznie ją zmienisz)
+        if (titleRef.current && !titleRef.current.textContent) {
+            titleRef.current.textContent = nazwaWyjazdu;
+        }
+    }, []); // zależności puste – bez aktualizacji na każdy input
+
+
     return (
         <>
-            <TopKreatorSlider />
+            <KonfiguratorPhotoWithSettings style={tripId && photoWallpaper ? { backgroundImage: `url(${photoWallpaper})`, } : { backgroundImage: `url(${'https://images.unsplash.com/photo-1716481631637-e2d4fd2456e2?q=80&w=870&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D'})`, }}>
 
-            <KonfiguratorMainSettings ref={settingsRef} className={settingsOpened ? "opened" : "closed"}>
-                <div className="iconEditBox" onClick={() => setSettingsOpened(!settingsOpened)}>
-                    <img src="../icons/filter.svg" height={'60%'} />
+                <div className="wyjazdNazwa">
+                    <div
+                        className="wyjazdNazwaInput"
+                        contentEditable
+                        suppressContentEditableWarning
+                        ref={titleRef}
+                        onInput={(e) => {
+                            setNazwaWyjazdu(e.currentTarget.textContent ?? "");
+                        }}
+                    />
+                    <Edit2 size={40} />
                 </div>
+                <KonfiguratorMainSettings ref={settingsRef} className={settingsOpened ? "opened" : "closed"}>
+
+                    <SettingsButton onClick={() => { setMiejsceStartowePopupOpened(!miejsceStartowePopupOpened); setOffOthers(0) }} className={miejsceStartowePopupOpened ? "chosen" : ""}>
+                        <Rocket size={30} />
+                        Miejsce początkowe:<span>{miejsceStartowe ? miejsceStartowe.nazwa : "..."} </span>
+                        {miejsceStartowePopupOpened && <div className="settingsPopup" onClick={(e) => e.stopPropagation()} >
+                            <SearchBox value={miejsceStartoweSearching} onChange={setMiejsceStartoweSearching} results={miejsceStartoweResults} searchAction={submitMiejsceStartowe} disabled={miejsceStartowe} />
+                            {miejsceStartowe && <>
+                                <MapaBox key={`startowe-${miejsceStartowe.nazwa}`}>
+                                    <LeafletMap lat={miejsceStartowe?.location?.lat || 52.5333} lng={miejsceStartowe?.location?.lng || 16.9252} zoom={9} />
+                                </MapaBox>
+                                <MapaResultBox>
+                                    <PopupResult onClick={() => setMiejsceStartowe("")} onMouseEnter={() => setMiejsceStartoweHovering(true)} onMouseLeave={() => setMiejsceStartoweHovering(false)}>
+                                        <div className="popupResultTitle">
+                                            {miejsceStartowe.nazwa}
+                                        </div>
+                                        <div className="popupResultSubtitle">
+                                            {miejsceStartowe.wojewodztwo}, {miejsceStartowe.kraj}
+                                        </div>
+                                        <img
+                                            src={"../icons/swap.svg"}
+                                            width={'5%'}
+                                            style={{
+                                                position: 'absolute',
+                                                right: '10px',
+                                                top: '50%',
+                                                transform: 'translateY(-50%)'
+                                            }}
+                                        />
+                                    </PopupResult>
+                                    <div className={miejsceStartoweHovering ? "changeInfo hovered" : "changeInfo"}>
+                                        kliknij aby zmienić lokalizację
+                                    </div>
+                                </MapaResultBox>
+                            </>}
+                            {!miejsceStartowe &&
+                                <MapaBox>
+                                    <div className="brakMapy">
+                                        Wyszukaj lokalizacje w polu wyszukiwania
+                                        <img src="../icons/icon-location-gray.svg" width={'100px'} />
+                                    </div>
+                                </MapaBox>}
+                        </div>}
+                    </SettingsButton>
+
+                    <SettingsButton className={wyborDatyOpened ? "chosen" : ""} onClick={() => { setWyborDatyOpened(!wyborDatyOpened); setOffOthers(1) }}>
+                        <CalendarDays size={30} />
+                        {formatDate(dataPrzyjazdu || "")} - {formatDate(dataWyjazdu || "")}
+                        {wyborDatyOpened && <div className="settingsPopup" onClick={(e) => e.stopPropagation()} >
+                            <DataWybor dataStart={dataPrzyjazdu} dataEnd={dataWyjazdu} setDataEnd={setDataWyjazdu} setDataStart={setDataPrzyjazdu} />
+                        </div>}
+                    </SettingsButton>
+
+                    <SettingsButton className={wyborGosciOpened ? "chosen" : ""} onClick={() => { setWyborGosciOpened(!wyborGosciOpened); setOffOthers(2) }}>
+                        <Users size={30} />
+                        {liczbaUczestnikow} uczestników, {liczbaOpiekunow} opiekunów
+                        {wyborGosciOpened && <div className="settingsPopup" onClick={(e) => e.stopPropagation()} >
+                            Liczba uczestników
+                            <WyborUczestnikow uczestnicy={liczbaUczestnikow} setUczestnicy={setLiczbaUczestnikow} opiekunowie={liczbaOpiekunow} setOpiekunowie={setLiczbaOpiekunow} />
+                        </div>}
+                    </SettingsButton>
+
+                    <SettingsButton className={wyborStandardHoteluOpened ? "chosen" : ""} onClick={() => { setWyborStandardHoteluOpened(!wyborStandardHoteluOpened); setOffOthers(3) }}>
+                        <Moon size={30} />
+                        Nocleg: {standardHotelu || standardHotelu == 0 ? namesHotelsTab[standardHotelu] : "..."}
+                        {wyborStandardHoteluOpened && <div className="settingsPopup" onClick={(e) => e.stopPropagation()} >
+                            Standard hotelu
+                            <Radio1
+                                setWybor={setStandardHotelu}
+                                value={standardHotelu}
+                                name="hotel-standard"
+                                key={standardHotelu}
+                            />
+                        </div>}
+                    </SettingsButton>
+
+                    <SettingsButton className={wyborStandardTransportuOpened ? "chosen" : ""} onClick={() => { setWyborStandardTransportuOpened(!wyborStandardTransportuOpened); setOffOthers(4) }}>
+                        <TramFront size={30} />
+                        Preferowany transport: {standardTransportu || standardTransportu == 0 ? namesTransportTab[standardTransportu] : "..."}
+                        {wyborStandardTransportuOpened && <div className="settingsPopup" onClick={(e) => e.stopPropagation()} >
+                            Forma transportu
+                            <Radio1
+                                options={[
+                                    { value: 1, icon: "../icons/icon-private-bus.svg", label: "Wynajęty autokar" },
+                                    { value: 0, icon: "../icons/icon-public-trannsport.svg", label: "Transport publiczny" },
+                                    { value: 2, icon: "../icons/icon-own-transport.svg", label: "Własny" }
+                                ]}
+                                setWybor={setStandardTransportu}
+                                value={standardTransportu}
+                                name="transport-form"
+                            />
+                        </div>}
+                    </SettingsButton>
+                </KonfiguratorMainSettings>
+
+            </KonfiguratorPhotoWithSettings>
+
+            {/*<KonfiguratorMainSettings ref={settingsRef} className={settingsOpened ? "opened" : "closed"}>
+
                 <SettingsButton onClick={() => { setMiejsceStartowePopupOpened(!miejsceStartowePopupOpened); setOffOthers(0) }} className={miejsceStartowePopupOpened ? "chosen" : ""}>
                     <img height="30px" width="30px" src="../icons/icon-rocket.svg" />
                     Miejsce początkowe:<span>{miejsceStartowe ? miejsceStartowe.nazwa : "..."} </span>
@@ -2864,10 +3114,14 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
                         />
                     </div>}
                 </SettingsButton>
-            </KonfiguratorMainSettings>
+            </KonfiguratorMainSettings>*/}
 
             <KonfiguratorMainMainbox>
-                <KonfiguratorMainMainboxLeft className="a">
+                <KonfiguratorMainMainboxLeft
+                    ref={leftRef}
+                    className="a"
+                    style={{ height: `${leftHeight}px` }}
+                >
                     <div className="mainboxLeftTitle">
                         Biblioteka atrakcji
                     </div>
@@ -2921,22 +3175,40 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
 
                             </div>
                         </div>
-                        <div className="googleLogoDiv">
-                            <img src="googlelogo.svg" />
-                        </div>
-                        <AttractionResultMediumVerifiedComponent/>
+
                         {atrakcje
                             .filter(atrakcja =>
-                                atrakcja.nazwa.toLowerCase().includes(attractionsSearching.toLowerCase()) ||
-                                atrakcja.adres.toLowerCase().includes(attractionsSearching.toLowerCase())
+                                atrakcja.dataSource !== "Bot" && (
+                                    atrakcja.nazwa.toLowerCase().includes(attractionsSearching.toLowerCase()) ||
+                                    atrakcja.adres.toLowerCase().includes(attractionsSearching.toLowerCase()))
                             )
                             .toSorted((a, b) => (b.liczbaOpinie * b.ocena || 0) - (a.liczbaOpinie * a.ocena || 0))
                             .map((atrakcja, idx) => (
-                                <AttractionResultMediumComponent
+                                <AttractionResultMediumVerifiedComponent
                                     key={`${atrakcja.googleId}${idx}`}
                                     atrakcja={atrakcja}
                                     wybranyDzien={wybranyDzien}
                                     addActivity={addActivity}
+                                    typ={1}
+                                />
+                            ))}
+                        <div className="googleLogoDiv">
+                            <img src="googlelogo.svg" />
+                        </div>
+                        {atrakcje
+                            .filter(atrakcja =>
+                                atrakcja.dataSource === "Bot" && (
+                                    atrakcja.nazwa.toLowerCase().includes(attractionsSearching.toLowerCase()) ||
+                                    atrakcja.adres.toLowerCase().includes(attractionsSearching.toLowerCase()))
+                            )
+                            .toSorted((a, b) => (b.liczbaOpinie * b.ocena || 0) - (a.liczbaOpinie * a.ocena || 0))
+                            .map((atrakcja, idx) => (
+                                <AttractionResultMediumVerifiedComponent
+                                    key={`${atrakcja.googleId}${idx}`}
+                                    atrakcja={atrakcja}
+                                    wybranyDzien={wybranyDzien}
+                                    addActivity={addActivity}
+                                    typ={2}
                                 />
                             ))}
                     </div>
@@ -2963,19 +3235,22 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
                     </div>
                 </KonfiguratorMainMainboxLeft>
 
-                <KonfiguratorMainMainboxRight>
+                <KonfiguratorMainMainboxRight ref={centerRef}>
 
                     <KonfiguratorWyjazduComp handleSaveClick={handleSaveClick} hasPendingAutoSave={hasPendingAutoSave} dataPrzyjazdu={dataPrzyjazdu} dataWyjazdu={dataWyjazdu} standardHotelu={standardHotelu} standardTransportu={standardTransportu} liczbaOpiekunow={liczbaOpiekunow} liczbaUczestnikow={liczbaUczestnikow} tripId={tripId} miejsceStartowe={miejsceStartowe} computedPrice={tripPrice + insurancePrice} computingPrice={computingPrice} miejsceDocelowe={miejsceDocelowe} changeActivity={changeActivity} checkOut={timeToMinutes(wybranyHotel?.checkOut) || 720} changeStartHour={changeStartHour} deleteActivity={deleteActivity} startModifyingAct={startModifyingAct} setActivityPanelOpened={setActivityPanelOpened} onAttractionTimeChange={changeActivityTime} swapActivities={swapActivities} onTransportChange={changeChosenTransport} timeSchedule={timeSchedule} routeSchedule={routeSchedule} chosenTransportSchedule={chosenTransportSchedule} loading={konfiguratorLoading} activitiesSchedule={activitiesSchedule} liczbaDni={liczbaDni} key={`schedule-${liczbaDni}-${konfiguratorLoading}-${timeSchedule}`} wybranyDzien={wybranyDzien} setWybranyDzien={setWybranyDzien} addActivity={addActivity} />
                     {activityPanelOpened &&
                         <AddAttractionWrapper>
                             <AddActivityPanelContainer>
-                                <AddActivityPanel key={`${modyfikacja}`} setModAct={setModyfikacja} dayIndex={wybranyDzien} closePanel={() => setActivityPanelOpened(false)} miejsceDocelowe={miejsceDocelowe.nazwa} modActIdx={modyfikacja.flag ? modyfikacja.idx : null} addActivity={modyfikacja.flag ? changeActivity : addActivity} />
+                                <AddActivityPanel atrakcje={atrakcje} key={`${modyfikacja}${atrakcje}`} setModAct={setModyfikacja} dayIndex={wybranyDzien} closePanel={() => setActivityPanelOpened(false)} miejsceDocelowe={miejsceDocelowe.nazwa} modActIdx={modyfikacja.flag ? modyfikacja.idx : null} addActivity={modyfikacja.flag ? changeActivity : addActivity} />
                             </AddActivityPanelContainer>
                         </AddAttractionWrapper>
                     }
+                    {//<AttractionsMap attractions={atrakcje}/>
+                    }
+
                 </KonfiguratorMainMainboxRight>
 
-                <KonfiguratorMainMainboxLeft className="right">
+                <KonfiguratorMainMainboxLeft ref={rightRef} className="right">
                     <ChatBox2 activitiesSchedule={activitiesSchedule} basicActivities={basicActivities} miejsceDocelowe={miejsceDocelowe} attractions={atrakcje} addActivity={addActivity} swapActivities={swapActivities} changeActivity={changeActivity} deleteActivity={deleteActivity} />
                     <div className="mainboxLeftTitle">
                         Podsumowanie wyjazdu

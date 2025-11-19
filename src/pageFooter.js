@@ -19,7 +19,6 @@ const FooterSection = styled.footer`
     #ffffff 75%,
     #ecfdf5 100%
   );
-  margin-top: 100%;
   padding: 4rem 2rem 2rem;
   position: relative;
   overflow: hidden;

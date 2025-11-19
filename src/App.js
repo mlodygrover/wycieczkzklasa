@@ -49,6 +49,7 @@ import TripPlansPicker from './tripPlansPickerTest.js';
 import KonfiguratorLoader from './konfiguratorLoader.js';
 import { PreConfigure } from './preConfigure.js';
 import UnsplashPhotoTest from './unsplashPhotoTest.js';
+import AttractionsMap from './attractionMap.js';
 
 const teksty = [
   { tyt: "Połącz twój pomysł z naszym doświadczeniem", tekst: "Dzięki konfiguratorowi wycieczek WycieczkaZKlasą, zrealizuj swój pomysł na wyjazd, nie martwiąc się niczym poza pasjonującym programem wyjazdu!" },

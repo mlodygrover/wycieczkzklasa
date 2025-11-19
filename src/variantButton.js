@@ -3,13 +3,13 @@ import styled from 'styled-components';
 
 const Container = styled.div`
   position: relative;
-  display: inline-block;
+  display: flex;
 `;
 
 const MainButton = styled.button`
   width: 90%;
-  max-width: 250px;
   min-width: 220px;
+  max-width: 250px;
   margin: 0 auto;
   height: 30px;
   /*background: linear-gradient(135deg, #667eea 0%, #008d73ff 100%);*/ 
@@ -30,7 +30,7 @@ const MainButton = styled.button`
   overflow: hidden;
   text-overflow: ellipsis;
   font-weight: 500;
-
+ 
   &.schedule{
     background: white;
     border: 1px solid #e0e0e0;
@@ -47,31 +47,18 @@ const MainButton = styled.button`
       border: 1px solid #667eea;
       box-shadow: none;
       transform: translateY(0);
+    
     }
     @media screen and (max-width: 1000px){
       display: none;
     }
   }
-  &::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    /*background: linear-gradient(135deg, #008d73ff 0%, #667eea 100%);*/
-    background: #556dd9;
-    opacity: 0;
-    transition: opacity 0.3s ease;
-  }
+  
   
   &:hover {
     box-shadow: 0 4px 16px rgba(102, 126, 234, 0.4);
     transform: translateY(-1px);
     
-    &::before {
-      opacity: 1;
-    }
   }
   
   &:active {
@@ -82,6 +69,15 @@ const MainButton = styled.button`
   span {
     position: relative;
     z-index: 1;
+  }
+  &.b{
+    width: 100%;
+    margin-bottom: 5px;
+    background: #00b191ff;
+    font-weight: 500;
+    &:hover{
+      background: rgba(0, 135, 110, 0.66);
+    }
   }
 `;
 
@@ -108,7 +104,7 @@ const Dropdown = styled.div`
   border-radius: 12px;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
   overflow: hidden;
-  z-index: 1000;
+  z-index: 2000;
   opacity: ${props => props.isOpen ? '1' : '0'};
   visibility: ${props => props.isOpen ? 'visible' : 'hidden'};
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
@@ -160,7 +156,7 @@ const OptionPrice = styled.span`
   font-size: 13px;
 `;
 
-const VariantButton = ({ variants, placeholder = "Wybierz wariant", onSelect, selectedVariantInit, source = false }) => {
+const VariantButton = ({ variants, placeholder = "Wybierz wariant", onSelect, selectedVariantInit, source = false, typ=1 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [selectedVariant, setSelectedVariant] = useState(selectedVariantInit);
   const containerRef = useRef(null);
@@ -193,7 +189,7 @@ const VariantButton = ({ variants, placeholder = "Wybierz wariant", onSelect, se
 
   return (
     <Container ref={containerRef}>
-      <MainButton onClick={handleToggle} className={source && "schedule"}>
+      <MainButton onClick={handleToggle} className={`${source ? "schedule" : ""} ${typ === 2 ? "b" : ""}`.trim()}>
         <ButtonText>{selectedVariant !== null ? variants[selectedVariant].nazwaWariantu : placeholder}</ButtonText>
         <Arrow isOpen={isOpen}>▼</Arrow>
       </MainButton>

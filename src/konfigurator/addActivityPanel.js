@@ -6,6 +6,7 @@ import { StarRating } from "../roots/wyborPoleAtrakcja";
 import { OwnAttraction } from "../ownAttraction";
 import { minutesToStringTime } from "../roots/attractionResults";
 import { AtrakcjaResultMidComp } from "./atrakcjaResultMid";
+import AttractionsMap from "../attractionMap";
 
 const baseActivities = [
     { googleId: "baseAct", czasZwiedzania: 30, nazwa: "Przerwa śniadaniowa", adres: "", cenaZwiedzania: 0, icon: "../icons/park.svg" }
@@ -136,6 +137,8 @@ export const PanelBoxNav = styled.div`
     gap: 2px;
     border-radius: 999px;
     background-color: #f6f6f6;
+
+        flex-shrink: 0;
     &.a{
         width: 90%;
         margin: 5px auto;
@@ -154,6 +157,7 @@ export const PanelBoxNav = styled.div`
         display: flex;
         align-items: center;
         justify-content: center;
+    
         &.chosen{
             background-color: #008d73ff;
             img {
@@ -493,10 +497,9 @@ const PanelBoxFilter = styled.div`
     
 `
 
-export const AddActivityPanel = ({ miejsceDocelowe, setModAct, modActIdx, dayIndex, closePanel, addActivity }) => {
+export const AddActivityPanel = ({ atrakcje, miejsceDocelowe, setModAct, modActIdx, dayIndex, closePanel, addActivity }) => {
 
     const [openedLocal, setOpenedLocal] = useState(false)
-    const [atrakcje, setAtrakcje] = useState([])
     const [radioChosen, setRadioChosen] = useState(0)
     const [favAtrakcje, setFavAtrakcje] = useState([])
     const [alerts, setAlerts] = useState([])
@@ -507,19 +510,6 @@ export const AddActivityPanel = ({ miejsceDocelowe, setModAct, modActIdx, dayInd
         setFavAtrakcje(prevFav => [...prevFav, atrakcja]);
     }
 
-    useEffect(() => {
-        const cached = localStorage.getItem("lsAtrakcje");
-
-        if (cached) {
-            const parsed = JSON.parse(cached);
-
-            // sortowanie malejąco po liczbaOpinie
-            const sorted = parsed.sort((a, b) => (b.liczbaOpinie || 0) - (a.liczbaOpinie || 0));
-
-            setAtrakcje(sorted);
-
-        }
-    }, []);
     function addAlert(nazwa) {
         // Dodajemy alert do stanu
         setAlerts(prevAlerts => [...prevAlerts, nazwa]);
@@ -599,6 +589,7 @@ export const AddActivityPanel = ({ miejsceDocelowe, setModAct, modActIdx, dayInd
                 </PanelBoxNav>
 
                 <PanelBoxContent hidden={radioChosen !== 0} key={searchActivity}>
+                    <AttractionsMap attractions={atrakcje}/>
                     <PanelBoxFilter>
                         <input type="text"
                             placeholder="Wyszukaj atrakcję"

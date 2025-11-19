@@ -1,12 +1,13 @@
 import React, { use, useEffect, useRef, useState } from "react";
-import { useMapEvent } from "react-leaflet";
+import { MapContainer, Marker, TileLayer, useMapEvent } from "react-leaflet";
 import styled from "styled-components";
 import { minutesToStringTime } from "./roots/attractionResults";
 import VariantButton from "./variantButton";
-
+import { SquareArrowOutUpRight, Ticket, Timer } from "lucide-react";
 const AttractionResultMedium = styled.div`
     width: 90%;
     max-width: 300px;
+    min-width: 250px;
     min-height: 200px;
     background-color: #fbfbfb;
     border-radius: 15px;
@@ -334,11 +335,10 @@ export default AttractionResultMediumComponent;
 
 const AttractionResultMediumVerifiedComponentMainbox = styled.div`
     max-width: 300px;
+    min-width: 250px;
     width: 90%;
     min-height: 300px;
-    background-color: red;
     border-radius: 15px;
-    background-image: URL("../miasta/poznan.jpg");
     background-size: cover;
     background-position: center;
     box-sizing: border-box;
@@ -348,26 +348,43 @@ const AttractionResultMediumVerifiedComponentMainbox = styled.div`
     justify-content: flex-start;
     padding: 10px;
     position: relative;
-    overflow: hidden;
-    &::before{
-      content: '';
-      position: absolute;
-      inset: 0;
-      background: linear-gradient(180deg, transparent 30%, rgba(0, 0, 0, 0.6) 80%);
-      z-index: 0;
+    .leaflet-bottom.leaflet-right {
+    display: block;
+    background-color: rgba(255, 0, 0, 0);
+    color: black;
+    margin-bottom: auto;
+   
+
+    a {
+      color: black;
     }
-    .verifiedLabels{
+  }
+
+  .leaflet-top.leaflet-left {
+    display: block;
+  }
+    &::before {
+        border-radius: 15px;
+        content: '';
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(180deg, transparent 35%, rgba(0, 0, 0, 0.6) 60%);
+        z-index: 1; /* gradient nad mapą, pod treścią */
+    }
+
+    .verifiedLabels {
         display: flex;
         flex-direction: row;
         align-items: center;
         justify-content: flex-start;
         margin-bottom: auto;
         gap: 5px;
-        z-index: 1;
-        .categoryIcon{
-            height: 40px;
-            min-width: 40px;
-            
+        position: relative;
+        z-index: 1; /* nad gradientem */
+
+        .categoryIcon {
+            height: 35px;
+            min-width: 35px;
             background-color: #008d73ff;
             border-radius: 8px;
             color: white;
@@ -378,13 +395,14 @@ const AttractionResultMediumVerifiedComponentMainbox = styled.div`
             img {
                 filter: brightness(0) invert(1);
             }
-            &.b{
+
+            &.b {
                 background-color: #0026ffff;
             }
         }
     }
+`;
 
-`
 const VerifiedMediumMainbox = styled.div`
     width: 100%;
     border-radius: 15px;
@@ -392,49 +410,76 @@ const VerifiedMediumMainbox = styled.div`
     padding: 10px 2px;
     font-size: 14px;
     font-weight: 600;
-    z-index: 1;
+    z-index: 3;
     display: flex;
     flex-direction: column;
-    align-items: flex-start;
+    align-items: stretch;
     justify-content: center;
     box-sizing: border-box;
+    position: relative;
 
-    .attractionResultMediumTitleBox{
+    .attractionResultMediumTitleBox {
         width: 100%;
         min-height: 50px;
         display: flex;
         flex-direction: row;
         align-items: stretch;
         justify-content: flex-start;
-        .titleIconBox{
+
+        .titleIconBox {
             width: 50px;
             display: flex;
             align-items: center;
             justify-content: center;
-        
         }
-        .titleTextBox{
+
+        .titleTextBox {
             flex: 1;
             display: flex;
             flex-direction: column;
             align-items: flex-start;
             justify-content: center;
-            .attractionResultMediumTitle{
+            margin-bottom: 5px;
+            
+            .attractionResultMediumTitle {
                 font-size: 16px;
                 width: 100%;
                 text-align: left;
                 font-family: Inter, system-ui, -apple-system, sans-serif;
+                font-weight: 700;
+                text-shadow: 0 2px 14px rgba(0, 0, 0, 1);
             }
-            .attractionResultMediumSubtitle{
+
+            .attractionResultMediumSubtitle {
                 font-size: 12px;
                 color: white;
-                font-weight: 300;
+                font-weight: 600;
                 text-align: left;
+                width: 100%;
+
+                &.b {
+                    display: flex;
+                    flex-direction: row;
+                    align-items: flex-start;
+                    justify-content: space-between;
+                    margin-top: 6px;
+                    a{
+                    text-decoration: none;
+                    color: inherit;}
+                    span {
+                        text-align: left;
+                        vertical-align: center;
+                        display: flex;
+                        align-items: center;
+                        justify-content: flex-start;
+                        gap: 4px;
+                    }
+                }
             }
         }
-        
     }
-    .attractionResultMediumAddBox{
+
+    .attractionResultMediumAddBox {
         height: 30px;
         width: 100%;
         background-color: #008d73ff;
@@ -450,40 +495,195 @@ const VerifiedMediumMainbox = styled.div`
         transition: 0.3s ease-in-out;
         box-sizing: border-box;
         margin: 0;
-        &:hover{
+
+        &:hover {
             background-color: #007a61ff;
         }
     }
-    
-`
-export const AttractionResultMediumVerifiedComponent = () => {
+`;
+
+export const AttractionResultMediumVerifiedComponent = ({
+    atrakcja,
+    wybranyDzien,
+    addActivity,
+    typ = 1, // 1 – zdjęcie; 2 – mini-mapa Leaflet jako tło
+}) => {
+    const [wariantsOpened, setWariantsOpened] = useState(false);
+    const wariantButtonRef = useRef(null);
+    const [selectedVariant, setSelectedVariant] = useState(null);
+
+    useEffect(() => {
+        function handleClickOutside(event) {
+            if (
+                wariantButtonRef.current &&
+                !wariantButtonRef.current.contains(event.target)
+            ) {
+                setWariantsOpened(false);
+            }
+        }
+
+        if (wariantsOpened) {
+            document.addEventListener('mousedown', handleClickOutside);
+        } else {
+            document.removeEventListener('mousedown', handleClickOutside);
+        }
+
+        return () => {
+            document.removeEventListener('mousedown', handleClickOutside);
+        };
+    }, [wariantsOpened]);
+
+    useEffect(() => {
+        if (atrakcja?.warianty && atrakcja.warianty.length > 0) {
+            atrakcja.czasZwiedzania = atrakcja.warianty[0].czasZwiedzania || 60;
+            atrakcja.cenaZwiedzania = atrakcja.warianty[0].cenaZwiedzania || 0;
+        } else {
+            atrakcja.czasZwiedzania = 60;
+            atrakcja.cenaZwiedzania = 0;
+        }
+    }, [atrakcja]);
+
+    function setWariant(idx) {
+        setSelectedVariant(idx);
+        atrakcja.czasZwiedzania = atrakcja.warianty[idx].czasZwiedzania || 60;
+        atrakcja.cenaZwiedzania = atrakcja.warianty[idx].cenaZwiedzania || 0;
+        atrakcja.chosenWariant = atrakcja.warianty[idx].nazwaWariantu;
+        atrakcja.selectedVariant = idx;
+    }
+
+    const FALLBACK_WALLPAPER =
+        'https://images.unsplash.com/photo-1716481631637-e2d4fd2456e2?q=80&w=870&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D';
+
+    const backgroundUrl = atrakcja?.wallpaper || FALLBACK_WALLPAPER;
+
+    const hasCoords =
+        atrakcja?.lokalizacja &&
+        typeof atrakcja.lokalizacja.lat === 'number' &&
+        typeof atrakcja.lokalizacja.lng === 'number';
+
     return (
-        <AttractionResultMediumVerifiedComponentMainbox>
+        <AttractionResultMediumVerifiedComponentMainbox
+            style={
+                typ === 1
+                    ? {
+                        backgroundImage: `url(${backgroundUrl})`,
+                    }
+                    : {}
+            }
+        >
+            {/* Mini-mapa Leaflet jako tło tylko dla typ = 2 */}
+            {typ === 2 && hasCoords && (
+                <div
+                    style={{
+                        position: 'absolute',
+                        inset: 0,
+                        borderRadius: 15,
+                        overflow: 'hidden',
+                        zIndex: 0,
+                        pointerEvents: 'none',
+                    }}
+                >
+                    <MapContainer
+                        center={[
+                            atrakcja.lokalizacja.lat,
+                            atrakcja.lokalizacja.lng,
+                        ]}
+                        zoom={13}
+                        style={{ width: '100%', height: '100%' }}
+                        scrollWheelZoom={false}
+                        dragging={false}
+                        doubleClickZoom={false}
+                        boxZoom={false}
+                        keyboard={false}
+                        zoomControl={false}
+                        attributionControl={true}
+                    >
+                        <TileLayer
+                            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                            attribution="&copy; OpenStreetMap contributors"
+                        />
+                        <Marker
+                            position={[
+                                atrakcja.lokalizacja.lat,
+                                atrakcja.lokalizacja.lng,
+                            ]}
+                        />
+                    </MapContainer>
+                </div>
+            )}
+
             <div className="verifiedLabels">
                 <div className="categoryIcon">
-                    <img src="../icons/castle.svg" height='30px' />
+                    <img src="../icons/castle.svg" height="25px" />
                 </div>
-                <div className="categoryIcon b">
-                    <img src="../icons/verified.svg" height='30px' />
-                </div>
-
-
+                {typ !== 2 &&
+                    <div className="categoryIcon b">
+                        <img src="../icons/verified.svg" height="25px" />
+                    </div>}
             </div>
+
             <VerifiedMediumMainbox>
                 <div className="attractionResultMediumTitleBox">
                     <div className="titleTextBox">
-                        <div className="attractionResultMediumTitle">Zamek Królewski</div>
-                        <div className="attractionResultMediumSubtitle">Sofoklesa 32</div>
+                        <div className="attractionResultMediumTitle">
+                            {atrakcja?.nazwa ?? 'Atrakcja turystyczna'}
+                        </div>
+                        <div className="attractionResultMediumSubtitle">
+                            {atrakcja?.adres ?? 'Adres atrakcji'}
+                        </div>
+                        <div className="attractionResultMediumSubtitle b">
+                            <span>
+                                <Timer size={15} />
+                                {atrakcja.czasZwiedzania != null
+                                    ? ` ${atrakcja.czasZwiedzania} min`
+                                    : ''}
+                            </span>
+                            
+                            <span>
+                                <Ticket size={15} />
+                                {(!Array.isArray(atrakcja?.warianty) ||
+                                    atrakcja.warianty.length === 0)
+                                    ? 'Dodaj aby obliczyć'
+                                    : atrakcja?.cenaZwiedzania === 0
+                                        ? 'Bezpłatne'
+                                        : atrakcja?.cenaZwiedzania != null
+                                            ? `${Number(
+                                                atrakcja.cenaZwiedzania
+                                            )} zł / osoba`
+                                            : ''}
+                            </span>
+                            <span>
+                                <SquareArrowOutUpRight size={15} />
+                                <a href={atrakcja.stronaInternetowa}  target="_blank" rel="noreferrer">Witryna</a>
+                            </span>
+                        </div>
                     </div>
-
-
                 </div>
+
+                {atrakcja?.warianty && atrakcja.warianty.length > 1 && (
+                    <div ref={wariantButtonRef}>
+                        <VariantButton
+                            variants={atrakcja.warianty}
+                            onSelect={setWariant}
+                            selectedVariantInit={selectedVariant}
+                            typ={2}
+                        />
+                    </div>
+                )}
+
                 <div
                     className="attractionResultMediumAddBox"
+                    onClick={() => addActivity(wybranyDzien, atrakcja)}
                 >
                     + Dodaj do dnia
                 </div>
             </VerifiedMediumMainbox>
         </AttractionResultMediumVerifiedComponentMainbox>
-    )
-}
+    );
+};
+
+
+
+
+
+
