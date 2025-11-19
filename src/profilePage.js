@@ -544,7 +544,7 @@ export const ProfilePage = () => {
 
                     return {
                         id: p?._id,                                   // identyfikator
-                        title: `Wyjazd do ${destName}`,               // tytuł
+                        title: p?.nazwa ?? `Wyjazd do ${destName}`,               // tytuł
                         destination: destName,                        // docelowa
                         date: dateStr,                                // np. "17–20 GRU 2025"
                         days: Number.isFinite(daysCnt) ? daysCnt : 1, // liczba dni

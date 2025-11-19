@@ -1,8 +1,8 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import styled from 'styled-components';
 import { Tab, TabsContainer } from './profilePage';
 import { PreConfigureSketch } from './preConfSketch';
-import { Settings } from 'lucide-react';
+import { Edit2, Settings } from 'lucide-react';
 import useUserStore, { fetchMe } from './usercontent.js';
 import EyeCheckbox from './eyeCheckbox.js';
 import { PreConfigureParticipants } from './preConfigureParticipants.js';
@@ -122,17 +122,70 @@ const PreConfigureHeader = styled.div`
   flex-direction: column;
   align-items: center;
   justify-content: flex-start;
-
+    
   .preConfigureHeaderImage{
     width: 100%;
     height: 600px;
     max-height: 50vh;
     border-radius: 50px;
-    overflow: hidden;
+    background-size: cover;        /* odpowiednik object-fit: cover */
+    background-position: center;   /* wycentrowanie */
+    background-repeat: no-repeat;  /* bez powtarzania */
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: flex-end;
+    padding: 20px;
+    box-sizing: border-box;
     img{
       width: 100%;
       height: 100%;
       object-fit: cover;
+    }
+          &::before {
+        border-radius: inherit;
+        content: '';
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(180deg, transparent 50%, rgba(0, 0, 0, 0.56) 90%);
+    }
+        .wyjazdNazwa {
+        color: white;
+        display: flex;
+        align-items: center;
+        justify-content: flex-start;
+        text-align: left;
+        font-size: 52px;
+        font-weight: 900;
+        z-index: 3;
+        gap: 10px;
+        text-shadow: 0 2px 14px rgba(0, 0, 0, 1);
+        max-width: 100%;
+        svg{
+            flex-shrink: 0;
+        }
+        @media screen and (max-width: 600px){
+            font-size: 25px;
+            svg{
+                width: 20px;
+            }
+        }
+    }
+
+    .wyjazdNazwaInput {
+        display: inline-block;
+        max-width: 100%;
+        white-space: normal;
+        font: inherit;
+        color: white;
+        outline: none;
+        direction: ltr;
+        text-align: left;
+        svg{
+            flex-shrink: 0;
+        }
+       
     }
   }
 `;
@@ -384,6 +437,7 @@ export const PreConfigure = (
         "https://images.unsplash.com/photo-1633268456308-72d1c728943c?auto=format&fit=crop&w=1600&q=80"
     );
     const [publicPlan, setPublicPlan] = useState(true)
+    const [nazwaWyjazdu, setNazwaWyjazdu] = useState(null)
     const [selectedMenu, setSelectedMenu] = useState(0);
 
     // 4) Stany / błędy planów
@@ -495,6 +549,7 @@ export const PreConfigure = (
             try {
                 const plan = await fetchTripPlanById(tripId, { signal: ac.signal });
                 setsynchronisedPlan(plan);
+                console.log("Pobrano plan", plan)
             } catch (e) {
                 if (e.name !== "AbortError") {
                     setPlanError(e.message || "Fetch error");
@@ -574,6 +629,7 @@ export const PreConfigure = (
         const liczbaOpiekunowSourceRaw = synchronisedPlan.liczbaOpiekunow;
         const photoWallpaperSource = synchronisedPlan.photoLink;
         const publicPlanSource = synchronisedPlan.public;
+        const nazwaWyjazduSource = synchronisedPlan.nazwa;
         if (start) setDataWyjazdu(start);
         if (end) setDataPowrotu(end);
 
@@ -594,7 +650,8 @@ export const PreConfigure = (
         if (typeof publicPlanSource === "boolean") {
             setPublicPlan(publicPlanSource);
         }
-
+        console.log("TETS2", nazwaWyjazduSource)
+        if (nazwaWyjazduSource) setNazwaWyjazdu(nazwaWyjazduSource)
     }, [synchronisedPlan]);
 
     // 10) Helper: ustaw/zmień tripId w URL i w stanie
@@ -650,6 +707,7 @@ export const PreConfigure = (
             liczbaUczestnikow: Number.isFinite(liczbaUczestnikow) ? liczbaUczestnikow : undefined,
             liczbaOpiekunow: Number.isFinite(liczbaOpiekunow) ? liczbaOpiekunow : undefined,
             public: typeof publicPlan === "boolean" ? publicPlan : undefined,
+            nazwa: nazwaWyjazdu ? nazwaWyjazdu : undefined,
         };
 
         const currentTripId = new URLSearchParams(window.location.search).get("tripId");
@@ -776,15 +834,43 @@ export const PreConfigure = (
         standardHotelu,
         standardTransportu,
         publicPlan,
+        nazwaWyjazdu,
         // UWAGA: nie odczytuj tripId z URL wprost w deps; bazujemy na stanie tripId
         tripId,
     ]);
+    const titleRef = useRef(null);
 
+    useEffect(() => {
+        // ustaw wartość początkową TYLKO raz (lub gdy zewnętrznie ją zmienisz)
+        if (titleRef.current && !titleRef.current.textContent) {
+            titleRef.current.textContent = nazwaWyjazdu;
+        }
+    }, []); // zależności puste – bez aktualizacji na każdy input
+
+    useEffect(() => {
+        if (!titleRef.current) return;
+
+        // Nie nadpisuj, gdy użytkownik aktualnie edytuje tytuł
+        if (document.activeElement === titleRef.current) return;
+
+        titleRef.current.textContent = nazwaWyjazdu ?? "";
+    }, [nazwaWyjazdu]);
     return (
         <PreConfigureMainbox>
             <PreConfigureHeader key={photoWallpaper}>
-                <div className="preConfigureHeaderImage">
-                    <img src={photoWallpaper} alt="Pre Configure Header" />
+                <div className="preConfigureHeaderImage" style={{ backgroundImage: `url(${photoWallpaper})` }}>
+                    <div className="wyjazdNazwa">
+                        <div
+                            className="wyjazdNazwaInput"
+                            contentEditable
+                            suppressContentEditableWarning
+                            ref={titleRef}
+                            onInput={(e) => {
+                                setNazwaWyjazdu(e.currentTarget.textContent);
+                            }}
+                        />
+                        <Edit2 size={40} />
+                    </div>
                 </div>
 
                 <PreConfigureHeaderWrapper>

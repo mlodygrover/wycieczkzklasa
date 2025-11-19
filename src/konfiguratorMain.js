@@ -1070,7 +1070,7 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
         }
         return "";
     });
-    const [nazwaWyjazdu, setNazwaWyjazdu] = useState("Wyjazd do Poznań")
+    const [nazwaWyjazdu, setNazwaWyjazdu] = useState("Wyjazd do Poznawwń")
     const [liczbaDni, setLiczbaDni] = useState(0)
     // ===== EFEKTY: zapis do URL + regularny zapis do localStorage =====
 
@@ -1386,7 +1386,8 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
 
                         // 6) Zdjęcie (opcjonalnie)
                         if (typeof data?.photoLink === "string") setPhotoWallpaper?.(data.photoLink);
-
+                        console.log("TEST22", data.nazwa)
+                        if (typeof data?.nazwa === "string") setNazwaWyjazdu(data.nazwa)
                         return; // zakończ po obsłudze tripId
                     }
 
@@ -1406,6 +1407,7 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
                     if (!aborted && resp.ok) {
                         const data = await resp.json();
 
+                        if (typeof data?.nazwa === "string") setNazwaWyjazdu(data.nazwa)
                         if (Array.isArray(data?.activitiesSchedule)) {
                             setActivitiesSchedule(data.activitiesSchedule);
                         } else {
@@ -1524,6 +1526,7 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
                     standardHotelu: typeof standardHotelu === "number" ? standardHotelu : undefined,
                     liczbaUczestnikow: safeParticipants,
                     liczbaOpiekunow: safeGuardians,
+                    nazwa: nazwaWyjazdu ? nazwaWyjazdu.trim() : undefined,
                 };
 
                 const resp = await fetch(url, {
@@ -1560,6 +1563,7 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
             standardHotelu,
             liczbaUczestnikow,
             liczbaOpiekunow,
+            nazwaWyjazdu,
         ]
     );
     // === RĘCZNY ZAPIS (bez naruszania autozapisu dla istniejącego tripId) ===
@@ -1624,6 +1628,7 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
             standardHotelu: typeof standardHotelu === "number" ? standardHotelu : undefined,
             liczbaUczestnikow: safeParticipants,
             liczbaOpiekunow: safeGuardians,
+            nazwa: nazwaWyjazdu ? nazwaWyjazdu.trim() : undefined,
         };
     }, [
         activitiesSchedule,
@@ -1637,6 +1642,7 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
         standardHotelu,
         liczbaUczestnikow,
         liczbaOpiekunow,
+        nazwaWyjazdu
     ]);
 
     async function checkMe() {
@@ -1747,7 +1753,7 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
             }
             setHasPendingAutoSave(false);
         };
-    }, [JSON.stringify(activitiesSchedule), dataWyjazdu, dataPrzyjazdu, standardHotelu, standardTransportu, liczbaUczestnikow, liczbaOpiekunow, tripPrice, insurancePrice]);
+    }, [JSON.stringify(activitiesSchedule), dataWyjazdu, dataPrzyjazdu, standardHotelu, standardTransportu, liczbaUczestnikow, liczbaOpiekunow, tripPrice, insurancePrice, nazwaWyjazdu]);
 
     const [chosenTransportSchedule, setChosenTransportSchedule] = useState(() => {
         if (chosenTransportScheduleInit != null) return chosenTransportScheduleInit;
@@ -2907,7 +2913,14 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
         }
     }, []); // zależności puste – bez aktualizacji na każdy input
 
+    useEffect(() => {
+        if (!titleRef.current) return;
 
+        // Nie nadpisuj, gdy użytkownik aktualnie edytuje tytuł
+        if (document.activeElement === titleRef.current) return;
+
+        titleRef.current.textContent = nazwaWyjazdu ?? "";
+    }, [nazwaWyjazdu]);
     return (
         <>
             <KonfiguratorPhotoWithSettings style={tripId && photoWallpaper ? { backgroundImage: `url(${photoWallpaper})`, } : { backgroundImage: `url(${'https://images.unsplash.com/photo-1716481631637-e2d4fd2456e2?q=80&w=870&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D'})`, }}>
@@ -2919,11 +2932,12 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
                         suppressContentEditableWarning
                         ref={titleRef}
                         onInput={(e) => {
-                            setNazwaWyjazdu(e.currentTarget.textContent ?? "");
+                            setNazwaWyjazdu(e.currentTarget.textContent );
                         }}
                     />
                     <Edit2 size={40} />
                 </div>
+
                 <KonfiguratorMainSettings ref={settingsRef} className={settingsOpened ? "opened" : "closed"}>
 
                     <SettingsButton onClick={() => { setMiejsceStartowePopupOpened(!miejsceStartowePopupOpened); setOffOthers(0) }} className={miejsceStartowePopupOpened ? "chosen" : ""}>

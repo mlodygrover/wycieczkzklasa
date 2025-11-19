@@ -259,29 +259,32 @@ const MiejsceSchema = new mongoose.Schema(
     { _id: false }
 );
 const TripPlanSchema = new mongoose.Schema(
-    {
-        computedPrice: { type: Number, default: 0 },
-        authors: [{ type: mongoose.Schema.Types.ObjectId, ref: "User", index: true }],
+  {
+    computedPrice: { type: Number, default: 0 },
+    authors: [{ type: mongoose.Schema.Types.ObjectId, ref: "User", index: true }],
 
-        // NOWE POLA
-        miejsceDocelowe: { type: MiejsceSchema, required: true },
-        miejsceStartowe: { type: MiejsceSchema, required: true },
-        dataPrzyjazdu: { type: Date, required: true },
-        dataWyjazdu: { type: Date, required: true },
-        standardTransportu: { type: Number, required: true, min: 0, max: 2 },
-        standardHotelu: { type: Number, required: true, min: 0, max: 3 },
+    miejsceDocelowe: { type: MiejsceSchema, required: true },
 
-        // NOWE: uczestnicy / opiekunowie
-        liczbaUczestnikow: { type: Number, required: true, min: 1 },
-        liczbaOpiekunow: { type: Number, required: true, min: 0, default: 0 },
+    // NOWE POLE – BEZ default, bo i tak ustawimy je w kodzie endpointu
+    nazwa: { type: String, trim: true },
 
-        activitiesSchedule: { type: [DaySchema], default: [] },
-        photoLink: { type: String, default: null },
+    miejsceStartowe: { type: MiejsceSchema, required: true },
+    dataPrzyjazdu: { type: Date, required: true },
+    dataWyjazdu: { type: Date, required: true },
+    standardTransportu: { type: Number, required: true, min: 0, max: 2 },
+    standardHotelu: { type: Number, required: true, min: 0, max: 3 },
 
-        public: { type: Boolean, default: true },
-    },
-    { timestamps: true, versionKey: false }
+    liczbaUczestnikow: { type: Number, required: true, min: 1 },
+    liczbaOpiekunow: { type: Number, required: true, min: 0, default: 0 },
+
+    activitiesSchedule: { type: [DaySchema], default: [] },
+    photoLink: { type: String, default: null },
+
+    public: { type: Boolean, default: true },
+  },
+  { timestamps: true, versionKey: false }
 );
+
 
 const TripPlan = mongoose.model("TripPlan", TripPlanSchema);
 
@@ -447,7 +450,7 @@ app.get("/download/trip-plan", requireAuth, async (req, res) => {
             _id: new mongoose.Types.ObjectId(tripId),
             authors: req.user._id,
         })
-            .select("computedPrice miejsceDocelowe standardTransportu standardHotelu activitiesSchedule photoLink")
+            .select("computedPrice miejsceDocelowe standardTransportu standardHotelu activitiesSchedule photoLink nazwa")
             .lean();
 
         if (!doc) {
@@ -455,7 +458,9 @@ app.get("/download/trip-plan", requireAuth, async (req, res) => {
         }
 
         const activitiesAoA = Array.isArray(doc.activitiesSchedule)
-            ? doc.activitiesSchedule.map((d) => (Array.isArray(d?.activities) ? d.activities : []))
+            ? doc.activitiesSchedule.map((d) =>
+                  Array.isArray(d?.activities) ? d.activities : []
+              )
             : [];
 
         res.status(200).json({
@@ -465,12 +470,14 @@ app.get("/download/trip-plan", requireAuth, async (req, res) => {
             standardHotelu: doc.standardHotelu,
             activitiesSchedule: activitiesAoA,
             photoLink: doc.photoLink ?? null,
+            nazwa: doc.nazwa ?? null,
         });
     } catch (err) {
         console.error("GET /download/trip-plan error:", err);
         res.status(500).json({ error: "ServerError" });
     }
 });
+
 
 
 /**
@@ -490,7 +497,8 @@ app.post("/api/trip-plans", async (req, res) => {
             liczbaUczestnikow,
             liczbaOpiekunow,
             computedPrice,
-            public: publicFromClient, // <-- NOWE
+            public: publicFromClient,
+            nazwa, // <-- nowy parametr
         } = req.body || {};
 
         if (!req.user?._id) {
@@ -567,6 +575,14 @@ app.post("/api/trip-plans", async (req, res) => {
             publicValue = publicFromClient;
         }
 
+        // --- NAZWA PLANU ---
+        let nameToSave = null;
+        if (typeof nazwa === "string" && nazwa.trim() !== "") {
+            nameToSave = nazwa.trim();
+        } else if (miejsceDocelowe?.nazwa) {
+            nameToSave = `Wyjazd do ${miejsceDocelowe.nazwa}`;
+        }
+
         const createDoc = {
             authors: [req.user._id],
             miejsceDocelowe,
@@ -587,6 +603,9 @@ app.post("/api/trip-plans", async (req, res) => {
         if (typeof publicValue === "boolean") {
             createDoc.public = publicValue;
         }
+        if (nameToSave) {
+            createDoc.nazwa = nameToSave;
+        }
 
         const created = await TripPlan.create(createDoc);
 
@@ -599,6 +618,7 @@ app.post("/api/trip-plans", async (req, res) => {
         return res.status(500).json({ error: "ServerError" });
     }
 });
+
 
 /**
  * GET /api/trip-plans
@@ -628,6 +648,7 @@ app.get("/api/trip-plans", async (_req, res) => {
                 computedPrice: num(price),
                 photoLink: d.photoLink ?? null,
                 public: typeof d.public === "boolean" ? d.public : true,
+                nazwa: d.nazwa ?? null,
             };
         });
         return res.json(out);
@@ -636,6 +657,7 @@ app.get("/api/trip-plans", async (_req, res) => {
         return res.status(500).json({ error: "ServerError" });
     }
 });
+
 
 
 /**
@@ -673,12 +695,14 @@ app.get("/api/trip-plans/:id", async (req, res) => {
             computedPrice: num(price),
             photoLink: doc.photoLink ?? null,
             public: typeof doc.public === "boolean" ? doc.public : true,
+            nazwa: doc.nazwa ?? null,
         });
     } catch (err) {
         console.error("GET /api/trip-plans/:id error:", err);
         return res.status(500).json({ error: "ServerError" });
     }
 });
+
 
 
 /**
@@ -711,12 +735,10 @@ app.get("/api/trip-plans/by-author/:userId", requireAuth, async (req, res) => {
     try {
         const { userId } = req.params;
 
-        // Walidacja ObjectId
         if (!mongoose.Types.ObjectId.isValid(userId)) {
             return res.status(400).json({ error: "InvalidObjectId" });
         }
 
-        // Sprawdzenie, czy zalogowany user to ten sam, którego plany pobieramy
         if (!req.user?._id) {
             return res.status(401).json({ error: "Unauthenticated" });
         }
@@ -758,6 +780,7 @@ app.get("/api/trip-plans/by-author/:userId", requireAuth, async (req, res) => {
                 computedPrice: num(price),
                 photoLink: d.photoLink ?? null,
                 public: typeof d.public === "boolean" ? d.public : true,
+                nazwa: d.nazwa ?? null,
             };
         });
 
@@ -773,6 +796,7 @@ app.get("/api/trip-plans/by-author/:userId", requireAuth, async (req, res) => {
         return res.status(500).json({ error: "ServerError" });
     }
 });
+
 // Publiczna lista planów konkretnego autora – tylko te z public: true
 app.get("/api/trip-plans/public/by-author/:userId", async (req, res) => {
     try {
@@ -819,6 +843,7 @@ app.get("/api/trip-plans/public/by-author/:userId", async (req, res) => {
                 computedPrice: num(price),
                 photoLink: d.photoLink ?? null,
                 public: typeof d.public === "boolean" ? d.public : true,
+                nazwa: d.nazwa ?? null,
             };
         });
 
@@ -834,6 +859,7 @@ app.get("/api/trip-plans/public/by-author/:userId", async (req, res) => {
         return res.status(500).json({ error: "ServerError" });
     }
 });
+
 
 
 
@@ -883,12 +909,14 @@ app.get("/api/trip-plans/:tripId/by-author/:userId", async (req, res) => {
             computedPrice: num(price),
             photoLink: doc.photoLink ?? null,
             public: typeof doc.public === "boolean" ? doc.public : true,
+            nazwa: doc.nazwa ?? null,
         });
     } catch (err) {
         console.error("GET /api/trip-plans/:tripId/by-author/:userId error:", err);
         return res.status(500).json({ error: "ServerError" });
     }
 });
+
 
 
 /**
@@ -925,7 +953,8 @@ app.put("/api/trip-plans/:tripId", requireAuth, async (req, res) => {
             standardHotelu,
             liczbaUczestnikow,
             liczbaOpiekunow,
-            public: publicFromClient, // <-- NOWE
+            public: publicFromClient,
+            nazwa, // <-- nowy parametr
         } = req.body || {};
 
         const updates = {};
@@ -1043,6 +1072,22 @@ app.put("/api/trip-plans/:tripId", requireAuth, async (req, res) => {
             updates.liczbaOpiekunow = pv.o;
         }
 
+        // nazwa – jeśli przysłana
+        if (Object.prototype.hasOwnProperty.call(req.body, "nazwa")) {
+            if (typeof nazwa === "string" && nazwa.trim() !== "") {
+                updates.nazwa = nazwa.trim();
+            } else {
+                // pusta nazwa → domyślna na podstawie miejsca docelowego
+                const base =
+                    miejsceDocelowe?.nazwa ??
+                    plan.miejsceDocelowe?.nazwa ??
+                    "";
+                if (base) {
+                    updates.nazwa = `Wyjazd do ${base}`;
+                }
+            }
+        }
+
         // computedPrice
         if (Object.prototype.hasOwnProperty.call(req.body, "computedPrice")) {
             const clientPrice = Number(computedPrice);
@@ -1067,7 +1112,7 @@ app.put("/api/trip-plans/:tripId", requireAuth, async (req, res) => {
             }
         }
 
-        // jeżeli zmieniło się miejsce docelowe → odśwież zdjęcie i slug
+        // jeżeli zmieniło się miejsce docelowe → odśwież zdjęcie, slug i ewentualnie domyślną nazwę
         if (destinationChanged && miejsceDocelowe?.nazwa) {
             try {
                 const photoLink = await fetchUnsplashPhotoLinkForDestination(
@@ -1085,8 +1130,11 @@ app.put("/api/trip-plans/:tripId", requireAuth, async (req, res) => {
 
             const slug = makeSlug(miejsceDocelowe.nazwa);
             updates.urlSlug = slug;
-            // optionalnie, jeśli trzymasz pełny URL:
-            // updates.publicUrl = `/plany/${slug}-${plan._id.toString()}`;
+
+            // jeśli klient NIE przesłał 'nazwa' w body, zaktualizuj domyślną nazwę
+            if (!Object.prototype.hasOwnProperty.call(req.body, "nazwa")) {
+                updates.nazwa = `Wyjazd do ${miejsceDocelowe.nazwa}`;
+            }
         }
 
         if (!Object.keys(updates).length) {
@@ -1095,10 +1143,14 @@ app.put("/api/trip-plans/:tripId", requireAuth, async (req, res) => {
                 .json({ error: "NoValidFields", message: "Brak pól do aktualizacji." });
         }
 
-        const updated = await TripPlan.findByIdAndUpdate(plan._id, { $set: updates }, {
-            new: true,
-            runValidators: true,
-        }).lean();
+        const updated = await TripPlan.findByIdAndUpdate(
+            plan._id,
+            { $set: updates },
+            {
+                new: true,
+                runValidators: true,
+            }
+        ).lean();
 
         const aoa = updated.activitiesSchedule ? unpackDays(updated.activitiesSchedule) : null;
         const priceOut =
@@ -1127,12 +1179,14 @@ app.put("/api/trip-plans/:tripId", requireAuth, async (req, res) => {
             public: typeof updated.public === "boolean" ? updated.public : true,
             urlSlug: updated.urlSlug ?? undefined,
             publicUrl: updated.publicUrl ?? undefined,
+            nazwa: updated.nazwa ?? null,
         });
     } catch (err) {
         console.error("PUT /api/trip-plans/:tripId error:", err);
         return res.status(500).json({ error: "ServerError" });
     }
 });
+
 
 
 
