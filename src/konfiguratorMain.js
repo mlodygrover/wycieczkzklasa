@@ -1,7 +1,8 @@
 import { useEffect, useState, useCallback, use, useRef } from "react";
 import axios from "axios";
 import debounce from "lodash.debounce";
-import styled from "styled-components";
+import styled, { keyframes } from "styled-components";
+
 import { AttractionResultSmall, minutesToStringTime } from "./roots/attractionResults";
 import TopKreatorSlider from "./roots/topKreatorSlider";
 import { DataWybor, MapaBox, MapaResultBox, PopupResult, SearchBox } from "./konfiguratorWyjazdu";
@@ -724,16 +725,32 @@ const InputPairBMainbox = styled.div`
         font-size: 12px;
     }
 `
+const backgroundKenBurns = keyframes`
+  0% {
+    background-size: 105%;
+    background-position: 50% 50%;
+  }
+  50% {
+    background-size: 115%;
+    background-position: 52% 48%;
+  }
+  100% {
+    background-size: 105%;
+    background-position: 50% 50%;
+  }
+`;
+
 const KonfiguratorPhotoWithSettings = styled.div`
-    margin-top: 100px;
+    margin-top: 85px;
     width: 98%;
     background-color: red;
     height: 600px;
     max-height: 50vh;
     border-radius: 50px;
-    background-size: cover;        /* odpowiednik object-fit: cover */
-    background-position: center;   /* wycentrowanie */
-    background-repeat: no-repeat;  /* bez powtarzania */
+    /* zamiast 'cover' dajemy konkretną wartość – animacja i tak będzie ją zmieniać */
+    background-size: 105%;
+    background-position: center;
+    background-repeat: no-repeat;
     position: relative;
     display: flex;
     flex-direction: column;
@@ -741,13 +758,26 @@ const KonfiguratorPhotoWithSettings = styled.div`
     justify-content: flex-end;
     padding: 20px;
     box-sizing: border-box;
+
+    /* 🔁 delikatne, cykliczne przesuwanie i zoom */
+    animation: ${backgroundKenBurns} 40s ease-in-out infinite;
+
     &::before {
         border-radius: inherit;
         content: '';
         position: absolute;
         inset: 0;
         background: linear-gradient(180deg, transparent 50%, rgba(0, 0, 0, 0.56) 90%);
+        /* gradient jest nad zdjęciem, ale pod treścią */
+        z-index: 1;
     }
+
+    /* treść nad gradientem i tłem */
+    > * {
+        position: relative;
+        z-index: 2;
+    }
+
     .wyjazdNazwa {
         color: white;
         display: flex;
@@ -783,15 +813,9 @@ const KonfiguratorPhotoWithSettings = styled.div`
         svg{
             flex-shrink: 0;
         }
-       
     }
+`;
 
-
-
-
-
-
-`
 const minimum = (a, b) => {
     if (a < b) return a;
     return b;
