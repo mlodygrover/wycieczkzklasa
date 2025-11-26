@@ -1278,6 +1278,7 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
         }
         (async () => {
             try {
+                console.log("Probuje pobrac z nearby");
                 const url = `http://localhost:5006/attractions/nearby?lat=${encodeURIComponent(
                     lat
                 )}&lng=${encodeURIComponent(lng)}&radiusKm=70`;
@@ -1294,6 +1295,7 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
                 }
 
                 const data = await resp.json();
+                console.log("wynik z nearby", data)
                 setAtrakcje(data);
             } catch (err) {
                 if (err.name !== "AbortError") {
@@ -2955,7 +2957,7 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
                         suppressContentEditableWarning
                         ref={titleRef}
                         onInput={(e) => {
-                            setNazwaWyjazdu(e.currentTarget.textContent );
+                            setNazwaWyjazdu(e.currentTarget.textContent);
                         }}
                     />
                     <Edit2 size={40} />

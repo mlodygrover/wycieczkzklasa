@@ -369,7 +369,7 @@ app.get("/getPlaceId", async (req, res) => {
 
 
 const AttractionSchema = new mongoose.Schema({
-    parentPlaceId: { type: String, required: true }, // ID miasta/placeId
+    parentPlaceId: { type: String }, // ID miasta/placeId
     googleId: { type: String, required: true, unique: true },
     nazwa: String,
     adres: String,
@@ -493,6 +493,110 @@ app.get("/getOneAttraction/:googleId", async (req, res) => {
  * GET /attractions/nearby?lat=..&lng=..&radiusKm=70
  * Zwraca atrakcje posortowane wg odległości (domyślnie 70 km).
  */
+async function fetchAndStoreGoogleAttractionsAround(lat, lng) {
+    const centerLat = parseFloat(lat);
+    const centerLng = parseFloat(lng);
+
+    if (!Number.isFinite(centerLat) || !Number.isFinite(centerLng)) {
+        return [];
+    }
+
+    const R = 0.18; // ~20 km
+    const offsets = [
+        { latOffset: 0, lngOffset: 0 },
+        { latOffset: R, lngOffset: 0 },
+        { latOffset: 0, lngOffset: R },
+        { latOffset: R, lngOffset: R },
+    ];
+    const types = ["tourist_attraction", "museum"];
+
+    const allGoogleAttractions = [];
+
+    for (const offset of offsets) {
+        const tileLat = centerLat + offset.latOffset;
+        const tileLng = centerLng + offset.lngOffset;
+
+        for (const type of types) {
+            let nextPageToken = null;
+            let page = 0;
+
+            do {
+                let url;
+                if (nextPageToken) {
+                    url = `https://maps.googleapis.com/maps/api/place/nearbysearch/json?pagetoken=${nextPageToken}&language=pl&key=${process.env.GOOGLE_API_KEY}`;
+                } else {
+                    url = `https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${tileLat},${tileLng}&radius=10000&type=${type}&language=pl&key=${process.env.GOOGLE_API_KEY}`;
+                }
+
+                const response = await axios.get(url);
+                const data = response.data;
+
+                if (data.status !== "OK" && data.status !== "ZERO_RESULTS") break;
+
+                const filteredResults = (data.results || []).filter(place => {
+                    const types = place.types || [];
+                    return !types.includes("shopping_mall")
+                        && !types.includes("lodging")
+                        && !types.includes("store")
+                        && !types.includes("furniture_store")
+                        && !types.includes("home_goods_store");
+                });
+
+                for (const place of filteredResults) {
+                    if (!allGoogleAttractions.some(a => a.googleId === place.place_id)) {
+                        const website = await getPlaceDetails(place.place_id).catch(() => null);
+
+                        const latNum = place.geometry.location.lat;
+                        const lngNum = place.geometry.location.lng;
+
+                        allGoogleAttractions.push({
+                            googleId: place.place_id,
+                            nazwa: place.name,
+                            adres: place.vicinity || "",
+                            ocena: place.rating || null,
+                            liczbaOpinie: place.user_ratings_total || 0,
+                            lokalizacja: {
+                                lat: latNum,
+                                lng: lngNum,
+                            },
+                            locationGeo: {
+                                type: "Point",
+                                coordinates: [lngNum, latNum], // [lng, lat]
+                            },
+                            typy: place.types || [],
+                            ikona: null,
+                            photos: [],
+                            stronaInternetowa: website,
+                            locationSource: "Google",
+                            dataSource: "Bot",
+                        });
+                    }
+                }
+
+                nextPageToken = data.next_page_token || null;
+                page++;
+
+                if (nextPageToken) {
+                    await new Promise(resolve => setTimeout(resolve, 2000));
+                }
+            } while (nextPageToken && page < 3);
+        }
+    }
+
+    // Zapis tylko nowych atrakcji (po googleId)
+    const newAttractions = [];
+    for (const attr of allGoogleAttractions) {
+        const exists = await Attraction.findOne({ googleId: attr.googleId }).select("_id").lean();
+        if (!exists) {
+            const newAttr = new Attraction(attr);
+            await newAttr.save();
+            newAttractions.push(newAttr);
+        }
+    }
+
+    return newAttractions;
+}
+
 app.get('/attractions/nearby', async (req, res) => {
     try {
         const lat = Number(req.query.lat);
@@ -505,7 +609,7 @@ app.get('/attractions/nearby', async (req, res) => {
 
         const maxDistanceMeters = Math.max(1, Math.round(radiusKm * 1000));
 
-        const items = await Attraction.aggregate([
+        const buildPipeline = () => ([
             {
                 $geoNear: {
                     near: { type: 'Point', coordinates: [lng, lat] }, // [lng, lat]
@@ -513,34 +617,47 @@ app.get('/attractions/nearby', async (req, res) => {
                     spherical: true,
                     distanceField: 'distanceMeters',
                     maxDistance: maxDistanceMeters,
-                    query: { locationGeo: { $exists: true } }, // pomiń niemigrowane rekordy
+                    query: { locationGeo: { $exists: true } },
                 },
             },
             {
                 $addFields: {
                     distanceKm: { $round: [{ $divide: ['$distanceMeters', 1000] }, 2] },
-                    // verified = true, jeśli dataSource != "Bot"
                     verified: { $ne: ['$dataSource', 'Bot'] },
                 },
             },
             {
                 $match: {
-                    liczbaOpinie: { $gte: 100 },
+                    $or: [
+                        { liczbaOpinie: { $gte: 150 } }, // ogólny próg 150 opinii
+                        { typy: 'museum' },              // wyjątek: wszystko co ma typ "museum"
+                    ],
                 },
             },
             { $sort: { liczbaOpinie: -1 } },
-            { $limit: 100 },
+            { $limit: 300 },
             {
-                // wytnij daty i locationSource z odpowiedzi
                 $project: {
                     createdAt: 0,
                     updatedAt: 0,
                     locationSource: 0,
-                    // opcjonalnie możesz też ukryć samo dataSource:
-                    // dataSource: 0,
                 },
             },
         ]);
+
+        // 1️⃣ Pierwsze podejście – tylko baza
+        let items = await Attraction.aggregate(buildPipeline());
+
+        // 2️⃣ Jeśli mamy mało wyników, dograj z Google i spróbuj jeszcze raz
+        if (items.length < 30) {
+            try {
+                await fetchAndStoreGoogleAttractionsAround(lat, lng);
+                items = await Attraction.aggregate(buildPipeline());
+            } catch (err) {
+                console.error('Dogrywanie atrakcji z Google nie powiodło się:', err?.message || err);
+                // nawet jeśli Google padło, zwracamy to, co mamy
+            }
+        }
 
         return res.json(items);
     } catch (err) {
@@ -548,6 +665,7 @@ app.get('/attractions/nearby', async (req, res) => {
         return res.status(500).json({ error: 'ServerError' });
     }
 });
+
 
 // Endpoint: awaryjne dodanie atrakcji z wyliczeniem locationGeo
 app.post('/emergencyAddAttraction', async (req, res) => {
@@ -964,6 +1082,7 @@ app.get("/searchPlaces", async (req, res) => {
             params: {
                 query,
                 key: process.env.GOOGLE_API_KEY,
+
                 language: "pl",
             },
         });
