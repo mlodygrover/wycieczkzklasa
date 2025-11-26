@@ -90,6 +90,10 @@ const PreConfigureHeaderWrapper = styled.div`
       gap: 5px;
       cursor: pointer;
       transition: background-color 0.3s ease;
+      &.disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
       &.b{
       background-color: white;
       color: black;
@@ -855,6 +859,17 @@ export const PreConfigure = (
 
         titleRef.current.textContent = nazwaWyjazdu ?? "";
     }, [nazwaWyjazdu]);
+    const canGoToConfigurator = planReady && isValidPreconfigureState({
+        miejsceDocelowe,
+        miejsceStartowe,
+        dataWyjazdu,
+        dataPowrotu,
+        liczbaUczestnikow,
+        liczbaOpiekunow,
+        standardHotelu,
+        standardTransportu,
+    });
+
     return (
         <PreConfigureMainbox>
             <PreConfigureHeader key={photoWallpaper}>
@@ -881,10 +896,20 @@ export const PreConfigure = (
                         </div>
                     </div>
                     <div className="preConfigureButtons">
-                        <a className="preConfigureButton" href={konfiguratorUrl}>
+                        <a
+                            className={`preConfigureButton${canGoToConfigurator ? '' : ' disabled'}`}
+                            href={canGoToConfigurator ? konfiguratorUrl : undefined}
+                            onClick={(e) => {
+                                if (!canGoToConfigurator) {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                }
+                            }}
+                        >
                             <Settings size={20} />
                             Konfigurator
                         </a>
+
                         <a className={publicPlan ? "preConfigureButton b" : "preConfigureButton b privatePlan"} onClick={() => setPublicPlan(!publicPlan)}>
                             <EyeCheckbox ifChecked={publicPlan} />
                             Plan publiczny

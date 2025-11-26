@@ -259,30 +259,35 @@ const MiejsceSchema = new mongoose.Schema(
     { _id: false }
 );
 const TripPlanSchema = new mongoose.Schema(
-  {
-    computedPrice: { type: Number, default: 0 },
-    authors: [{ type: mongoose.Schema.Types.ObjectId, ref: "User", index: true }],
+    {
+        computedPrice: { type: Number, default: 0 },
+        authors: [{ type: mongoose.Schema.Types.ObjectId, ref: "User", index: true }],
 
-    miejsceDocelowe: { type: MiejsceSchema, required: true },
+        miejsceDocelowe: { type: MiejsceSchema, required: true },
 
-    // NOWE POLE – BEZ default, bo i tak ustawimy je w kodzie endpointu
-    nazwa: { type: String, trim: true },
+        // NOWE POLE – BEZ default, bo i tak ustawimy je w kodzie endpointu
+        nazwa: { type: String, trim: true },
 
-    miejsceStartowe: { type: MiejsceSchema, required: true },
-    dataPrzyjazdu: { type: Date, required: true },
-    dataWyjazdu: { type: Date, required: true },
-    standardTransportu: { type: Number, required: true, min: 0, max: 2 },
-    standardHotelu: { type: Number, required: true, min: 0, max: 3 },
+        miejsceStartowe: { type: MiejsceSchema, required: true },
+        dataPrzyjazdu: { type: Date, required: true },
+        dataWyjazdu: { type: Date, required: true },
+        standardTransportu: { type: Number, required: true, min: 0, max: 2 },
+        standardHotelu: { type: Number, required: true, min: 0, max: 3 },
 
-    liczbaUczestnikow: { type: Number, required: true, min: 1 },
-    liczbaOpiekunow: { type: Number, required: true, min: 0, default: 0 },
+        liczbaUczestnikow: { type: Number, required: true, min: 1 },
+        liczbaOpiekunow: { type: Number, required: true, min: 0, default: 0 },
 
-    activitiesSchedule: { type: [DaySchema], default: [] },
-    photoLink: { type: String, default: null },
+        activitiesSchedule: { type: [DaySchema], default: [] },
+        photoLink: { type: String, default: null },
 
-    public: { type: Boolean, default: true },
-  },
-  { timestamps: true, versionKey: false }
+        public: { type: Boolean, default: true },
+        startHours: {
+            type: [Number],
+            default: [],
+        },
+
+    },
+    { timestamps: true, versionKey: false }
 );
 
 
@@ -450,7 +455,9 @@ app.get("/download/trip-plan", requireAuth, async (req, res) => {
             _id: new mongoose.Types.ObjectId(tripId),
             authors: req.user._id,
         })
-            .select("computedPrice miejsceDocelowe standardTransportu standardHotelu activitiesSchedule photoLink nazwa")
+            .select(
+                "computedPrice miejsceDocelowe standardTransportu standardHotelu activitiesSchedule photoLink nazwa startHours"
+            )
             .lean();
 
         if (!doc) {
@@ -459,8 +466,8 @@ app.get("/download/trip-plan", requireAuth, async (req, res) => {
 
         const activitiesAoA = Array.isArray(doc.activitiesSchedule)
             ? doc.activitiesSchedule.map((d) =>
-                  Array.isArray(d?.activities) ? d.activities : []
-              )
+                Array.isArray(d?.activities) ? d.activities : []
+            )
             : [];
 
         res.status(200).json({
@@ -471,12 +478,14 @@ app.get("/download/trip-plan", requireAuth, async (req, res) => {
             activitiesSchedule: activitiesAoA,
             photoLink: doc.photoLink ?? null,
             nazwa: doc.nazwa ?? null,
+            startHours: Array.isArray(doc.startHours) ? doc.startHours : [],
         });
     } catch (err) {
         console.error("GET /download/trip-plan error:", err);
         res.status(500).json({ error: "ServerError" });
     }
 });
+
 
 
 
@@ -498,7 +507,8 @@ app.post("/api/trip-plans", async (req, res) => {
             liczbaOpiekunow,
             computedPrice,
             public: publicFromClient,
-            nazwa, // <-- nowy parametr
+            nazwa,       // <-- nazwa planu
+            startHours,  // <-- NOWE POLE: tablica minut (Number[])
         } = req.body || {};
 
         if (!req.user?._id) {
@@ -519,6 +529,46 @@ app.post("/api/trip-plans", async (req, res) => {
                     .json({ error: "BadPayload", message: "Każdy dzień w activitiesSchedule musi być tablicą." });
             }
             packedSchedule = packDays(activitiesSchedule);
+        }
+
+        // startHours – opcjonalne, ale jeżeli jest, musi być tablicą liczb całkowitych minut
+        let startHoursToSave;
+        if (typeof startHours !== "undefined") {
+            if (!Array.isArray(startHours)) {
+                return res
+                    .status(400)
+                    .json({ error: "BadPayload", message: "startHours musi być tablicą liczb (minuty)." });
+            }
+
+            const normalized = [];
+            for (const v of startHours) {
+                const n = Number(v);
+                if (!Number.isFinite(n)) {
+                    return res.status(400).json({
+                        error: "BadPayload",
+                        message: "startHours może zawierać tylko liczby.",
+                    });
+                }
+                const iv = Math.trunc(n);
+                // zakres 0–1439 minut (cała doba); w razie potrzeby można poluzować
+                if (iv < 0 || iv > 24 * 60 - 1) {
+                    return res.status(400).json({
+                        error: "BadPayload",
+                        message: "Każda wartość w startHours musi być w zakresie 0–1439 (minuty).",
+                    });
+                }
+                normalized.push(iv);
+            }
+
+            // jeżeli mamy activitiesSchedule, dopilnujmy aby długość się zgadzała z liczbą dni
+            if (typeof activitiesSchedule !== "undefined" && normalized.length !== activitiesSchedule.length) {
+                return res.status(400).json({
+                    error: "BadPayload",
+                    message: "Długość startHours musi być równa liczbie dni w activitiesSchedule.",
+                });
+            }
+
+            startHoursToSave = normalized;
         }
 
         const destVal = validatePlace(miejsceDocelowe, { fieldName: "miejsceDocelowe" });
@@ -606,6 +656,9 @@ app.post("/api/trip-plans", async (req, res) => {
         if (nameToSave) {
             createDoc.nazwa = nameToSave;
         }
+        if (typeof startHoursToSave !== "undefined") {
+            createDoc.startHours = startHoursToSave;
+        }
 
         const created = await TripPlan.create(createDoc);
 
@@ -622,15 +675,28 @@ app.post("/api/trip-plans", async (req, res) => {
 
 /**
  * GET /api/trip-plans
- * Lista planów z nowymi polami.
+ * Lista planów z nowymi polami (w tym startHours).
  */
 app.get("/api/trip-plans", async (_req, res) => {
     try {
         const docs = await TripPlan.find().sort({ createdAt: -1 }).lean();
+
         const out = docs.map((d) => {
             const aoa = unpackDays(d.activitiesSchedule);
             const price =
-                typeof d.computedPrice === "number" ? d.computedPrice : computePriceFromAoA(aoa);
+                typeof d.computedPrice === "number"
+                    ? d.computedPrice
+                    : computePriceFromAoA(aoa);
+
+            // Bezpieczne wystawienie startHours jako tablicy liczb
+            const startHours =
+                Array.isArray(d.startHours)
+                    ? d.startHours.map((v) => {
+                        const n = Number(v);
+                        return Number.isFinite(n) ? Math.trunc(n) : 0;
+                    })
+                    : [];
+
             return {
                 _id: d._id,
                 createdAt: d.createdAt,
@@ -649,8 +715,10 @@ app.get("/api/trip-plans", async (_req, res) => {
                 photoLink: d.photoLink ?? null,
                 public: typeof d.public === "boolean" ? d.public : true,
                 nazwa: d.nazwa ?? null,
+                startHours, // <-- NOWE POLE W ODPOWIEDZI
             };
         });
+
         return res.json(out);
     } catch (err) {
         console.error("GET /api/trip-plans error:", err);
@@ -659,10 +727,9 @@ app.get("/api/trip-plans", async (_req, res) => {
 });
 
 
-
 /**
  * GET /api/trip-plans/:id
- * Pojedynczy plan.
+ * Pojedynczy plan (z obsługą startHours).
  */
 app.get("/api/trip-plans/:id", async (req, res) => {
     try {
@@ -676,7 +743,17 @@ app.get("/api/trip-plans/:id", async (req, res) => {
 
         const aoa = unpackDays(doc.activitiesSchedule);
         const price =
-            typeof doc.computedPrice === "number" ? doc.computedPrice : computePriceFromAoA(aoa);
+            typeof doc.computedPrice === "number"
+                ? doc.computedPrice
+                : computePriceFromAoA(aoa);
+
+        // Bezpieczne wystawienie startHours jako tablicy liczb (minuty)
+        const startHours = Array.isArray(doc.startHours)
+            ? doc.startHours.map((v) => {
+                const n = Number(v);
+                return Number.isFinite(n) ? Math.trunc(n) : 0;
+            })
+            : [];
 
         return res.json({
             _id: doc._id,
@@ -696,13 +773,13 @@ app.get("/api/trip-plans/:id", async (req, res) => {
             photoLink: doc.photoLink ?? null,
             public: typeof doc.public === "boolean" ? doc.public : true,
             nazwa: doc.nazwa ?? null,
+            startHours, // <-- NOWE POLE W ODPOWIEDZI
         });
     } catch (err) {
         console.error("GET /api/trip-plans/:id error:", err);
         return res.status(500).json({ error: "ServerError" });
     }
 });
-
 
 
 /**
@@ -761,7 +838,16 @@ app.get("/api/trip-plans/by-author/:userId", requireAuth, async (req, res) => {
         const out = items.map((d) => {
             const aoa = unpackDays(d.activitiesSchedule);
             const price =
-                typeof d.computedPrice === "number" ? d.computedPrice : computePriceFromAoA(aoa);
+                typeof d.computedPrice === "number"
+                    ? d.computedPrice
+                    : computePriceFromAoA(aoa);
+
+            const startHours = Array.isArray(d.startHours)
+                ? d.startHours.map((v) => {
+                    const n = Number(v);
+                    return Number.isFinite(n) ? Math.trunc(n) : 0;
+                })
+                : [];
 
             return {
                 _id: d._id,
@@ -781,6 +867,7 @@ app.get("/api/trip-plans/by-author/:userId", requireAuth, async (req, res) => {
                 photoLink: d.photoLink ?? null,
                 public: typeof d.public === "boolean" ? d.public : true,
                 nazwa: d.nazwa ?? null,
+                startHours, // <-- NOWE POLE
             };
         });
 
@@ -824,7 +911,16 @@ app.get("/api/trip-plans/public/by-author/:userId", async (req, res) => {
         const out = items.map((d) => {
             const aoa = unpackDays(d.activitiesSchedule);
             const price =
-                typeof d.computedPrice === "number" ? d.computedPrice : computePriceFromAoA(aoa);
+                typeof d.computedPrice === "number"
+                    ? d.computedPrice
+                    : computePriceFromAoA(aoa);
+
+            const startHours = Array.isArray(d.startHours)
+                ? d.startHours.map((v) => {
+                    const n = Number(v);
+                    return Number.isFinite(n) ? Math.trunc(n) : 0;
+                })
+                : [];
 
             return {
                 _id: d._id,
@@ -844,6 +940,7 @@ app.get("/api/trip-plans/public/by-author/:userId", async (req, res) => {
                 photoLink: d.photoLink ?? null,
                 public: typeof d.public === "boolean" ? d.public : true,
                 nazwa: d.nazwa ?? null,
+                startHours, // <-- NOWE POLE
             };
         });
 
@@ -859,11 +956,6 @@ app.get("/api/trip-plans/public/by-author/:userId", async (req, res) => {
         return res.status(500).json({ error: "ServerError" });
     }
 });
-
-
-
-
-
 /**
  * GET /api/trip-plans/:tripId/by-author/:userId
  * Zwraca plan, jeśli userId ∈ authors; inaczej null.
@@ -890,7 +982,16 @@ app.get("/api/trip-plans/:tripId/by-author/:userId", async (req, res) => {
 
         const aoa = unpackDays(doc.activitiesSchedule);
         const price =
-            typeof doc.computedPrice === "number" ? doc.computedPrice : computePriceFromAoA(aoa);
+            typeof doc.computedPrice === "number"
+                ? doc.computedPrice
+                : computePriceFromAoA(aoa);
+
+        const startHours = Array.isArray(doc.startHours)
+            ? doc.startHours.map((v) => {
+                const n = Number(v);
+                return Number.isFinite(n) ? Math.trunc(n) : 0;
+            })
+            : [];
 
         return res.json({
             _id: doc._id,
@@ -910,21 +1011,17 @@ app.get("/api/trip-plans/:tripId/by-author/:userId", async (req, res) => {
             photoLink: doc.photoLink ?? null,
             public: typeof doc.public === "boolean" ? doc.public : true,
             nazwa: doc.nazwa ?? null,
+            startHours, // <-- NOWE POLE
         });
     } catch (err) {
         console.error("GET /api/trip-plans/:tripId/by-author/:userId error:", err);
         return res.status(500).json({ error: "ServerError" });
     }
 });
-
-
-
 /**
- * PUT /api/trip-plans/:tripId/by-author/:userId
+ * PUT /api/trip-plans/:tripId
  * Aktualizuje plan, walidując nowe pola (w tym uczestników/opiekunów).
  */
-// Wymaga middleware’u, który ustawia req.user (np. requireAuth)
-// ===================== PUT /api/trip-plans/:tripId =====================
 app.put("/api/trip-plans/:tripId", requireAuth, async (req, res) => {
     try {
         const { tripId } = req.params;
@@ -954,7 +1051,8 @@ app.put("/api/trip-plans/:tripId", requireAuth, async (req, res) => {
             liczbaUczestnikow,
             liczbaOpiekunow,
             public: publicFromClient,
-            nazwa, // <-- nowy parametr
+            nazwa, // <-- nazwa planu
+            startHours, // <-- NOWE POLE W BODY
         } = req.body || {};
 
         const updates = {};
@@ -999,6 +1097,25 @@ app.put("/api/trip-plans/:tripId", requireAuth, async (req, res) => {
             }
             updates.activitiesSchedule = packDays(activitiesSchedule);
             aoaForPrice = activitiesSchedule;
+        }
+
+        // startHours – jednowymiarowa tablica minut
+        if (Object.prototype.hasOwnProperty.call(req.body, "startHours")) {
+            if (!Array.isArray(startHours)) {
+                return res.status(400).json({
+                    error: "BadPayload",
+                    message: "startHours musi być tablicą liczb (minuty od północy).",
+                });
+            }
+
+            const normalized = startHours
+                .map((v) => {
+                    const n = Number(v);
+                    return Number.isFinite(n) ? Math.trunc(n) : null;
+                })
+                .filter((v) => v !== null);
+
+            updates.startHours = normalized;
         }
 
         // miejsceDocelowe
@@ -1160,6 +1277,13 @@ app.put("/api/trip-plans/:tripId", requireAuth, async (req, res) => {
                     ? computePriceFromAoA(aoa)
                     : null;
 
+        const startHoursOut = Array.isArray(updated.startHours)
+            ? updated.startHours.map((v) => {
+                const n = Number(v);
+                return Number.isFinite(n) ? Math.trunc(n) : 0;
+            })
+            : [];
+
         return res.json({
             _id: updated._id,
             createdAt: updated.createdAt,
@@ -1180,6 +1304,7 @@ app.put("/api/trip-plans/:tripId", requireAuth, async (req, res) => {
             urlSlug: updated.urlSlug ?? undefined,
             publicUrl: updated.publicUrl ?? undefined,
             nazwa: updated.nazwa ?? null,
+            startHours: startHoursOut, // <-- NOWE POLE W ODPOWIEDZI
         });
     } catch (err) {
         console.error("PUT /api/trip-plans/:tripId error:", err);

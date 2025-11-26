@@ -2,6 +2,9 @@ import { useState, useEffect } from 'react';
 import styled from 'styled-components';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronLeft, ChevronRight, MapPin, Calendar, User } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import Loader from './roots/loader';
+
 
 // --- Styled Components z optymalizacjami ---
 
@@ -15,6 +18,14 @@ const SliderContainer = styled.div`
   height: 90vh;
   }
 `;
+const LoaderDiv = styled.div`
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+`
 
 const BackgroundImage = styled(motion.div)`
   position: absolute;
@@ -390,13 +401,182 @@ const defaultTrips = [
   }
 ];
 
+const API_BASE = "http://localhost:5007";
+
+// --- POMOCNICZE FUNKCJE API ---
+
+async function GetTripSummaryById(tripId) {
+  const url = `${API_BASE}/api/trip-plans/${encodeURIComponent(tripId)}`;
+  try {
+    const resp = await fetch(url, { method: "GET" });
+
+    if (!resp.ok) {
+      console.warn("GET trip-plan failed:", resp.status);
+      return null;
+    }
+
+    const tripData = await resp.json();
+
+    // Spłaszczenie activitiesSchedule (AoA → flat)
+    let flattenedSchedule = [];
+    if (Array.isArray(tripData.activitiesSchedule)) {
+      for (const day of tripData.activitiesSchedule) {
+        if (Array.isArray(day)) {
+          flattenedSchedule = flattenedSchedule.concat(day);
+        }
+      }
+
+      flattenedSchedule = flattenedSchedule
+        .filter(
+          (a) =>
+            a &&
+            a.googleId &&
+            !String(a.googleId).includes("base")
+        )
+        .sort(
+          (a, b) =>
+            (b.liczbaOpinie || 0) - (a.liczbaOpinie || 0)
+        );
+
+      tripData.topAttractions = flattenedSchedule.slice(
+        0,
+        Math.min(5, flattenedSchedule.length)
+      );
+    } else {
+      tripData.topAttractions = [];
+    }
+
+    return tripData;
+  } catch (err) {
+    console.error("GetTripSummaryById error:", err);
+    return null;
+  }
+}
+
+async function getUserNameById(userId) {
+  if (!userId) return null;
+  const url = `${API_BASE}/api/users/${encodeURIComponent(
+    userId
+  )}/name`;
+
+  try {
+    const resp = await fetch(url, { method: "GET" });
+
+    if (!resp.ok) {
+      console.warn("GET user name failed:", resp.status);
+      return null;
+    }
+
+    const data = await resp.json();
+    return data?.username || null;
+  } catch (err) {
+    console.error("getUserNameById error:", err);
+    return null;
+  }
+}
+
+function formatDurationDays(start, end) {
+  if (!start || !end) return "";
+  const startDate = new Date(start);
+  const endDate = new Date(end);
+  if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime())) {
+    return "";
+  }
+  const diffMs = endDate.getTime() - startDate.getTime();
+  const diffDays = Math.max(
+    1,
+    Math.round(diffMs / (1000 * 60 * 60 * 24))
+  );
+  return `${diffDays} dni`;
+}
+
+async function CreateTripsArray(tripIds) {
+  if (!Array.isArray(tripIds) || tripIds.length === 0) {
+    return defaultTrips;
+  }
+
+  const tripsArray = [];
+
+  for (let i = 0; i < tripIds.length; i++) {
+    const tripId = tripIds[i];
+    const tripSummary = await GetTripSummaryById(tripId);
+    if (!tripSummary) continue;
+
+    const authorId =
+      Array.isArray(tripSummary.authors) &&
+        tripSummary.authors.length > 0
+        ? tripSummary.authors[0]
+        : null;
+
+    const authorName = await getUserNameById(authorId);
+
+    const duration = formatDurationDays(
+      tripSummary.dataPrzyjazdu,
+      tripSummary.dataWyjazdu
+    );
+
+    const priceNumber =
+      typeof tripSummary.computedPrice === "number"
+        ? tripSummary.computedPrice
+        : null;
+
+    tripsArray.push({
+      id: tripSummary._id || i,
+      title: tripSummary.nazwa || "Wyjazd",
+      duration,
+      location: tripSummary.miejsceDocelowe?.nazwa || "",
+      author: authorName || null,
+      price:
+        priceNumber != null
+          ? `${priceNumber.toLocaleString("pl-PL")} zł`
+          : "",
+      link: `/konfigurator-lounge?downloadPlan=${tripId}`,
+      image:
+        tripSummary.photoLink ||
+        "https://images.unsplash.com/photo-1431274172761-fca41d930114?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxwYXJpcyUyMGVpZmZlbCUyMHRvd2VyfGVufDF8fHx8MTc2MTkwNzU3MHww&ixlib=rb-4.1.0&q=80&w=1080",
+    });
+  }
+
+  return tripsArray.length > 0 ? tripsArray : defaultTrips;
+}
+
 // --- Logika komponentu ---
 
-export function TravelSlider({ trips = defaultTrips }) {
+export function TravelSlider({ }) {
+  const navigate = useNavigate();
+  const tripIds = [
+    "6927795a0ee190ed12e31d21",
+    "69277fb60ee190ed12e31d5b",
+  ];
+
+  const [trips, setTrips] = useState(defaultTrips);
+  const [loading, setLoading] = useState(true);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [direction, setDirection] = useState(0);
   const [backgroundOffset, setBackgroundOffset] = useState(0);
 
+  useEffect(() => {
+    let cancelled = false;
+
+    (async () => {
+      try {
+        const data = await CreateTripsArray(tripIds);
+        if (!cancelled) {
+          setTrips(data);
+        }
+      } catch (err) {
+        console.error("CreateTripsArray error:", err);
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [tripIds.join(",")]); // prosty hash po ID
   useEffect(() => {
     setBackgroundOffset(currentIndex * 50);
   }, [currentIndex]);
@@ -453,165 +633,173 @@ export function TravelSlider({ trips = defaultTrips }) {
   const currentTrip = trips[currentIndex];
   const prevTrip = trips[getPrevIndex()];
   const nextTrip = trips[getNextIndex()];
-
+  if (loading) {
+    return (
+      <SliderContainer style={{ backgroundColor: "#ffffff" }} ><LoaderDiv><Loader /></LoaderDiv></SliderContainer>
+    );
+  }
   return (
     <SliderContainer>
       <BackgroundImage
-        $image={currentTrip.image}
+        $image={loading ? "../miasta/poznan3.jpg" : currentTrip.image}
         style={{ backgroundPosition: `${backgroundOffset}% center` }}
       />
       <GradientOverlay />
-
-      <SliderContent>
-        <SliderInner>
-          <SlidesContainer>
-            {/* Poprzedni slajd (ukryty na mobilkach przez CSS) */}
-            <SideSlide
-              animate={{
-                x: -50,
-                scale: 0.85,
-                rotateY: 15,
-              }}
-              transition={{ duration: 0.5 }}
-              onClick={() => paginate(-1)}
-              style={{ left: 0 }}
-            >
-              <SideSlideImage>
-                <img src={prevTrip.image} alt={prevTrip.title} />
-                <SideSlideGradient />
-              </SideSlideImage>
-            </SideSlide>
-
-            {/* Centralny slajd */}
-            <AnimatePresence initial={false} custom={direction}>
-              <MainSlideContainer
-                key={currentIndex}
-                custom={direction}
-                variants={slideVariants}
-                initial="enter"
-                animate="center"
-                exit="exit"
-                transition={{
-                  x: { type: "spring", stiffness: 300, damping: 30 },
-                  opacity: { duration: 0.3 },
-                  scale: { duration: 0.3 },
+      {!loading &&
+        <SliderContent>
+          <SliderInner>
+            <SlidesContainer>
+              {/* Poprzedni slajd (ukryty na mobilkach przez CSS) */}
+              <SideSlide
+                animate={{
+                  x: -50,
+                  scale: 0.85,
+                  rotateY: 15,
                 }}
-                drag="x"
-                dragConstraints={{ left: 0, right: 0 }}
-                dragElastic={1}
-                onDragEnd={(e, { offset, velocity }) => {
-                  const swipe = swipePower(offset.x, velocity.x);
-
-                  if (swipe < -swipeConfidenceThreshold) {
-                    paginate(1);
-                  } else if (swipe > swipeConfidenceThreshold) {
-                    paginate(-1);
-                  }
-                }}
+                transition={{ duration: 0.5 }}
+                onClick={() => paginate(-1)}
+                style={{ left: 0 }}
               >
-                <SlideBackground $image={currentTrip.image} />
+                <SideSlideImage>
+                  <img src={prevTrip.image} alt={prevTrip.title} />
+                  <SideSlideGradient />
+                </SideSlideImage>
+              </SideSlide>
 
-                <GlassOverlay>
-                  <GlassGradient />
-
-                  {/* --- POPRAWIONY BLOK TREŚCI --- */}
-                  <SlideContent>
-                    <SlideInfo
-                      key={currentIndex}
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: 0.3, duration: 0.4 }}
-                    >
-                      {currentTrip.badge && (
-                        <SpecialBadge>
-                          <span>{currentTrip.badge}</span>
-                        </SpecialBadge>
-                      )}
-
-                      <SlideTitle>{currentTrip.title}</SlideTitle>
-
-                      {currentTrip.location && (
-                        <InfoRow>
-                          <MapPin />
-                          <span>{currentTrip.location}</span>
-                        </InfoRow>
-                      )}
-
-                      {currentTrip.duration && (
-                        <InfoRow>
-                          <Calendar />
-                          <span>{currentTrip.duration}</span>
-                        </InfoRow>
-                      )}
-                      {currentTrip.author && (
-                        <InfoRow>
-                          <User />
-                          <span>{currentTrip.author}</span>
-                        </InfoRow>
-                      )}
-                    </SlideInfo>
-
-                    <SlideFooter
-                      key={`${currentIndex}-footer`}
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: 0.4, duration: 0.4 }}
-                    >
-                      <PriceSection>
-                        <p>Od</p>
-                        <p>{currentTrip.price}</p>
-                      </PriceSection>
-                      <ViewButton>Otwórz w konfiguratorze</ViewButton>
-                    </SlideFooter>
-                  </SlideContent>
-                  {/* --- KONIEC POPRAWIONEGO BLOKU --- */}
-
-                </GlassOverlay>
-              </MainSlideContainer>
-            </AnimatePresence>
-
-            {/* Następny slajd (ukryty na mobilkach przez CSS) */}
-            <SideSlide
-              animate={{
-                x: 50,
-                scale: 0.85,
-                rotateY: -15,
-              }}
-              transition={{ duration: 0.5 }}
-              onClick={() => paginate(1)}
-              style={{ right: 0 }}
-            >
-              <SideSlideImage>
-                <img src={nextTrip.image} alt={nextTrip.title} />
-                <SideSlideGradient />
-              </SideSlideImage>
-            </SideSlide>
-          </SlidesContainer>
-
-          <NavigationContainer>
-            <NavButton onClick={() => paginate(-1)}>
-              <ChevronLeft />
-            </NavButton>
-
-            <DotsContainer>
-              {trips.map((_, index) => (
-                <Dot
-                  key={index}
-                  $active={index === currentIndex}
-                  onClick={() => {
-                    setDirection(index > currentIndex ? 1 : -1);
-                    setCurrentIndex(index);
+              {/* Centralny slajd */}
+              <AnimatePresence initial={false} custom={direction}>
+                <MainSlideContainer
+                  key={currentIndex}
+                  custom={direction}
+                  variants={slideVariants}
+                  initial="enter"
+                  animate="center"
+                  exit="exit"
+                  transition={{
+                    x: { type: "spring", stiffness: 300, damping: 30 },
+                    opacity: { duration: 0.3 },
+                    scale: { duration: 0.3 },
                   }}
-                />
-              ))}
-            </DotsContainer>
+                  drag="x"
+                  dragConstraints={{ left: 0, right: 0 }}
+                  dragElastic={1}
+                  onDragEnd={(e, { offset, velocity }) => {
+                    const swipe = swipePower(offset.x, velocity.x);
 
-            <NavButton onClick={() => paginate(1)}>
-              <ChevronRight />
-            </NavButton>
-          </NavigationContainer>
-        </SliderInner>
-      </SliderContent>
+                    if (swipe < -swipeConfidenceThreshold) {
+                      paginate(1);
+                    } else if (swipe > swipeConfidenceThreshold) {
+                      paginate(-1);
+                    }
+                  }}
+                >
+                  <SlideBackground $image={currentTrip.image} />
+
+                  <GlassOverlay>
+                    <GlassGradient />
+
+                    {/* --- POPRAWIONY BLOK TREŚCI --- */}
+                    <SlideContent>
+                      <SlideInfo
+                        key={currentIndex}
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.3, duration: 0.4 }}
+                      >
+                        {currentTrip.badge && (
+                          <SpecialBadge>
+                            <span>{currentTrip.badge}</span>
+                          </SpecialBadge>
+                        )}
+
+                        <SlideTitle>{currentTrip.title}</SlideTitle>
+
+                        {currentTrip.location && (
+                          <InfoRow>
+                            <MapPin />
+                            <span>{currentTrip.location}</span>
+                          </InfoRow>
+                        )}
+
+                        {currentTrip.duration && (
+                          <InfoRow>
+                            <Calendar />
+                            <span>{currentTrip.duration}</span>
+                          </InfoRow>
+                        )}
+                        {currentTrip.author && (
+                          <InfoRow>
+                            <User />
+                            <span>{currentTrip.author}</span>
+                          </InfoRow>
+                        )}
+                      </SlideInfo>
+
+                      <SlideFooter
+                        key={`${currentIndex}-footer`}
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.4, duration: 0.4 }}
+                      >
+                        <PriceSection>
+                          <p>Od</p>
+                          <p>{currentTrip.price}</p>
+                        </PriceSection>
+                        <ViewButton onClick={() => navigate(currentTrip.link)}>
+                          Otwórz w konfiguratorze
+                        </ViewButton>
+
+                      </SlideFooter>
+                    </SlideContent>
+                    {/* --- KONIEC POPRAWIONEGO BLOKU --- */}
+
+                  </GlassOverlay>
+                </MainSlideContainer>
+              </AnimatePresence>
+
+              {/* Następny slajd (ukryty na mobilkach przez CSS) */}
+              <SideSlide
+                animate={{
+                  x: 50,
+                  scale: 0.85,
+                  rotateY: -15,
+                }}
+                transition={{ duration: 0.5 }}
+                onClick={() => paginate(1)}
+                style={{ right: 0 }}
+              >
+                <SideSlideImage>
+                  <img src={nextTrip.image} alt={nextTrip.title} />
+                  <SideSlideGradient />
+                </SideSlideImage>
+              </SideSlide>
+            </SlidesContainer>
+
+            <NavigationContainer>
+              <NavButton onClick={() => paginate(-1)}>
+                <ChevronLeft />
+              </NavButton>
+
+              <DotsContainer>
+                {trips.map((_, index) => (
+                  <Dot
+                    key={index}
+                    $active={index === currentIndex}
+                    onClick={() => {
+                      setDirection(index > currentIndex ? 1 : -1);
+                      setCurrentIndex(index);
+                    }}
+                  />
+                ))}
+              </DotsContainer>
+
+              <NavButton onClick={() => paginate(1)}>
+                <ChevronRight />
+              </NavButton>
+            </NavigationContainer>
+          </SliderInner>
+        </SliderContent>
+      }
     </SliderContainer>
   );
 }

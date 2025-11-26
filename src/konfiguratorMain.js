@@ -1093,7 +1093,7 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
         }
         return "";
     });
-    const [nazwaWyjazdu, setNazwaWyjazdu] = useState("Wyjazd do Poznawwń")
+    const [nazwaWyjazdu, setNazwaWyjazdu] = useState("")
     const [liczbaDni, setLiczbaDni] = useState(0)
     // ===== EFEKTY: zapis do URL + regularny zapis do localStorage =====
 
@@ -1312,6 +1312,10 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
     const [routeSchedule, setRouteSchedule] = useState([])
     const [timeSchedule, setTimeSchedule] = useState([])
     const [activitiesSchedule, setActivitiesSchedule] = useState([[]]);
+    const [startHours, setStartHours] = useState(() => {
+
+        return Array.from({ length: (Array.isArray(activitiesSchedule) ? activitiesSchedule.length : 0) }, () => 480);
+    });
     const [photoWallpaper, setPhotoWallpaper] = useState("https://images.unsplash.com/photo-1633268456308-72d1c728943c?auto=format&fit=crop&w=1600&q=80")
     const [tripPrice, setTripPrice] = useState(0);
     const [insurancePrice, setInsurancePrice] = useState(0);
@@ -1327,6 +1331,54 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
             const d = v instanceof Date ? v : new Date(v);
             if (Number.isNaN(d.getTime())) return null;
             return new Date(d.getFullYear(), d.getMonth(), d.getDate(), 12, 0, 0, 0);
+        };
+
+        // policz liczbę dni na podstawie aktualnie wybranych dat
+        const computeDaysFromDates = (start, end, fallbackLen = 1) => {
+            if (!start || !end) return fallbackLen || 1;
+            const diff = roznicaDni(start, end); // istniejąca funkcja
+            return diff > 0 ? diff : (fallbackLen || 1);
+        };
+
+        // dopasowanie activitiesSchedule do liczby dni
+        const fitScheduleToDays = (schedule, daysCount) => {
+            if (!Array.isArray(schedule) || schedule.length === 0) {
+                return Array.from({ length: daysCount }, () => []);
+            }
+
+            if (daysCount < schedule.length) {
+                // utnij od końca
+                return schedule.slice(0, daysCount);
+            }
+            if (daysCount > schedule.length) {
+                // dopisz puste dni na końcu
+                const extra = Array.from(
+                    { length: daysCount - schedule.length },
+                    () => []
+                );
+                return [...schedule, ...extra];
+            }
+            return schedule;
+        };
+
+        // dopasowanie startHours do liczby dni (identyczna logika)
+        const fitStartHoursToDays = (hours, daysCount) => {
+            if (!Array.isArray(hours) || hours.length === 0) {
+                // brak danych → wypełnij nullami (lub 0, jeżeli wolisz)
+                return Array.from({ length: daysCount }, () => null);
+            }
+
+            if (daysCount < hours.length) {
+                return hours.slice(0, daysCount);
+            }
+            if (daysCount > hours.length) {
+                const extra = Array.from(
+                    { length: daysCount - hours.length },
+                    () => null
+                );
+                return [...hours, ...extra];
+            }
+            return hours;
         };
 
         const getFallbackActivities = () => {
@@ -1350,18 +1402,81 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
 
         const fallback = () => {
             if (!aborted) {
-                setActivitiesSchedule(getFallbackActivities());
+                const base = getFallbackActivities();
+                const daysCount = computeDaysFromDates(
+                    dataPrzyjazdu,
+                    dataWyjazdu,
+                    base.length || 1
+                );
+                const adjustedSchedule = fitScheduleToDays(base, daysCount);
+                const adjustedStartHours = fitStartHoursToDays([], daysCount); // brak danych → null-e
+
+                setActivitiesSchedule(adjustedSchedule);
+                setStartHours(adjustedStartHours);
             }
         };
-        (async () => {
 
+        (async () => {
             const hasTripId = !!tripId && String(tripId).trim() !== "";
             const hasDownloadPlan = !!downloadPlan && String(downloadPlan).trim() !== "";
 
-            // 1) PRIORYTET: pełna synchronizacja po tripId (plan autora)
+            // flaga: czy udało się załadować harmonogram z downloadPlan
+            let hasActivitiesFromDownloadPlan = false;
+
+            // 1) PRIORYTET: downloadPlan
+            if (hasDownloadPlan) {
+                try {
+                    console.log("Pobieram plan (downloadPlan):", downloadPlan);
+                    const url = `http://localhost:5007/api/trip-plans/${encodeURIComponent(downloadPlan)}`;
+                    const resp = await fetch(url, { method: "GET", credentials: "include" });
+
+                    if (!aborted && resp.ok) {
+                        const data = await resp.json();
+
+                        if (typeof data?.nazwa === "string") {
+                            setNazwaWyjazdu(data.nazwa);
+                        }
+
+                        if (Array.isArray(data?.activitiesSchedule)) {
+                            const baseSchedule = data.activitiesSchedule;
+                            const baseStartHours = Array.isArray(data.startHours)
+                                ? data.startHours
+                                : [];
+
+                            // liczba dni wg WYBRANYCH przez użytkownika dat
+                            const daysCount = computeDaysFromDates(
+                                dataPrzyjazdu,
+                                dataWyjazdu,
+                                baseSchedule.length || baseStartHours.length || 1
+                            );
+
+                            const adjustedSchedule = fitScheduleToDays(baseSchedule, daysCount);
+                            const adjustedStartHours = fitStartHoursToDays(baseStartHours, daysCount);
+
+                            setActivitiesSchedule(adjustedSchedule);
+                            setStartHours(adjustedStartHours);
+
+                            hasActivitiesFromDownloadPlan = true;
+                        } else {
+                            hasActivitiesFromDownloadPlan = false;
+                        }
+
+                        if (data?.miejsceDocelowe) {
+                            setMiejsceDocelowe(data.miejsceDocelowe);
+                        }
+
+                        // czyścimy parametr downloadPlan w URL
+                        writeStringParam("downloadPlan", "");
+                    }
+                } catch (err) {
+                    console.error("Błąd pobierania downloadPlan:", err);
+                    // jeśli downloadPlan padnie, spróbujemy jeszcze tripId lub fallback
+                }
+            }
+
+            // 2) Następnie tripId (plan autora)
             if (hasTripId) {
                 try {
-
                     let userId = userIdFromStore ?? useUserStore.getState?.().user?._id ?? null;
                     if (!userId) {
                         try {
@@ -1371,7 +1486,10 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
                     }
 
                     if (!userId) {
-                        return fallback();
+                        if (!hasActivitiesFromDownloadPlan) {
+                            return fallback();
+                        }
+                        return;
                     }
 
                     const url = `http://localhost:5007/api/trip-plans/${encodeURIComponent(
@@ -1382,14 +1500,36 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
                     if (!aborted && resp.ok) {
                         const data = await resp.json();
 
-                        // 1) Harmonogram
-                        if (Array.isArray(data?.activitiesSchedule) && data.activitiesSchedule.every(Array.isArray) && data?.activitiesSchedule.length > 0) {
-                            setActivitiesSchedule(data.activitiesSchedule); // ← tu bez nawiasów!
-                        } else {
-                            fallback();
+                        // 1) Harmonogram – TYLKO jeśli NIE mamy już go z downloadPlan
+                        if (!hasActivitiesFromDownloadPlan) {
+                            if (
+                                Array.isArray(data?.activitiesSchedule) &&
+                                data.activitiesSchedule.every(Array.isArray) &&
+                                data.activitiesSchedule.length > 0
+                            ) {
+                                const backendStart = toLocalDateNoon(data?.dataPrzyjazdu) || dataPrzyjazdu;
+                                const backendEnd = toLocalDateNoon(data?.dataWyjazdu) || dataWyjazdu;
+
+                                const baseSchedule = data.activitiesSchedule;
+                                const baseStartHours = Array.isArray(data.startHours)
+                                    ? data.startHours
+                                    : [];
+
+                                const daysCount = computeDaysFromDates(
+                                    backendStart,
+                                    backendEnd,
+                                    baseSchedule.length || baseStartHours.length || 1
+                                );
+
+                                const adjustedSchedule = fitScheduleToDays(baseSchedule, daysCount);
+                                const adjustedStartHours = fitStartHoursToDays(baseStartHours, daysCount);
+
+                                setActivitiesSchedule(adjustedSchedule);
+                                setStartHours(adjustedStartHours);
+                            } else {
+                                fallback();
+                            }
                         }
-
-
 
                         // 2) Daty
                         const start = toLocalDateNoon(data?.dataPrzyjazdu);
@@ -1402,59 +1542,48 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
                         if (data?.miejsceStartowe) setMiejsceStartowe(data.miejsceStartowe);
 
                         // 4) Standardy
-                        if (typeof data?.standardTransportu === "number") setStandardTransportu(data.standardTransportu);
-                        if (typeof data?.standardHotelu === "number") setStandardHotelu(data.standardHotelu);
+                        if (typeof data?.standardTransportu === "number") {
+                            setStandardTransportu(data.standardTransportu);
+                        }
+                        if (typeof data?.standardHotelu === "number") {
+                            setStandardHotelu(data.standardHotelu);
+                        }
 
                         // 5) Liczebności
-                        if (typeof data?.liczbaUczestnikow === "number") setLiczbaUczestnikow(data.liczbaUczestnikow);
-                        if (typeof data?.liczbaOpiekunow === "number") setLiczbaOpiekunow(data.liczbaOpiekunow);
+                        if (typeof data?.liczbaUczestnikow === "number") {
+                            setLiczbaUczestnikow(data.liczbaUczestnikow);
+                        }
+                        if (typeof data?.liczbaOpiekunow === "number") {
+                            setLiczbaOpiekunow(data.liczbaOpiekunow);
+                        }
 
                         // 6) Zdjęcie (opcjonalnie)
-                        if (typeof data?.photoLink === "string") setPhotoWallpaper?.(data.photoLink);
-                        console.log("TEST22", data.nazwa)
-                        if (typeof data?.nazwa === "string") setNazwaWyjazdu(data.nazwa)
+                        if (typeof data?.photoLink === "string") {
+                            setPhotoWallpaper?.(data.photoLink);
+                        }
+                        if (typeof data?.nazwa === "string" && !hasActivitiesFromDownloadPlan) {
+                            setNazwaWyjazdu(data.nazwa);
+                        }
+
                         return; // zakończ po obsłudze tripId
                     }
 
-                    return fallback();
-                } catch {
-                    return fallback();
-                }
-            }
-
-            // 2) JEŚLI NIE MA tripId → próbujemy downloadPlan (ustawiamy TYLKO activitiesSchedule i miejsceDocelowe)
-            if (hasDownloadPlan) {
-                try {
-                    console.log("Pobieram plan (downloadPlan):", downloadPlan);
-                    const url = `http://localhost:5007/api/trip-plans/${encodeURIComponent(downloadPlan)}`;
-                    const resp = await fetch(url, { method: "GET", credentials: "include" });
-
-                    if (!aborted && resp.ok) {
-                        const data = await resp.json();
-
-                        if (typeof data?.nazwa === "string") setNazwaWyjazdu(data.nazwa)
-                        if (Array.isArray(data?.activitiesSchedule)) {
-                            setActivitiesSchedule(data.activitiesSchedule);
-                        } else {
-                            // brak poprawnego harmonogramu → fallback
-                            return fallback();
-                        }
-
-                        if (data?.miejsceDocelowe) {
-                            setMiejsceDocelowe(data.miejsceDocelowe);
-                        }
-                        writeStringParam("downloadPlan", "")
-                        return;
+                    if (!hasActivitiesFromDownloadPlan) {
+                        return fallback();
                     }
-
-                    return fallback();
+                    return;
                 } catch {
-                    return fallback();
+                    if (!hasActivitiesFromDownloadPlan) {
+                        return fallback();
+                    }
+                    return;
                 }
             }
 
             // 3) Brak obu identyfikatorów → fallback
-            return fallback();
+            if (!hasActivitiesFromDownloadPlan) {
+                return fallback();
+            }
         })();
 
         return () => {
@@ -1462,6 +1591,9 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
         };
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
+
+
+
 
 
 
@@ -1552,6 +1684,7 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
                     liczbaUczestnikow: safeParticipants,
                     liczbaOpiekunow: safeGuardians,
                     nazwa: nazwaWyjazdu ? nazwaWyjazdu.trim() : undefined,
+                    startHours: Array.isArray(startHours) ? startHours : [],
                 };
 
                 const resp = await fetch(url, {
@@ -1589,6 +1722,7 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
             liczbaUczestnikow,
             liczbaOpiekunow,
             nazwaWyjazdu,
+            startHours
         ]
     );
     // === RĘCZNY ZAPIS (bez naruszania autozapisu dla istniejącego tripId) ===
@@ -1611,10 +1745,12 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
             const n = Number(v);
             return Number.isFinite(n) ? Math.trunc(n) : undefined;
         };
+
         const safeParticipants = (() => {
             const n = toIntOrUndef(liczbaUczestnikow);
             return n !== undefined && n >= 1 ? n : undefined;
         })();
+
         const safeGuardians = (() => {
             const n = toIntOrUndef(liczbaOpiekunow);
             return n !== undefined && n >= 0 ? n : undefined;
@@ -1649,11 +1785,16 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
                 : undefined,
             dataPrzyjazdu: dataPrzyjazdu ? formatYMDLocal(dataPrzyjazdu) : undefined,
             dataWyjazdu: dataWyjazdu ? formatYMDLocal(dataWyjazdu) : undefined,
-            standardTransportu: typeof standardTransportu === "number" ? standardTransportu : undefined,
-            standardHotelu: typeof standardHotelu === "number" ? standardHotelu : undefined,
+            standardTransportu:
+                typeof standardTransportu === "number" ? standardTransportu : undefined,
+            standardHotelu:
+                typeof standardHotelu === "number" ? standardHotelu : undefined,
             liczbaUczestnikow: safeParticipants,
             liczbaOpiekunow: safeGuardians,
             nazwa: nazwaWyjazdu ? nazwaWyjazdu.trim() : undefined,
+
+            // startHours – jeżeli nie jest tablicą, wyślij pustą
+            startHours: Array.isArray(startHours) ? startHours : [],
         };
     }, [
         activitiesSchedule,
@@ -1667,8 +1808,10 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
         standardHotelu,
         liczbaUczestnikow,
         liczbaOpiekunow,
-        nazwaWyjazdu
+        nazwaWyjazdu,
+        startHours,
     ]);
+
 
     async function checkMe() {
         try {
@@ -1798,16 +1941,7 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
         }
     });
 
-    const [startHours, setStartHours] = useState(() => {
-        try {
-            const raw = localStorage.getItem("startHours");
-            const parsed = raw ? JSON.parse(raw) : null;
-            if (Array.isArray(parsed) && parsed.every(v => Number.isFinite(v))) {
-                return parsed;
-            }
-        } catch { }
-        return Array.from({ length: (Array.isArray(activitiesSchedule) ? activitiesSchedule.length : 0) }, () => 480);
-    });
+
 
     useEffect(() => {
         if (!miejsceDocelowe || !dataPrzyjazdu || !dataWyjazdu) return;
@@ -1864,6 +1998,7 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
     const tmpWybranaOpcja = 2;
 
     const validateSchedule = () => {
+        return true;
         let toChange = -1;
         const i = activitiesSchedule.length - 1;
         if (!activitiesSchedule.length) return;
@@ -1879,7 +2014,6 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
         }
         return true;
     }
-
     useEffect(() => {
         if (lastDaySwap <= -1 || !activitiesSchedule?.length) return;
 
@@ -2958,6 +3092,14 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
                         ref={titleRef}
                         onInput={(e) => {
                             setNazwaWyjazdu(e.currentTarget.textContent);
+                        }}
+                        onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                                e.preventDefault();       // brak nowej linii
+                                e.stopPropagation();      // opcjonalnie: nie puszczamy dalej
+                                e.currentTarget.blur();   // „zamknięcie” pola
+                                handleSaveClick();        // zapis
+                            }
                         }}
                     />
                     <Edit2 size={40} />

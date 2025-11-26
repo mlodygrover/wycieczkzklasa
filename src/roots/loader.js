@@ -25,22 +25,22 @@ const StyledWrapper = styled.div`
   }
 
   .pl__ring--a {
-    stroke: #f42f25;
+    stroke: #008d73ff;
   }
 
   .pl__ring--b {
     animation-name: ringB;
-    stroke: #f49725;
+    stroke: #00b291ff;
   }
 
   .pl__ring--c {
     animation-name: ringC;
-    stroke: #255ff4;
+    stroke: #00cca7ff;
   }
 
   .pl__ring--d {
     animation-name: ringD;
-    stroke: #f42582;
+    stroke: #02e3baff;
   }
 
   /* Animations */

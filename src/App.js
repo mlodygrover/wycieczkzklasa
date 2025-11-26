@@ -67,7 +67,8 @@ const exampleTrips = [
     price: "700zł",
     badge: "Oferta specjalna",
     image: "../miasta/poznan.jpg",
-    author: "Jan Wiczyński"
+    author: "Jan Wiczyński",
+    tripId: ""
   },
   {
     id: 3,
@@ -168,7 +169,7 @@ function App() {
           <Menus />
           <Routes>
 
-            <Route path="/" element={<><HomePage trips={exampleTrips} /><UnsplashPhotoTest/><TripPlansPicker/></>} />
+            <Route path="/" element={<><HomePage trips={exampleTrips} /></>} />
             <Route path="/profil" element={<ProfilePage/>} />
             <Route path="/konfigurator-lounge" element={<PreConfigure/>} />
             <Route path="/login" element={<LoginPage />} />

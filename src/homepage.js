@@ -1,5 +1,5 @@
 import styled from "styled-components"
-import React from "react"
+import React, { useEffect, useState } from "react"
 import { TravelSlider } from "./offerslider"
 import { MenuRadio } from "./components"
 import { FeaturesSection } from "./brandTiles"
@@ -15,16 +15,27 @@ const HomePageMainbox = styled.div`
     flex-direction: column;
     align-items: center;
     justify-content: flex-start;
+    postion: relative;
     `
-export const HomePage = ({ trips }) => {
+const HomePageHideBox = styled.div`
+    position: absolute;
+    top: 0;
+    left: 0;
+    background-color: white;
+    width: 100%;
+    height: 100%;
+
+`
+export const HomePage = () => {
     return (
-        <HomePageMainbox>
-            <TravelSlider trips={trips} />
+
+        <HomePageMainbox >
+            <TravelSlider/>
             <FeaturesSection />
-            <ConfiguratorCTA/>
+            <ConfiguratorCTA />
             <DestinationsSlider />
             <TeacherOfferBanner />
-            
+
         </HomePageMainbox>
     )
 }

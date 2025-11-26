@@ -493,7 +493,42 @@ app.get("/getOneAttraction/:googleId", async (req, res) => {
  * GET /attractions/nearby?lat=..&lng=..&radiusKm=70
  * Zwraca atrakcje posortowane wg odległości (domyślnie 70 km).
  */
-async function fetchAndStoreGoogleAttractionsAround(lat, lng) {
+const buildNearbyPipeline = (lat, lng, maxDistanceMeters, limit = 300) => ([
+    {
+        $geoNear: {
+            near: { type: 'Point', coordinates: [lng, lat] }, // [lng, lat]
+            key: 'locationGeo',
+            spherical: true,
+            distanceField: 'distanceMeters',
+            maxDistance: maxDistanceMeters,
+            query: { locationGeo: { $exists: true } },
+        },
+    },
+    {
+        $addFields: {
+            distanceKm: { $round: [{ $divide: ['$distanceMeters', 1000] }, 2] },
+            verified: { $ne: ['$dataSource', 'Bot'] },
+        },
+    },
+    {
+        $match: {
+            $or: [
+                { liczbaOpinie: { $gte: 150 } }, // ogólny próg
+                { typy: 'museum' },              // wyjątek: muzea
+            ],
+        },
+    },
+    { $sort: { liczbaOpinie: -1 } },
+    { $limit: limit },
+    {
+        $project: {
+            createdAt: 0,
+            updatedAt: 0,
+            locationSource: 0,
+        },
+    },
+]);
+async function fetchAndStoreGoogleAttractionsAround(lat, lng, radiusKm = 70) {
     const centerLat = parseFloat(lat);
     const centerLng = parseFloat(lng);
 
@@ -584,19 +619,21 @@ async function fetchAndStoreGoogleAttractionsAround(lat, lng) {
     }
 
     // Zapis tylko nowych atrakcji (po googleId)
-    const newAttractions = [];
     for (const attr of allGoogleAttractions) {
         const exists = await Attraction.findOne({ googleId: attr.googleId }).select("_id").lean();
         if (!exists) {
             const newAttr = new Attraction(attr);
             await newAttr.save();
-            newAttractions.push(newAttr);
         }
     }
 
-    return newAttractions;
+    // 🔙 Na końcu zwracamy listę z promienia radiusKm (np. 70 km), już z bazy
+    const maxDistanceMeters = Math.max(1, Math.round((radiusKm || 70) * 1000));
+    const items = await Attraction.aggregate(
+        buildNearbyPipeline(centerLat, centerLng, maxDistanceMeters, 300)
+    );
+    return items;
 }
-
 app.get('/attractions/nearby', async (req, res) => {
     try {
         const lat = Number(req.query.lat);
@@ -607,64 +644,43 @@ app.get('/attractions/nearby', async (req, res) => {
             return res.status(400).json({ error: 'Wymagane parametry: lat, lng (Number)' });
         }
 
-        const maxDistanceMeters = Math.max(1, Math.round(radiusKm * 1000));
+        const maxDistanceMetersAll = Math.max(1, Math.round(radiusKm * 1000));
+        const maxDistanceMeters15 = 15000; // 15 km – próg do sprawdzenia "czy okolica jest bogata"
 
-        const buildPipeline = () => ([
-            {
-                $geoNear: {
-                    near: { type: 'Point', coordinates: [lng, lat] }, // [lng, lat]
-                    key: 'locationGeo',
-                    spherical: true,
-                    distanceField: 'distanceMeters',
-                    maxDistance: maxDistanceMeters,
-                    query: { locationGeo: { $exists: true } },
-                },
-            },
-            {
-                $addFields: {
-                    distanceKm: { $round: [{ $divide: ['$distanceMeters', 1000] }, 2] },
-                    verified: { $ne: ['$dataSource', 'Bot'] },
-                },
-            },
-            {
-                $match: {
-                    $or: [
-                        { liczbaOpinie: { $gte: 150 } }, // ogólny próg 150 opinii
-                        { typy: 'museum' },              // wyjątek: wszystko co ma typ "museum"
-                    ],
-                },
-            },
-            { $sort: { liczbaOpinie: -1 } },
-            { $limit: 300 },
-            {
-                $project: {
-                    createdAt: 0,
-                    updatedAt: 0,
-                    locationSource: 0,
-                },
-            },
-        ]);
-
-        // 1️⃣ Pierwsze podejście – tylko baza
-        let items = await Attraction.aggregate(buildPipeline());
-
-        // 2️⃣ Jeśli mamy mało wyników, dograj z Google i spróbuj jeszcze raz
-        if (items.length < 30) {
-            try {
-                await fetchAndStoreGoogleAttractionsAround(lat, lng);
-                items = await Attraction.aggregate(buildPipeline());
-            } catch (err) {
-                console.error('Dogrywanie atrakcji z Google nie powiodło się:', err?.message || err);
-                // nawet jeśli Google padło, zwracamy to, co mamy
-            }
+        // 1️⃣ Sprawdzenie, ile atrakcji mamy w promieniu 15 km (limit 20 dla optymalizacji)
+        const items15 = await Attraction.aggregate(
+            buildNearbyPipeline(lat, lng, maxDistanceMeters15, 20)
+        );
+        console.log("W najblizszej okolicy", items15.length)
+        // 2️⃣ Jeśli w 15 km mamy >= 20 atrakcji → NIE wołamy Google,
+        //    tylko od razu bierzemy wyniki z promienia radiusKm (np. 70 km)
+        if (items15.length >= 20) {
+            const itemsAll = await Attraction.aggregate(
+                buildNearbyPipeline(lat, lng, maxDistanceMetersAll, 300)
+            );
+            return res.json(itemsAll);
         }
 
-        return res.json(items);
+        // 3️⃣ W 15 km jest mało atrakcji → dogrywamy z Google + bierzemy 70 km z bazy
+        try {
+            console.log("WYwoluje google")
+            const itemsAll = await fetchAndStoreGoogleAttractionsAround(lat, lng, radiusKm);
+            return res.json(itemsAll);
+        } catch (err) {
+            console.error('Dogrywanie atrakcji z Google nie powiodło się:', err?.message || err);
+            // fallback: zwróć cokolwiek mamy w bazie dla radiusKm
+            const itemsAll = await Attraction.aggregate(
+                buildNearbyPipeline(lat, lng, maxDistanceMetersAll, 300)
+            );
+            return res.json(itemsAll);
+        }
+
     } catch (err) {
         console.error('GET /attractions/nearby error:', err);
         return res.status(500).json({ error: 'ServerError' });
     }
 });
+
 
 
 // Endpoint: awaryjne dodanie atrakcji z wyliczeniem locationGeo
