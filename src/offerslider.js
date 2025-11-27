@@ -547,6 +547,7 @@ export function TravelSlider({ }) {
   const tripIds = [
     "6927795a0ee190ed12e31d21",
     "69277fb60ee190ed12e31d5b",
+    "69282f80c58d4412e42e77b6",
   ];
 
   const [trips, setTrips] = useState(defaultTrips);

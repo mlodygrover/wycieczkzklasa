@@ -1998,6 +1998,8 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
     const tmpWybranaOpcja = 2;
 
     const validateSchedule = () => {
+
+        //todo toupdate torethink
         return true;
         let toChange = -1;
         const i = activitiesSchedule.length - 1;

@@ -30,12 +30,12 @@ export const HomePage = () => {
     return (
 
         <HomePageMainbox >
-            <TravelSlider/>
+            <TravelSlider />
             <FeaturesSection />
             <ConfiguratorCTA />
             <DestinationsSlider />
-            <TeacherOfferBanner />
-
+            {//<TeacherOfferBanner />
+            }
         </HomePageMainbox>
     )
 }

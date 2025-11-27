@@ -81,11 +81,21 @@ const GlobalStyles = () => (
     }
 
     .destinationSlider-slide-card {
-      min-width: 300px; width: 300px; height: 300px; position: relative; border-radius: 1.5rem; overflow: hidden; cursor: pointer;
-      transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1); opacity: 0.4; transform: scale(0.9);
+      min-width: 300px; 
+      width: 300px; 
+      height: 300px; 
+      position: relative; 
+      border-radius: 1.5rem; 
+      overflow: hidden; 
+      cursor: pointer;
+      transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1); 
+      opacity: 0.4; 
+      transform: scale(0.9);
       background: linear-gradient(135deg, rgba(255, 255, 255, 0.15) 0%, rgba(255, 255, 255, 0.08) 50%, rgba(255, 255, 255, 0.12) 100%);
-      backdrop-filter: blur(20px) saturate(180%); -webkit-backdrop-filter: blur(20px) saturate(180%);
-      border: 2px solid rgba(255, 255, 255, 0.25); z-index: 3;
+      backdrop-filter: blur(20px) saturate(180%); 
+      -webkit-backdrop-filter: blur(20px) saturate(180%);
+      border: 2px solid rgba(255, 255, 255, 0.25);
+       z-index: 3;
     }
 
     .destinationSlider-slide-card-active { opacity: 1; transform: scale(1); }

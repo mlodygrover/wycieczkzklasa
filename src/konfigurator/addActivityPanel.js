@@ -589,7 +589,7 @@ export const AddActivityPanel = ({ atrakcje, miejsceDocelowe, setModAct, modActI
                 </PanelBoxNav>
 
                 <PanelBoxContent hidden={radioChosen !== 0} key={searchActivity}>
-                    <AttractionsMap attractions={atrakcje}/>
+                    <AttractionsMap addActivity={addActivity} attractions={atrakcje}/>
                     <PanelBoxFilter>
                         <input type="text"
                             placeholder="Wyszukaj atrakcję"
