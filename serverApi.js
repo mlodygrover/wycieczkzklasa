@@ -176,7 +176,7 @@ app.get("/searchCityNew", async (req, res) => {
                 format: "json",
                 addressdetails: 1,
                 limit: 15,
-                countrycodes: "pl",
+                countrycodes: "pl,de",
                 "accept-language": "pl",
                 autocomplete: 1,
                 dedupe: 1
@@ -242,7 +242,7 @@ app.get("/searchCity", async (req, res) => {
                 format: "json",
                 addressdetails: 1,
                 limit: 15,
-                countrycodes: "pl", // tylko Polska
+                countrycodes: "pl,de",
                 "accept-language": "pl",
                 autocomplete: 1,    // <-- autouzupełnianie
                 dedupe: 1           // <-- usuwanie duplikatów od strony Nominatim
