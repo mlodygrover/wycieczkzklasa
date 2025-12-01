@@ -31,6 +31,7 @@ import useUserStore, { fetchMe } from "./usercontent";
 import { data } from "react-router-dom";
 import AttractionsMap from "./attractionMap";
 import { Bed, Calendar, CalendarDays, Edit, Edit2, Hotel, Moon, Rocket, TramFront, Users } from "lucide-react";
+import Loader from "./roots/loader";
 
 const testResults = [
     { nazwa: "Poznań", region: "Wielkopolska", kraj: "Polska" },
@@ -743,7 +744,7 @@ const backgroundKenBurns = keyframes`
 const KonfiguratorPhotoWithSettings = styled.div`
     margin-top: 85px;
     width: 98%;
-    background-color: red;
+    background-color: #f0f0f0;
     height: 600px;
     max-height: 50vh;
     border-radius: 50px;
@@ -1273,9 +1274,6 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
         const controller = new AbortController();
         const cached = localStorage.getItem("lsAtrakcje");
 
-        if (cached) {
-            setAtrakcje(JSON.parse(cached));
-        }
         (async () => {
             try {
                 console.log("Probuje pobrac z nearby");
@@ -3375,9 +3373,10 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
                                     typ={1}
                                 />
                             ))}
-                        <div className="googleLogoDiv">
-                            <img src="googlelogo.svg" />
-                        </div>
+                        {atrakcje.length === 0 &&<><Loader />Wczytywanie atrakcji...</> ||
+                            <div className="googleLogoDiv">
+                                <img src="googlelogo.svg" />
+                            </div>}
                         {atrakcje
                             .filter(atrakcja =>
                                 atrakcja.dataSource === "Bot" && (

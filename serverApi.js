@@ -176,7 +176,7 @@ app.get("/searchCityNew", async (req, res) => {
                 format: "json",
                 addressdetails: 1,
                 limit: 15,
-                countrycodes: "pl,de",
+                countrycodes: "pl,de,cz,sk,lt",
                 "accept-language": "pl",
                 autocomplete: 1,
                 dedupe: 1
@@ -242,7 +242,7 @@ app.get("/searchCity", async (req, res) => {
                 format: "json",
                 addressdetails: 1,
                 limit: 15,
-                countrycodes: "pl,de",
+                countrycodes: "pl,de,cz,sk,lt",
                 "accept-language": "pl",
                 autocomplete: 1,    // <-- autouzupełnianie
                 dedupe: 1           // <-- usuwanie duplikatów od strony Nominatim
@@ -579,7 +579,7 @@ async function fetchAndStoreGoogleAttractionsAround(lat, lng, radiusKm = 70) {
 
                 for (const place of filteredResults) {
                     if (!allGoogleAttractions.some(a => a.googleId === place.place_id)) {
-                        const website = await getPlaceDetails(place.place_id).catch(() => null);
+                        const website = null;
 
                         const latNum = place.geometry.location.lat;
                         const lngNum = place.geometry.location.lng;
@@ -903,17 +903,17 @@ app.get("/getAttractions", async (req, res) => {
 
                     const filteredResults = (data.results || []).filter(place => {
                         const types = place.types || [];
-                        return !types.includes("shopping_mall")
-                            && !types.includes("lodging")
+                            !types.includes("lodging")
                             && !types.includes("store")
                             && !types.includes("furniture_store")
-                            && !types.includes("home_goods_store");
+                            && !types.includes("home_goods_store")
+                            && !types.includes("food");
                     });
 
                     for (const place of filteredResults) {
 
                         if (!allGoogleAttractions.some(a => a.googleId === place.place_id)) {
-                            const website = await getPlaceDetails(place.place_id);
+                            const website = null;
                             allGoogleAttractions.push({
                                 placeId,
                                 googleId: place.place_id,
@@ -2148,7 +2148,7 @@ app.get("/update-offer", async (req, res) => {
 
                 let flattenedVariants = [];
 
-                if (link) {
+                if (link && 1==1) {
                     // a) Próba parsera /place-offer z limitem 2 min
                     try {
                         const controller = new AbortController();
@@ -2778,8 +2778,10 @@ app.get("/photo", async (req, res) => {
 
         const url = new URL("https://api.unsplash.com/search/photos");
         url.searchParams.set("query", q);
-        url.searchParams.set("per_page", "1");
+        url.searchParams.set("per_page", "30");
         url.searchParams.set("page", "1");
+        url.searchParams.set("order_by", "popular");
+
         // opcjonalnie:
         // url.searchParams.set("orientation", "landscape");
 
@@ -2793,7 +2795,12 @@ app.get("/photo", async (req, res) => {
         }
 
         const data = await r.json();
-        const photo = Array.isArray(data.results) && data.results[0];
+        const results = Array.isArray(data.results) ? data.results : [];
+
+        // posortuj po likes malejąco
+        results.sort((a, b) => (b.likes || 0) - (a.likes || 0));
+        console.log(results)
+        const photo = results[0];
         if (!photo) return res.status(404).json({ error: "Brak wyników dla podanej frazy." });
 
         // Atrybucja (linki z UTM)

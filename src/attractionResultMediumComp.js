@@ -460,9 +460,10 @@ const VerifiedMediumMainbox = styled.div`
                 &.b {
                     display: flex;
                     flex-direction: row;
-                    align-items: flex-start;
+                    align-items: center;;
                     justify-content: space-between;
                     margin-top: 6px;
+                    gap: 2px;
                     a{
                     text-decoration: none;
                     color: inherit;}
@@ -638,7 +639,7 @@ export const AttractionResultMediumVerifiedComponent = ({
                                     ? ` ${atrakcja.czasZwiedzania} min`
                                     : ''}
                             </span>
-                            
+
                             <span>
                                 <Ticket size={15} />
                                 {(!Array.isArray(atrakcja?.warianty) ||
@@ -652,10 +653,14 @@ export const AttractionResultMediumVerifiedComponent = ({
                                             )} zł / osoba`
                                             : ''}
                             </span>
-                            <span>
-                                <SquareArrowOutUpRight size={15} />
-                                <a href={atrakcja.stronaInternetowa}  target="_blank" rel="noreferrer">Witryna</a>
-                            </span>
+                            {atrakcja?.stronaInternetowa &&
+                                <span>
+                                    <SquareArrowOutUpRight size={15} />
+                                    <a href={atrakcja.stronaInternetowa} target="_blank" rel="noreferrer">Witryna</a>
+                                </span>
+
+                            }
+
                         </div>
                     </div>
                 </div>
