@@ -200,7 +200,7 @@ const KonfiguratorMainMainboxLeft = styled.div`
     width: 300px;
     flex: 0 0 300px;
     border-right: 1px solid lightgray;
-
+    position: relative;
     box-sizing: border-box;
     display: flex;
     flex-direction: column;
@@ -388,6 +388,16 @@ const KonfiguratorMainMainboxLeft = styled.div`
                 background-color: #f0f0f0;
             }
         }
+    }
+    .bottomGradient{
+        position: absolute;
+        bottom: 0;
+        width: 100%;
+        left: 0;
+        background: #ffffff;
+        background: linear-gradient(0deg,rgba(255, 255, 255, 1) 30%, rgba(255, 255, 255, 0.01) 100%);
+        height: 60px;
+        z-index: 10;
     }
 `;
 const AttractionResultMedium = styled.div`
@@ -3080,6 +3090,7 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
 
         titleRef.current.textContent = nazwaWyjazdu ?? "";
     }, [nazwaWyjazdu]);
+
     return (
         <>
             <KonfiguratorPhotoWithSettings style={tripId && photoWallpaper ? { backgroundImage: `url(${photoWallpaper})`, } : { backgroundImage: `url(${'https://images.unsplash.com/photo-1716481631637-e2d4fd2456e2?q=80&w=870&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D'})`, }}>
@@ -3371,9 +3382,11 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
                                     wybranyDzien={wybranyDzien}
                                     addActivity={addActivity}
                                     typ={1}
+                                    latMD={miejsceDocelowe.location.lat}
+                                    lngMD={miejsceDocelowe.location.lng}
                                 />
                             ))}
-                        {atrakcje.length === 0 &&<><Loader />Wczytywanie atrakcji...</> ||
+                        {atrakcje.length === 0 && <><Loader />Wczytywanie atrakcji...</> ||
                             <div className="googleLogoDiv">
                                 <img src="googlelogo.svg" />
                             </div>}
@@ -3391,6 +3404,8 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
                                     wybranyDzien={wybranyDzien}
                                     addActivity={addActivity}
                                     typ={2}
+                                    latMD={miejsceDocelowe.location.lat}
+                                    lngMD={miejsceDocelowe.location.lng}
                                 />
                             ))}
                     </div>
@@ -3415,6 +3430,7 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
                                 />
                             ))}
                     </div>
+                    <div className="bottomGradient"></div>
                 </KonfiguratorMainMainboxLeft>
 
                 <KonfiguratorMainMainboxRight ref={centerRef}>

@@ -54,7 +54,14 @@ const LogoIcon = styled.div`
 const LogoText = styled.span`
   color: ${props => (props.$variant === 'glass' ? '#ffffff' : '#000000')};
   letter-spacing: -0.025em;
-  text-shadow: ${props => (props.$variant === 'glass' ? '0 2px 4px rgba(0, 0, 0, 0.1)' : 'none')};
+  text-shadow: ${props => (props.$variant === 'glass' ? '0 2px 4px rgba(0, 0, 0, 0.76)' : 'none')};
+  font-weight: 600;
+  font-size: 32px;
+  
+  span{
+    font-weight: 300;
+    color: #949494ff;
+  }
 `;
 
 const DesktopMenu = styled.div`
@@ -396,7 +403,7 @@ export function TravelMenuUnified({ variant = 'white' }) {
                         <LogoIcon $variant={variant}>
                             <Compass size={24} color="#ffffff" />
                         </LogoIcon>
-                        <LogoText $variant={variant}>TravelApp</LogoText>
+                        <LogoText $variant={variant}>Draft<span>&</span>Go</LogoText>
                     </Logo>
 
                     <DesktopMenu>

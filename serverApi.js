@@ -176,7 +176,7 @@ app.get("/searchCityNew", async (req, res) => {
                 format: "json",
                 addressdetails: 1,
                 limit: 15,
-                countrycodes: "pl,de,cz,sk,lt",
+                countrycodes: "pl,de,cz,sk,lt,fr,at",
                 "accept-language": "pl",
                 autocomplete: 1,
                 dedupe: 1
@@ -242,7 +242,7 @@ app.get("/searchCity", async (req, res) => {
                 format: "json",
                 addressdetails: 1,
                 limit: 15,
-                countrycodes: "pl,de,cz,sk,lt",
+                countrycodes: "pl,de,cz,sk,lt,fr, at",
                 "accept-language": "pl",
                 autocomplete: 1,    // <-- autouzupełnianie
                 dedupe: 1           // <-- usuwanie duplikatów od strony Nominatim
@@ -903,7 +903,7 @@ app.get("/getAttractions", async (req, res) => {
 
                     const filteredResults = (data.results || []).filter(place => {
                         const types = place.types || [];
-                            !types.includes("lodging")
+                        !types.includes("lodging")
                             && !types.includes("store")
                             && !types.includes("furniture_store")
                             && !types.includes("home_goods_store")
@@ -1284,7 +1284,12 @@ async function getTransitRoute(fromLat, fromLng, toLat, toLng) {
         const route = data.routes[0];
         const leg = route.legs[0];
         const durationMinutes = Math.round(leg.duration.value / 60);
-
+        if (data.routes[0].fare) {
+            const fare = data.routes[0].fare;
+            console.log(`Koszt przejazdu: ${fare.value} ${fare.currency}`);
+        } else {
+            console.log("Informacja o taryfie nie jest dostępna.");
+        }
         const segments = leg.steps
             .map((s) => {
                 if (s.travel_mode === "WALKING") {
@@ -2148,7 +2153,7 @@ app.get("/update-offer", async (req, res) => {
 
                 let flattenedVariants = [];
 
-                if (link && 1==1) {
+                if (link && 1 == 1) {
                     // a) Próba parsera /place-offer z limitem 2 min
                     try {
                         const controller = new AbortController();

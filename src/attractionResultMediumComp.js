@@ -3,7 +3,7 @@ import { MapContainer, Marker, TileLayer, useMapEvent } from "react-leaflet";
 import styled from "styled-components";
 import { minutesToStringTime } from "./roots/attractionResults";
 import VariantButton from "./variantButton";
-import { SquareArrowOutUpRight, Ticket, Timer } from "lucide-react";
+import { Route, SquareArrowOutUpRight, Ticket, Timer } from "lucide-react";
 const AttractionResultMedium = styled.div`
     width: 90%;
     max-width: 300px;
@@ -508,6 +508,8 @@ export const AttractionResultMediumVerifiedComponent = ({
     wybranyDzien,
     addActivity,
     typ = 1, // 1 – zdjęcie; 2 – mini-mapa Leaflet jako tło
+    latMD,
+    lngMD
 }) => {
     const [wariantsOpened, setWariantsOpened] = useState(false);
     const wariantButtonRef = useRef(null);
@@ -561,6 +563,29 @@ export const AttractionResultMediumVerifiedComponent = ({
         atrakcja?.lokalizacja &&
         typeof atrakcja.lokalizacja.lat === 'number' &&
         typeof atrakcja.lokalizacja.lng === 'number';
+
+
+    function formatDistanceKm(latA, lngA, latB, lngB) {
+        const toRad = (deg) => (deg * Math.PI) / 180;
+
+        const R = 6371; // promień Ziemi w km
+
+        const dLat = toRad(latB - latA);
+        const dLng = toRad(lngB - lngA);
+
+        const a =
+            Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+            Math.cos(toRad(latA)) *
+            Math.cos(toRad(latB)) *
+            Math.sin(dLng / 2) * Math.sin(dLng / 2);
+
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        const distanceKm = R * c; // w km
+
+        const rounded = distanceKm.toFixed(1); // jedna cyfra po przecinku
+
+        return `${rounded} km`;
+    }
 
     return (
         <AttractionResultMediumVerifiedComponentMainbox
@@ -653,12 +678,20 @@ export const AttractionResultMediumVerifiedComponent = ({
                                             )} zł / osoba`
                                             : ''}
                             </span>
-                            {atrakcja?.stronaInternetowa &&
+                            {atrakcja?.stronaInternetowa && 1==2&&
                                 <span>
                                     <SquareArrowOutUpRight size={15} />
                                     <a href={atrakcja.stronaInternetowa} target="_blank" rel="noreferrer">Witryna</a>
                                 </span>
 
+
+                                ||
+                                1==1 
+                                &&
+                                <span>
+                                    <Route size={15} />
+                                    <a href={atrakcja.stronaInternetowa} target="_blank" rel="noreferrer">{formatDistanceKm(atrakcja.lokalizacja.lat, atrakcja.lokalizacja.lng, latMD, lngMD)}</a>
+                                </span>
                             }
 
                         </div>
