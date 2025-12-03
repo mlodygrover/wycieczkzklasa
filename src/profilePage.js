@@ -4,7 +4,7 @@ import useUserStore from "./usercontent";
 import TripsSection from "./tripsSection";
 import { SummaryTrips } from "./summaryTripCard";
 
-
+const portacc = "https://wycieczkzklasaacc.onrender.com";
 // sampleTrips.js
 // --- helpers: lokalne "południe" i zero-padding ---
 const atLocalNoon = (d) => {
@@ -509,7 +509,7 @@ export const ProfilePage = () => {
                 while (true) {
                     const qs = new URLSearchParams({ page: String(page), limit: String(limit) });
                     const resp = await fetch(
-                        `http://localhost:5007/api/trip-plans/by-author/${encodeURIComponent(user._id)}?${qs}`,
+                        `${portacc}/api/trip-plans/by-author/${encodeURIComponent(user._id)}?${qs}`,
                         {
                             method: "GET",
                             credentials: "include",

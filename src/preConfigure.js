@@ -7,6 +7,7 @@ import useUserStore, { fetchMe } from './usercontent.js';
 import EyeCheckbox from './eyeCheckbox.js';
 import { PreConfigureParticipants } from './preConfigureParticipants.js';
 
+const portacc = "http://localhost:5007" //https://wycieczkzklasaacc.onrender.com";
 /* ===================== LAYOUT ===================== */
 const PreConfigureMainbox = styled.div`
   width: 100%;
@@ -225,7 +226,7 @@ export async function fetchTripPlanById(tripId, { signal } = {}) {
     if (!tripId || !String(tripId).trim()) {
         throw new Error('tripId is required');
     }
-    const url = `http://localhost:5007/api/trip-plans/${encodeURIComponent(tripId)}`;
+    const url = `${portacc}/api/trip-plans/${encodeURIComponent(tripId)}`;
     const resp = await fetch(url, {
         method: 'GET',
         credentials: 'include',
@@ -246,7 +247,7 @@ export async function fetchDownloadedTripPlan(tripId, { signal } = {}) {
     if (!tripId || !String(tripId).trim()) {
         throw new Error("tripId is required");
     }
-    const url = `http://localhost:5007/download/trip-plan?tripId=${encodeURIComponent(tripId)}`;
+    const url = `${portacc}/download/trip-plan?tripId=${encodeURIComponent(tripId)}`;
     const resp = await fetch(url, {
         method: "GET",
         credentials: "include",
@@ -715,7 +716,7 @@ export const PreConfigure = (
         };
 
         const currentTripId = new URLSearchParams(window.location.search).get("tripId");
-        const base = "http://localhost:5007";
+        const base = `${portacc}`;
 
         if (currentTripId && String(currentTripId).trim()) {
             // PUT

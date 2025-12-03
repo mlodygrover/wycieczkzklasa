@@ -7,6 +7,7 @@ import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 import { AttractionResultFull, RouteResult } from "../roots/attractionResults";
 import { Save } from "lucide-react";
 
+const portacc = "https://wycieczkzklasaacc.onrender.com";
 const DroppableBox = styled.div`
   width: 100%;
   display: flex;
@@ -174,7 +175,7 @@ export const KonfiguratorWyjazduComp = ({
     }, [localWybranyDzien, activitiesSchedule, setWybranyDzien]);
 
     // Zapis – minimalnie jak wcześniej (bez zmian w kontrakcie)
-    const API_BASE = 'http://localhost:5007';
+    const API_BASE = `${portacc}`;
 
     function validateMiejsceDocelowe(md) {
         if (!md) return 'miejsceDocelowe jest wymagane.';

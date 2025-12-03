@@ -2,6 +2,8 @@ import { useState, useEffect, useRef } from 'react';
 import styled from 'styled-components';
 import axios from 'axios';
 
+
+const port = "https://wycieczkzklasa.onrender.com";
 const ChatBoxMainbox = styled.div`
     width: 80%;
     background-color: #fbfbfb;
@@ -449,7 +451,7 @@ export const ChatBox2 = ({ basicActivities, activitiesSchedule, attractions, mie
                 basicActivities
             };
 
-            const response = await axios.post("http://localhost:5006/chat-planner", payload);
+            const response = await axios.post(`${port}/chat-planner`, payload);
 
             const aiMessage = {
                 id: (Date.now() + 1).toString(),

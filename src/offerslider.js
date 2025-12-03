@@ -5,6 +5,7 @@ import { ChevronLeft, ChevronRight, MapPin, Calendar, User } from 'lucide-react'
 import { useNavigate } from 'react-router-dom';
 import Loader from './roots/loader';
 
+const portacc = "https://wycieczkzklasaacc.onrender.com";
 
 // --- Styled Components z optymalizacjami ---
 
@@ -401,7 +402,7 @@ const defaultTrips = [
   }
 ];
 
-const API_BASE = "http://localhost:5007";
+const API_BASE = `${portacc}`;
 
 // --- POMOCNICZE FUNKCJE API ---
 

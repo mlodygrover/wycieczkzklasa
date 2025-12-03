@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import useUserStore from './usercontent';
 import { fetchMe } from './usercontent';
 
+const portacc = "https://wycieczkzklasaacc.onrender.com";
 // Komponent <style> do wstrzyknięcia CSS
 const GlobalStyles = () => (
     <style>{`
@@ -435,7 +436,7 @@ export default function LoginPage() {
     useEffect(() => {
         (async () => {
             try {
-                const res = await fetch('http://localhost:5007/api/me', {
+                const res = await fetch(`${portacc}/api/me`, {
                     credentials: 'include', // kluczowe: dołącz cookie sesji
                 });
                 if (res.ok) {
@@ -480,7 +481,7 @@ export default function LoginPage() {
     };
 
     const handleSocialLogin = (provider) => {
-        const base = 'http://localhost:5007/auth';
+        const base = `${portacc}/auth`;
         if (provider === 'Facebook') {
             window.location.href = `${base}/facebook`;
         }

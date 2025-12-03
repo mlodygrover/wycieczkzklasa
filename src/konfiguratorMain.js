@@ -34,6 +34,9 @@ import { Bed, Calendar, CalendarDays, Edit, Edit2, Hotel, Moon, Rocket, TramFron
 import Loader from "./roots/loader";
 import { PopupManager } from "./konfigurator/popupManager";
 
+
+const port = "https://wycieczkzklasa.onrender.com"
+const portacc = "https://wycieczkzklasaacc.onrender.com"
 const testResults = [
     { nazwa: "Poznań", region: "Wielkopolska", kraj: "Polska" },
     { nazwa: "Luboń koło Poznania", region: "Wielkopolska", kraj: "Polska" },
@@ -1210,7 +1213,7 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
         const timeoutId = setTimeout(async () => {
             try {
                 const response = await fetch(
-                    `http://localhost:5006/searchCity?query=${encodeURIComponent(
+                    `${port}/searchCity?query=${encodeURIComponent(
                         miejsceStartoweSearching
                     )}`
                 );
@@ -1221,7 +1224,7 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
                         data.map(async (item) => {
                             try {
                                 const placeIdRes = await fetch(
-                                    `http://localhost:5006/getPlaceId?miasto=${encodeURIComponent(item.nazwa)}&wojewodztwo=${encodeURIComponent(item.wojewodztwo || "")}&kraj=${encodeURIComponent(item.kraj)}`
+                                    `${port}/getPlaceId?miasto=${encodeURIComponent(item.nazwa)}&wojewodztwo=${encodeURIComponent(item.wojewodztwo || "")}&kraj=${encodeURIComponent(item.kraj)}`
                                 );
                                 const placeData = await placeIdRes.json();
                                 return { ...item, ...placeData };
@@ -1250,7 +1253,7 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
                 const toLat = 52.411542;
                 const toLng = 16.9487706;
 
-                const url = `http://localhost:5006/routeSummary?fromLat=${fromLat}&fromLng=${fromLng}&toLat=${toLat}&toLng=${toLng}`;
+                const url = `${port}/routeSummary?fromLat=${fromLat}&fromLng=${fromLng}&toLat=${toLat}&toLng=${toLng}`;
                 const response = await fetch(url);
                 if (!response.ok) {
                     throw new Error(`HTTP error: ${response.status}`);
@@ -1270,7 +1273,7 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
     const fetchAttractions = useCallback(
         debounce(async (placeId, lat, lng) => {
             try {
-                const res = await axios.get("http://localhost:5006/getAttractions", {
+                const res = await axios.get(`${port}/getAttractions`, {
                     params: { placeId, lat, lng },
                 });
                 setAtrakcje(res.data);
@@ -1295,7 +1298,7 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
         (async () => {
             try {
                 console.log("Probuje pobrac z nearby");
-                const url = `http://localhost:5006/attractions/nearby?lat=${encodeURIComponent(
+                const url = `${port}/attractions/nearby?lat=${encodeURIComponent(
                     lat
                 )}&lng=${encodeURIComponent(lng)}&radiusKm=70`;
 
@@ -1443,7 +1446,7 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
             if (hasDownloadPlan) {
                 try {
                     console.log("Pobieram plan (downloadPlan):", downloadPlan);
-                    const url = `http://localhost:5007/api/trip-plans/${encodeURIComponent(downloadPlan)}`;
+                    const url = `${portacc}/api/trip-plans/${encodeURIComponent(downloadPlan)}`;
                     const resp = await fetch(url, { method: "GET", credentials: "include" });
 
                     if (!aborted && resp.ok) {
@@ -1508,7 +1511,7 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
                         return;
                     }
 
-                    const url = `http://localhost:5007/api/trip-plans/${encodeURIComponent(
+                    const url = `${portacc}/api/trip-plans/${encodeURIComponent(
                         tripId
                     )}/by-author/${encodeURIComponent(userId)}`;
 
@@ -1664,7 +1667,7 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
 
             try {
                 // Nie pobieramy/meblujemy userId – serwer korzysta z req.user
-                const url = `http://localhost:5007/api/trip-plans/${encodeURIComponent(tripId)}`;
+                const url = `${portacc}/api/trip-plans/${encodeURIComponent(tripId)}`;
 
                 const payload = {
                     activitiesSchedule,
@@ -1742,7 +1745,7 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
         ]
     );
     // === RĘCZNY ZAPIS (bez naruszania autozapisu dla istniejącego tripId) ===
-    const API_BASE = "http://localhost:5007";
+    const API_BASE = `${portacc}`;
 
     // ⬇️ NOWE: anulowanie oczekującego autozapisu
     const cancelQueuedAutoSave = useCallback(() => {
@@ -2141,7 +2144,7 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
                 }
                 try {
                     const res = await fetch(
-                        `http://localhost:5006/routeSummary?fromLat=${current.lokalizacja.lat}&fromLng=${current.lokalizacja.lng}&toLat=${next.lokalizacja.lat}&toLng=${next.lokalizacja.lng}`
+                        `${port}/routeSummary?fromLat=${current.lokalizacja.lat}&fromLng=${current.lokalizacja.lng}&toLat=${next.lokalizacja.lat}&toLng=${next.lokalizacja.lng}`
                     );
 
                     const data = await res.json();
@@ -2480,14 +2483,14 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
                 (prevAttr?.warianty?.[0]?.czasZwiedzania != null ? prevAttr.warianty[0].czasZwiedzania : null);
 
             // 1) Aktualizacja po stronie serwera (może pójść bez linku – backend powinien to wspierać)
-            const { data: updateRes } = await axios.get("http://localhost:5006/update-offer", {
+            const { data: updateRes } = await axios.get(`${port}/update-offer`, {
                 params: { googleId, link, miasto: miejsceDocelowe?.nazwa ?? "", nazwa },
                 timeout: 240000,
             });
 
             // 2) Pobranie świeżej wersji
             const { data: freshAttraction } = await axios.get(
-                `http://localhost:5006/getOneAttraction/${encodeURIComponent(googleId)}`,
+                `${port}/getOneAttraction/${encodeURIComponent(googleId)}`,
                 { timeout: 120000 }
             );
 
@@ -2833,7 +2836,7 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
         const timer = setTimeout(async () => {
             try {
                 const { data } = await axios.post(
-                    "http://localhost:5006/computePrice",
+                    `${port}/computePrice`,
                     {
                         activitiesSchedule,
                         liczbaUczestnikow,
@@ -2901,7 +2904,7 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
         const fetchHotel = async (attempt = 0) => {
             try {
                 console.log(`🌍 Pobieram hotel z API /findHotel... (attempt ${attempt + 1})`);
-                const response = await axios.get("http://localhost:5006/findHotel", {
+                const response = await axios.get(`${port}/findHotel`, {
                     params: {
                         city: nazwa,
                         centerLat: lat,

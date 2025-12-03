@@ -1,6 +1,6 @@
 // usercontent.js
 import { create } from 'zustand';
-
+const portacc = "https://wycieczkzklasaacc.onrender.com";
 const useUserStore = create((set, get) => ({
   user: null,
   loading: false,        // start bez spinnera; fetch ustawi loading=true
@@ -14,7 +14,7 @@ const useUserStore = create((set, get) => ({
   fetchMe: async () => {
     set({ loading: true, error: null });
     try {
-      const res = await fetch('http://localhost:5007/api/me', {
+      const res = await fetch(`${portacc}/api/me`, {
         credentials: 'include',
       });
       if (res.ok) {
