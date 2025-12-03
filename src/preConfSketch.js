@@ -38,16 +38,16 @@ const ConfigBox = styled.div`
   border: 2px solid ${p => p.$isEmpty ? '#3A7E7E' : '#f3f4f6'};
   position: relative; animation: ${p => p.$isEmpty ? pulse : 'none'} 2s infinite; transition: all .3s ease;
 `;
-const BoxSubtitle = styled.div`
+export const BoxSubtitle = styled.div`
   font-family: Inter, sans-serif; font-size: 12px; font-weight: 500;
   color: ${p => p.$isEmpty ? '#3A7E7E' : '#606060'}; margin-bottom: 4px; display: flex; justify-content: space-between;
 `;
-const RequiredBadge = styled.span`
+export const RequiredBadge = styled.span`
   font-size: 10px; font-weight: 600; color: #fff;
   background: linear-gradient(135deg,#3A7E7E,#2C5F5F);
   padding: 2px 8px; border-radius: 6px; text-transform: uppercase; letter-spacing: .5px; animation: ${pulse} 2s infinite;
 `;
-const BoxTitle = styled.div`
+export const BoxTitle = styled.div`
   font-family: Inter, sans-serif; font-size: 20px; font-weight: 600; margin-bottom: 12px; display: flex; gap: 8px;
   color: ${p => p.$isEmpty ? '#3A7E7E' : 'inherit'};
 `;
@@ -58,7 +58,7 @@ const SearchInputEl = styled.input`
   width: 100%; 
   height: 36px; 
   box-sizing: border-box;
-  border: none; border-radius: 10px; padding: 0 36px;
+  border: none; border-radius: 5px; padding: 0 36px;
   font-size: 14px; background: #fafafa; outline: none; color: #404040; font-family: Inter, sans-serif;
   &::placeholder { color: #9ca3af; } &:focus { background: #f3f4f6; }
 `;
@@ -70,7 +70,7 @@ const LeftIcon = styled(IconButton)` left:8px; top:50%; transform:translateY(-50
 const RightIcon = styled(IconButton)` right:8px; top:50%; transform:translateY(-50%); `;
 const SearchResults = styled.div`
   position: absolute; box-sizing: border-box;z-index: 50; width: 100%; margin-top: 4px; background: #fff; border: 1px solid #e5e7eb; 
-  border-radius: 10px; box-shadow: 0 10px 25px rgba(0,0,0,.1); max-height: 240px; overflow-y: auto;
+  border-radius: 5px; box-shadow: 0 10px 25px rgba(0,0,0,.1); max-height: 240px; overflow-y: auto;
 `;
 const SearchResultItem = styled.button`
   width: 100%; padding: 12px 16px; text-align: left; border: none; background: #fff; cursor: pointer; display: flex; gap: 12px;
@@ -158,7 +158,7 @@ const hotelOptions = [
 ];
 
 /* ===================== LOCATION SEARCH ===================== */
-const LocationSearch = ({ value, onChange, placeholder, onMapClick }) => {
+export const LocationSearch = ({ value, onChange, placeholder, onMapClick }) => {
     const [searchResults, setSearchResults] = useState([]);
     const [isSearching, setIsSearching] = useState(false);
     const [showResults, setShowResults] = useState(false);

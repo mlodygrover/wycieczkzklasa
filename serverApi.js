@@ -15,7 +15,6 @@ const fs = require("fs");
 const cheerio = require("cheerio");
 
 const app = express();
-const PORT = 5006;
 
 // użycie CORS dla wszystkich domen (dev)
 app.use(cors());
@@ -302,8 +301,10 @@ mongoose
     .then(async () => {
         console.log("Połączono z MongoDB");
 
-        app.listen(PORT, () => {
-            console.log(`Serwer działa na http://localhost:${PORT}`);
+        const port = process.env.PORT || 5006;
+
+        app.listen(port, () => {
+            console.log(`Serwer nasłuchuje na porcie ${port}`);
         });
     })
     .catch((err) => {

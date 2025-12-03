@@ -32,6 +32,7 @@ import { data } from "react-router-dom";
 import AttractionsMap from "./attractionMap";
 import { Bed, Calendar, CalendarDays, Edit, Edit2, Hotel, Moon, Rocket, TramFront, Users } from "lucide-react";
 import Loader from "./roots/loader";
+import { PopupManager } from "./konfigurator/popupManager";
 
 const testResults = [
     { nazwa: "Poznań", region: "Wielkopolska", kraj: "Polska" },
@@ -769,7 +770,14 @@ const KonfiguratorPhotoWithSettings = styled.div`
     justify-content: flex-end;
     padding: 20px;
     box-sizing: border-box;
-
+    @media (max-width: 600px) {
+        /* tło ma zawsze pokryć cały box */
+        background-size: cover;
+        /* opcjonalnie – żeby uniknąć szarpania na mobile */
+        animation: none;
+        /* dodatkowo możesz ustawić stałą wysokość, jeśli chcesz */
+        height: 300px;
+    }
     /* 🔁 delikatne, cykliczne przesuwanie i zoom */
     animation: ${backgroundKenBurns} 40s ease-in-out infinite;
 
@@ -1195,7 +1203,7 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
     const libraryFilters = ["Muzeum",]
     const [filtersChosen, setFiltersChosen] = useState()
     const [alertsTable, setAlertsTable] = useState([])
-
+    const [popupPickerOpened, setPopupPickerOpened] = useState(false);
     useEffect(() => {
         if (!miejsceStartoweSearching) return;
         setMiejsceStartoweResults([]);
@@ -3118,7 +3126,7 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
 
                 <KonfiguratorMainSettings ref={settingsRef} className={settingsOpened ? "opened" : "closed"}>
 
-                    <SettingsButton onClick={() => { setMiejsceStartowePopupOpened(!miejsceStartowePopupOpened); setOffOthers(0) }} className={miejsceStartowePopupOpened ? "chosen" : ""}>
+                    <SettingsButton onClick={() => setPopupPickerOpened(!popupPickerOpened)} className={miejsceStartowePopupOpened ? "chosen" : ""}>
                         <Rocket size={30} />
                         Miejsce początkowe:<span>{miejsceStartowe ? miejsceStartowe.nazwa : "..."} </span>
                         {miejsceStartowePopupOpened && <div className="settingsPopup" onClick={(e) => e.stopPropagation()} >
@@ -3556,7 +3564,9 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
                     </div>
                 </KonfiguratorMainMainboxLeft>
             </KonfiguratorMainMainbox>
-
+            {popupPickerOpened &&
+                <PopupManager setPopupPickerOpened={setPopupPickerOpened} miejsceDocelowe={miejsceStartowe} setMiejsceDocelowe={setMiejsceStartowe}>
+                </PopupManager>}
             {alertsTable && alertsTable.length ?
                 <AlertsBox key={alertsTable} alertsTable={alertsTable} deleteAlert={deleteAlert} />
                 :

@@ -5,6 +5,7 @@ import React from "react";
 import { AddActivityPanel } from "./addActivityPanel";
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 import { AttractionResultFull, RouteResult } from "../roots/attractionResults";
+import { Save } from "lucide-react";
 
 const DroppableBox = styled.div`
   width: 100%;
@@ -75,33 +76,26 @@ const KonfiguratorWyjazduCompMainbox = styled.div`
   }
 `;
 
-const PriceBadge = styled.span`
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 6px 10px;
-  border-radius: 999px;
-  background: #f3f4f6;
-  border: 1px solid #e5e7eb;
-  color: #111827;
-  font-size: 13px;
-  font-weight: 600;
-  min-height: 32px;
-`;
+
 
 const SaveButton = styled.button`
-  height: 32px;
-  padding: 0 12px;
+  height: 40px;
+  padding: 0px 20px;
   border-radius: 8px;
-  border: 1px solid #d1d5db;
+  border: 2px solid #000000ff;
   background: #ffffff;
-  color: #111827;
-  font-weight: 600;
+  color: #000000ff;
+  font-family: Inter, system-ui, -apple-system, sans-serif;
+  font-weight: 500 !important;
   cursor: pointer;
-  transition: box-shadow .2s ease, transform .06s ease, background .2s;
+  transition:.2s ease-in-out;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
   &:hover { box-shadow: 0 8px 20px rgba(0,0,0,.06); background: #f9fafb; }
   &:active { transform: scale(.99); }
-  &:disabled { opacity: .6; cursor: not-allowed; }
+  &:disabled { opacity: .6; cursor: not-allowed; border: 2px solid lightgray; }
 `;
 
 const KonfiguratorNavBar = styled.div`
@@ -266,17 +260,7 @@ export const KonfiguratorWyjazduComp = ({
             <div className="konifuguratorMainboxTitle">
                 <div className="title-left">Plan dnia</div>
                 <div className="title-right">
-                    {/* === OBSŁUGA CENY === */}
-                    <PriceBadge title={computingPrice ? 'Trwa przeliczanie kosztu' : 'Suma kosztów wycieczki'}>
-                        {computingPrice ? (
-                            <>
-                                <Loader />
-                                <span style={{ marginLeft: 6 }}>Liczenie ceny…</span>
-                            </>
-                        ) : (
-                            <>Cena: {fmtPLN(computedPrice)}</>
-                        )}
-                    </PriceBadge>
+                 
 
                     <SaveButton
                         onClick={handleSaveClick}
@@ -295,7 +279,7 @@ export const KonfiguratorWyjazduComp = ({
                                 ? 'Czekaj na cenę…'
                                 : (loading || scheduleLoading)
                                     ? 'Ładowanie…'
-                                    : 'Zapisz plan'}
+                                    : <><Save size={20}/>Zapisz</>}
                     </SaveButton>
                 </div>
             </div>
