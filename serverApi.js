@@ -304,6 +304,7 @@ mongoose
         const port = process.env.PORT || 5006;
 
         app.listen(port, () => {
+            console.log("VERSION 0.1")
             console.log(`Serwer nasłuchuje na porcie ${port}`);
         });
     })
