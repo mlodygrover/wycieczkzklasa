@@ -7,7 +7,7 @@ import useUserStore, { fetchMe } from './usercontent.js';
 import EyeCheckbox from './eyeCheckbox.js';
 import { PreConfigureParticipants } from './preConfigureParticipants.js';
 
-const portacc = "http://localhost:5007" //https://wycieczkzklasaacc.onrender.com";
+const portacc = "https://wycieczkzklasaacc.onrender.com" //;http://localhost:5007"
 /* ===================== LAYOUT ===================== */
 const PreConfigureMainbox = styled.div`
   width: 100%;

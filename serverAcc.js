@@ -443,7 +443,7 @@ async function fetchUnsplashPhotoLinkForDestination(
 // ===================== ENDPOINTY TRIP PLANS =====================
 // ===================== GET /download/trip-plan =====================
 // GET /download/trip-plan?tripId=<ObjectId>
-app.get("/download/trip-plan", async (req, res) => {
+app.get("/download/trip-plan", requireAuth, async (req, res) => {
     try {
         const { tripId } = req.query;
 
@@ -453,7 +453,6 @@ app.get("/download/trip-plan", async (req, res) => {
 
         const doc = await TripPlan.findOne({
             _id: new mongoose.Types.ObjectId(tripId),
-            authors: req.user._id,
         })
             .select(
                 "computedPrice miejsceDocelowe standardTransportu standardHotelu activitiesSchedule photoLink nazwa startHours"
