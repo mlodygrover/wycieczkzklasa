@@ -180,6 +180,10 @@ app.get("/searchCityNew", async (req, res) => {
                 autocomplete: 1,
                 dedupe: 1
             },
+            headers: {
+                "User-Agent": "WycieczkaZKlasa/1.0 (twoj.mail@twojadomena.pl)",
+                "Accept-Language": "pl"
+            }
         });
 
         const uniqueMap = new Map();
@@ -214,7 +218,7 @@ app.get("/searchCityNew", async (req, res) => {
                     priority,
                     location: {
                         lat: place.lat ? Number(place.lat) : null,
-                        lng: place.lon ? Number(place.lon) : null, // UWAGA: lng, nie lon
+                        lng: place.lon ? Number(place.lon) : null,
                     },
                 });
             }
@@ -223,10 +227,11 @@ app.get("/searchCityNew", async (req, res) => {
         const results = Array.from(uniqueMap.values()).sort((a, b) => a.priority - b.priority);
         res.json(results);
     } catch (error) {
-        console.error(error);
-        res.status(500).json({ error: "Błąd serwera" });
+        console.error("Nominatim 403:", error.response?.status, error.response?.data);
+        res.status(500).json({ error: "Błąd serwera (Nominatim)" });
     }
 });
+
 
 app.get("/searchCity", async (req, res) => {
     const { query } = req.query;
@@ -246,6 +251,10 @@ app.get("/searchCity", async (req, res) => {
                 autocomplete: 1,    // <-- autouzupełnianie
                 dedupe: 1           // <-- usuwanie duplikatów od strony Nominatim
             },
+            headers: {
+                "User-Agent": "WycieczkaZKlasa/1.0 (twoj.mail@twojadomena.pl)",
+                "Accept-Language": "pl"
+            }
         });
 
         // deduplikacja
