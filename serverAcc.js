@@ -443,7 +443,7 @@ async function fetchUnsplashPhotoLinkForDestination(
 // ===================== ENDPOINTY TRIP PLANS =====================
 // ===================== GET /download/trip-plan =====================
 // GET /download/trip-plan?tripId=<ObjectId>
-app.get("/download/trip-plan", requireAuth, async (req, res) => {
+app.get("/download/trip-plan",  async (req, res) => {
     try {
         const { tripId } = req.query;
 

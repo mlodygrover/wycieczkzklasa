@@ -417,7 +417,7 @@ async function GetTripSummaryById(tripId) {
     }
 
     const tripData = await resp.json();
-
+    
     // Spłaszczenie activitiesSchedule (AoA → flat)
     let flattenedSchedule = [];
     if (Array.isArray(tripData.activitiesSchedule)) {
