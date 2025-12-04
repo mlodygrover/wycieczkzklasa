@@ -56,7 +56,7 @@ const User = mongoose.model('User', userSchema);
 app.use(express.json());
 app.use(
     cors({
-        origin: ["https://timely-cranachan-10fff6.netlify.app", "http://localhost:3000"], // np. http://localhost:3000
+        origin: ["https://timely-cranachan-10fff6.netlify.app", "http://localhost:3000", "https://draftngo.com"], // np. http://localhost:3000
         credentials: true,
     })
 );
