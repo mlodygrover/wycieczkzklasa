@@ -177,7 +177,7 @@ export const LocationSearch = ({ value, onChange, placeholder, onMapClick }) => 
         if (!q || q.trim().length < 2) { setSearchResults([]); setShowResults(false); return; }
         setIsSearching(true);
         try {
-            const resp = await fetch(`${"http://localhost:5006"}/searchCityNew?query=${encodeURIComponent(q.trim())}`);
+            const resp = await fetch(`${port}/searchCityNew?query=${encodeURIComponent(q.trim())}`);
             if (!resp.ok) throw new Error('Bad response from /searchCity');
             const data = await resp.json(); // [{ id, nazwa, wojewodztwo, kraj, priority, location:{lat,lng}}]
             setSearchResults(Array.isArray(data) ? data : []);
