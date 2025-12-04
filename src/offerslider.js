@@ -5,7 +5,7 @@ import { ChevronLeft, ChevronRight, MapPin, Calendar, User } from 'lucide-react'
 import { useNavigate } from 'react-router-dom';
 import Loader from './roots/loader';
 
-const portacc = "http://localhost:5007" //"https://wycieczkzklasaacc.onrender.com"
+const portacc = "https://wycieczkzklasaacc.onrender.com"
 
 // --- Styled Components z optymalizacjami ---
 

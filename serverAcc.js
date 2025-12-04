@@ -10,7 +10,8 @@ const FacebookStrategy = require('passport-facebook').Strategy;
 const axios = require("axios");
 
 const app = express();
-
+// bardzo ważne dla Render / Heroku / proxy
+app.set('trust proxy', 1);
 /* =========================
    1) Połączenie z MongoDB
    ========================= */

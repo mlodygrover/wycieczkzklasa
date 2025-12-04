@@ -4,7 +4,7 @@ import useUserStore from "./usercontent";
 import TripsSection from "./tripsSection";
 import { SummaryTrips } from "./summaryTripCard";
 
-const portacc = "http://localhost:5007" //"https://wycieczkzklasaacc.onrender.com"
+const portacc = "https://wycieczkzklasaacc.onrender.com"
 // sampleTrips.js
 // --- helpers: lokalne "południe" i zero-padding ---
 const atLocalNoon = (d) => {
