@@ -8,7 +8,11 @@ const mongoose = require('mongoose');
 const cors = require('cors');
 const FacebookStrategy = require('passport-facebook').Strategy;
 const axios = require("axios");
+const OpenAI = require("openai");
 
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
+});
 const app = express();
 // bardzo ważne dla Render / Heroku / proxy
 app.set('trust proxy', 1);
@@ -59,18 +63,18 @@ app.use(
         credentials: true,
     })
 );
-const isProd = true;// process.env.NODE_ENV === 'production';
-
+const isProd = process.env.REACT_APP_API_SOURCE == "http://localhost:5007";// process.env.NODE_ENV === 'production';
+console.log(isProd)
 app.use(session({
-  name: 'sid',
-  secret: process.env.SESSION_SECRET,
-  resave: false,
-  saveUninitialized: false,
-  cookie: {
-    httpOnly: true,
-    secure: true,  //isProd,               // PROD: true, DEV: false
-    sameSite: 'None', // PROD: None, DEV: Lax
-  },
+    name: 'sid',
+    secret: process.env.SESSION_SECRET,
+    resave: false,
+    saveUninitialized: false,
+    cookie: {
+        httpOnly: true,
+        secure: !isProd,         // PROD: true, DEV: false
+        sameSite: !isProd ? 'None' : 'Lax', // PROD: None, DEV: Lax
+    },
 }));
 
 app.use(passport.initialize());
@@ -401,6 +405,39 @@ const UNSPLASH_ACCESS_KEY = process.env.UNSPLASH_ACCESS_KEY;
  * Pobiera link do zdjęcia z Unsplash dla podanej frazy (np. nazwy miejsca).
  * Best-effort; w razie błędu zwraca null.
  */
+async function translateCityNameToEnglish(cityName) {
+    if (!cityName || !String(cityName).trim()) return null;
+
+    try {
+        const prompt = `
+Przetlumacz polska nazwe miasta na angielska. Zwroc tylko i wylacznie przetlumaczona nazwe miasta.
+Polska nazwa: "${cityName}"
+`;
+
+        const resp = await openai.chat.completions.create({
+            model: "gpt-4o-mini",  // możesz zmienić na inny model
+            messages: [
+                { role: "system", content: "You are a concise translation assistant." },
+                { role: "user", content: prompt },
+            ],
+            max_tokens: 20,
+            temperature: 0,
+        });
+
+        let translated = resp.choices?.[0]?.message?.content || "";
+        translated = translated.trim();
+
+        // Na wszelki wypadek zdejmij cudzysłowy, jeśli model je doda
+        translated = translated.replace(/^["']|["']$/g, "");
+
+        return translated || cityName;
+    } catch (err) {
+        console.error("[OpenAI translate error]", err?.response?.data || err?.message || err);
+        // W razie błędu wracamy do oryginalnej nazwy
+        return cityName;
+    }
+}
+
 async function fetchUnsplashPhotoLinkForDestination(
     destName,
     { timeoutMs = 5000, orientation = "landscape" } = {}
@@ -422,7 +459,7 @@ async function fetchUnsplashPhotoLinkForDestination(
             headers: { Authorization: `Client-ID ${UNSPLASH_ACCESS_KEY}` },
             timeout: timeoutMs,
         });
-
+        console.log(data.results);
         const photo = Array.isArray(data?.results) ? data.results[0] : null;
         if (!photo) return null;
 
@@ -433,16 +470,33 @@ async function fetchUnsplashPhotoLinkForDestination(
             photo?.urls?.full ||
             null
         );
+
     } catch (err) {
         console.warn("[Unsplash photo fetch warning]", err?.response?.status || "", err?.message || err);
         return null;
     }
 }
+async function fetchUnsplashPhotoLinkWithTranslation(
+  destName,
+  { timeoutMs = 5000, orientation = "landscape" } = {}
+) {
+  if (!destName || !String(destName).trim()) return null;
+
+  // 1) Tłumaczenie nazwy miasta na angielski
+  const translated = await translateCityNameToEnglish(destName);
+  console.log("[Unsplash] original:", destName, "translated:", translated);
+
+  // 2) Zapytanie Unsplash na podstawie przetłumaczonej nazwy
+  return fetchUnsplashPhotoLinkForDestination(translated, {
+    timeoutMs,
+    orientation,
+  });
+}
 
 // ===================== ENDPOINTY TRIP PLANS =====================
 // ===================== GET /download/trip-plan =====================
 // GET /download/trip-plan?tripId=<ObjectId>
-app.get("/download/trip-plan",  async (req, res) => {
+app.get("/download/trip-plan", async (req, res) => {
     try {
         const { tripId } = req.query;
 
@@ -615,7 +669,7 @@ app.post("/api/trip-plans", async (req, res) => {
             priceToSave = serverPrice != null ? serverPrice : undefined;
         }
 
-        const photoLink = await fetchUnsplashPhotoLinkForDestination(miejsceDocelowe.nazwa);
+        const photoLink = await fetchUnsplashPhotoLinkWithTranslation(miejsceDocelowe.nazwa);
 
         // public: domyślnie true, ale jeśli klient prześle false → nadpisujemy
         let publicValue;
@@ -1230,7 +1284,7 @@ app.put("/api/trip-plans/:tripId", requireAuth, async (req, res) => {
         // jeżeli zmieniło się miejsce docelowe → odśwież zdjęcie, slug i ewentualnie domyślną nazwę
         if (destinationChanged && miejsceDocelowe?.nazwa) {
             try {
-                const photoLink = await fetchUnsplashPhotoLinkForDestination(
+                const photoLink = await fetchUnsplashPhotoLinkWithTranslation(
                     miejsceDocelowe.nazwa
                 );
                 if (photoLink) {

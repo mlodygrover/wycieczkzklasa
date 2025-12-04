@@ -7,7 +7,8 @@ import useUserStore, { fetchMe } from './usercontent.js';
 import EyeCheckbox from './eyeCheckbox.js';
 import { PreConfigureParticipants } from './preConfigureParticipants.js';
 
-const portacc = "https://wycieczkzklasaacc.onrender.com"
+const portacc = process.env.REACT_APP_API_SOURCE || "https://api.draftngo.com";
+
 /* ===================== LAYOUT ===================== */
 const PreConfigureMainbox = styled.div`
   width: 100%;

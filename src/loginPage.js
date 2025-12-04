@@ -3,7 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import useUserStore from './usercontent';
 import { fetchMe } from './usercontent';
 
-const portacc = "https://wycieczkzklasaacc.onrender.com"
+const portacc = process.env.REACT_APP_API_SOURCE || "https://api.draftngo.com";
+
 // Komponent <style> do wstrzyknięcia CSS
 const GlobalStyles = () => (
     <style>{`

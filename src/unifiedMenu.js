@@ -4,8 +4,9 @@ import { Menu, X, Compass, User, ChevronDown, Settings, Heart, LogOut, Bell } fr
 import { useNavigate } from 'react-router-dom';
 import useUserStore, { fetchMe, clearUser } from './usercontent';
 
-const portacc = "https://wycieczkzklasaacc.onrender.com"
+const portacc = process.env.REACT_APP_API_SOURCE || "https://api.draftngo.com";
 
+console.log("TEST PORT", portacc, process.env.REACT_APP_API_SOURCE)
 const slideDown = keyframes`
   from { opacity: 0; transform: translateY(-10px); }
   to { opacity: 1; transform: translateY(0); }

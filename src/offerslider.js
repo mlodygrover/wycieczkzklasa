@@ -5,7 +5,9 @@ import { ChevronLeft, ChevronRight, MapPin, Calendar, User } from 'lucide-react'
 import { useNavigate } from 'react-router-dom';
 import Loader from './roots/loader';
 
-const portacc = "https://wycieczkzklasaacc.onrender.com"
+
+const portacc = process.env.REACT_APP_API_SOURCE || "https://api.draftngo.com";
+
 
 // --- Styled Components z optymalizacjami ---
 

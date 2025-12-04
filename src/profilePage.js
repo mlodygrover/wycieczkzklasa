@@ -3,8 +3,8 @@ import styled from "styled-components";
 import useUserStore from "./usercontent";
 import TripsSection from "./tripsSection";
 import { SummaryTrips } from "./summaryTripCard";
+const portacc = process.env.REACT_APP_API_SOURCE || "https://api.draftngo.com";
 
-const portacc = "https://wycieczkzklasaacc.onrender.com"
 // sampleTrips.js
 // --- helpers: lokalne "południe" i zero-padding ---
 const atLocalNoon = (d) => {

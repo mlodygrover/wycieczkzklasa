@@ -1,6 +1,7 @@
 // usercontent.js
 import { create } from 'zustand';
-const portacc = "https://wycieczkzklasaacc.onrender.com"
+const portacc = process.env.REACT_APP_API_SOURCE || "https://api.draftngo.com";
+
 const useUserStore = create((set, get) => ({
   user: null,
   loading: false,        // start bez spinnera; fetch ustawi loading=true
