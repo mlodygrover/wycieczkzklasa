@@ -6,8 +6,6 @@ const session = require('express-session');
 const passport = require('passport');
 const mongoose = require('mongoose');
 const cors = require('cors');
-const { data } = require('react-router-dom');
-const { number } = require('framer-motion');
 const FacebookStrategy = require('passport-facebook').Strategy;
 const axios = require("axios");
 
@@ -69,8 +67,8 @@ app.use(session({
   saveUninitialized: false,
   cookie: {
     httpOnly: true,
-    secure: true,  //isProd,               // PROD: true, DEV: false
-    sameSite: 'NONE', // PROD: None, DEV: Lax
+    secure: false,  //isProd,               // PROD: true, DEV: false
+    sameSite: 'Lax', // PROD: None, DEV: Lax
   },
 }));
 
