@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import useUserStore from './usercontent';
 import { fetchMe } from './usercontent';
 
-const portacc = "https://wycieczkzklasaacc.onrender.com";
+const portacc = "http://localhost:5007";
 // Komponent <style> do wstrzyknięcia CSS
 const GlobalStyles = () => (
     <style>{`

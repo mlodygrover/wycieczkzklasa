@@ -60,20 +60,19 @@ app.use(
         credentials: true,
     })
 );
+const isProd = true;// process.env.NODE_ENV === 'production';
 
-app.use(
-    session({
-        name: 'sid',
-        secret: process.env.SESSION_SECRET,
-        resave: false,
-        saveUninitialized: false,
-        cookie: {
-            httpOnly: true,
-            secure: false, // DEV: false; PROD: true (HTTPS)
-            sameSite: 'lax',
-        },
-    })
-);
+app.use(session({
+  name: 'sid',
+  secret: process.env.SESSION_SECRET,
+  resave: false,
+  saveUninitialized: false,
+  cookie: {
+    httpOnly: true,
+    secure: isProd,               // PROD: true, DEV: false
+    sameSite: 'none', // PROD: None, DEV: Lax
+  },
+}));
 
 app.use(passport.initialize());
 app.use(passport.session());
@@ -174,6 +173,7 @@ app.get(
     }),
     (req, res) => {
         // Po sukcesie – przekieruj na front (np. /)
+        console.log("ZALOGOWANO")
         res.redirect(`${process.env.CLIENT_URL}/`);
     }
 );
