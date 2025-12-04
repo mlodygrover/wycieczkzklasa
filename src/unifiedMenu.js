@@ -4,7 +4,7 @@ import { Menu, X, Compass, User, ChevronDown, Settings, Heart, LogOut, Bell } fr
 import { useNavigate } from 'react-router-dom';
 import useUserStore, { fetchMe, clearUser } from './usercontent';
 
-const portacc = "https://wycieczkzklasaacc.onrender.com";
+const portacc = "http://localhost:5007" //"https://wycieczkzklasaacc.onrender.com"
 
 const slideDown = keyframes`
   from { opacity: 0; transform: translateY(-10px); }

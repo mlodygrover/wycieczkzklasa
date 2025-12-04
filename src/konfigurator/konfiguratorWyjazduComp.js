@@ -7,7 +7,7 @@ import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 import { AttractionResultFull, RouteResult } from "../roots/attractionResults";
 import { Save } from "lucide-react";
 
-const portacc = "https://wycieczkzklasaacc.onrender.com";
+const portacc = "http://localhost:5007" //"https://wycieczkzklasaacc.onrender.com"
 const DroppableBox = styled.div`
   width: 100%;
   display: flex;

@@ -36,7 +36,7 @@ import { PopupManager } from "./konfigurator/popupManager";
 
 
 const port = "https://wycieczkzklasa.onrender.com"
-const portacc = "https://wycieczkzklasaacc.onrender.com"
+const portacc = "http://localhost:5007" //"https://wycieczkzklasaacc.onrender.com"
 const testResults = [
     { nazwa: "Poznań", region: "Wielkopolska", kraj: "Polska" },
     { nazwa: "Luboń koło Poznania", region: "Wielkopolska", kraj: "Polska" },

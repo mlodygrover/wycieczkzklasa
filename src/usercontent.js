@@ -1,6 +1,6 @@
 // usercontent.js
 import { create } from 'zustand';
-const portacc = "https://wycieczkzklasaacc.onrender.com";
+const portacc = "http://localhost:5007" //"https://wycieczkzklasaacc.onrender.com"
 const useUserStore = create((set, get) => ({
   user: null,
   loading: false,        // start bez spinnera; fetch ustawi loading=true
