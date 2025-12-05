@@ -1917,7 +1917,7 @@ const PPLX_MODELS = [
 
 function buildPrompt(nazwa) {
     return `
-ile kosztuje wejscie do ${nazwa} i jakie sa warianty.
+ile kosztuje wejscie do ${nazwa} (lub okolicy) i jakie sa warianty.
 zwróc informacje o wariantach, cenach, ich nazwach i potencjalnym czasie trwania
 w kontekscie osoby kupujacej bilet normalny bez znizek wchodzacej samemu –
 interesuje nas tylko stala oferta, pomijaj okresowe wydarzenia.
