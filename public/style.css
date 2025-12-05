@@ -28,7 +28,9 @@ body {
     position: relative;
     background-color: white;
 }
-
+.inactive {
+    display: none;
+}
 .infotiles {
     display: flex;
     flex-direction: row;

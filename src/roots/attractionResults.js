@@ -7,7 +7,7 @@ import { timeToMinutes } from "../konfiguratorMain"
 import { minutesToTime } from "../konfigurator/konfiguratorWyjazduComp"
 import React from "react"
 import { Loader2 } from "../loader2"
-import { Clock, MapPin, Ticket, Users, Bus, Car, Train, ChevronUp, ChevronDown, Trash2, RefreshCw } from 'lucide-react';
+import { Clock, MapPin, Ticket, Users, Bus, Car, Train, ChevronUp, ChevronDown, Trash2, RefreshCw, Route } from 'lucide-react';
 import VariantButton from "../variantButton"
 
 const GooglePopupCardMainbox = styled.div`
@@ -507,8 +507,8 @@ const AttractionResultFullMainbox = styled.div`
     }
     }
 
-    @media screen and (max-width: 600px)
-    {
+    @media screen and (max-width: 1200px)
+    {   display: none;
         flex-direction: column;
         height: 450px;
         width: 100%;
@@ -848,6 +848,9 @@ const RouteResultOutbox = styled.div`
         width: 30px;
         height: 30px;
         margin-left: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
         img{
         height: 100%;
         width: 100%;}
@@ -855,6 +858,9 @@ const RouteResultOutbox = styled.div`
     }
     @media screen and (max-width: 800px){
         width: 100%;
+        height: 33px;
+        background-color: transparent;
+        border: none;
     }
 `
 const RouteResultButtonLabel = styled.label`
@@ -880,6 +886,21 @@ const RouteResultButtonLabel = styled.label`
 
     input[type="radio"]:checked + & {
         border-bottom: 2px solid #008d73ff;
+        
+    }
+    @media screen and (max-width: 800px){
+        height: 100%;
+        font-size: 9px;
+        border-radius: 5px;
+        padding: 2px;
+        box-sizing: border-box;
+            &:hover {
+                border-bottom: 2px solid transparent;
+            }
+        input[type="radio"]:checked + & {
+            border-bottom: 2px solid transparent;
+            background-color: #f0f0f0;
+        }
     }
 `;
 
@@ -904,7 +925,7 @@ export const RouteResult = ({ routes, onTransportChange, actIdx, dayIdx, chosenT
     };
 
     if (!routes?.czasy || !routes.czasy.some((c) => c > 0)) {
-        return <RouteResultOutbox />;
+        return null;
     }
 
     const options = [
@@ -916,7 +937,7 @@ export const RouteResult = ({ routes, onTransportChange, actIdx, dayIdx, chosenT
     return (
         <RouteResultOutbox>
             <div className="routeImgBox">
-                <img src="../icons/route.svg" />
+                <Route size={25}/>
             </div>
 
             <RouteResultMainbox>

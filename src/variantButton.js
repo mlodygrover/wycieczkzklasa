@@ -75,6 +75,10 @@ const MainButton = styled.button`
     margin-bottom: 5px;
     background: #00b191ff;
     font-weight: 500;
+    &.sourcePlace{
+      min-width: 150px;
+      max-width: none;
+    }
     &:hover{
       background: rgba(0, 135, 110, 0.66);
     }
@@ -156,7 +160,7 @@ const OptionPrice = styled.span`
   font-size: 13px;
 `;
 
-const VariantButton = ({ variants, placeholder = "Wybierz wariant", onSelect, selectedVariantInit, source = false, typ=1 }) => {
+const VariantButton = ({ variants, placeholder = "Wybierz wariant", onSelect, selectedVariantInit, source = false, typ=1, sourcePlace = false}) => {
   const [isOpen, setIsOpen] = useState(false);
   const [selectedVariant, setSelectedVariant] = useState(selectedVariantInit);
   const containerRef = useRef(null);
@@ -189,7 +193,7 @@ const VariantButton = ({ variants, placeholder = "Wybierz wariant", onSelect, se
 
   return (
     <Container ref={containerRef}>
-      <MainButton onClick={handleToggle} className={`${source ? "schedule" : ""} ${typ === 2 ? "b" : ""}`.trim()}>
+      <MainButton onClick={handleToggle} className={`${source ? "schedule" : ""} ${typ === 2 ? "b" : ""} ${sourcePlace ? "sourcePlace" : ""}`.trim()}>
         <ButtonText>{selectedVariant !== null ? variants[selectedVariant].nazwaWariantu : placeholder}</ButtonText>
         <Arrow isOpen={isOpen}>▼</Arrow>
       </MainButton>

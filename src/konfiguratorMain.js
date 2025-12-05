@@ -33,6 +33,7 @@ import AttractionsMap from "./attractionMap";
 import { Bed, Calendar, CalendarDays, Edit, Edit2, Hotel, Moon, Rocket, TramFront, Users } from "lucide-react";
 import Loader from "./roots/loader";
 import { PopupManager } from "./konfigurator/popupManager";
+import { AddActivityNew } from "./addActivityNew";
 
 
 const port = "https://wycieczkzklasa.onrender.com"
@@ -45,7 +46,7 @@ const testResults = [
     { nazwa: "Poznań", region: "Lubelskie", kraj: "Polska" },
     { nazwa: "Druzyna Poznańska", wojewodztwo: "Wielkopolska", kraj: "Polska" }
 ]
-const basicActivities = [
+export const basicActivities = [
     {
         googleId: "dAct_przyjazdNaMiejsce",
         nazwa: "Przyjazd / zbiórka w miejscu docelowym",
@@ -3416,7 +3417,7 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
                                     atrakcja={atrakcja}
                                     wybranyDzien={wybranyDzien}
                                     addActivity={addActivity}
-                                    typ={2}
+                                    typ={3}
                                     latMD={miejsceDocelowe.location.lat}
                                     lngMD={miejsceDocelowe.location.lng}
                                 />
@@ -3449,7 +3450,7 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
                 <KonfiguratorMainMainboxRight ref={centerRef}>
 
                     <KonfiguratorWyjazduComp handleSaveClick={handleSaveClick} hasPendingAutoSave={hasPendingAutoSave} dataPrzyjazdu={dataPrzyjazdu} dataWyjazdu={dataWyjazdu} standardHotelu={standardHotelu} standardTransportu={standardTransportu} liczbaOpiekunow={liczbaOpiekunow} liczbaUczestnikow={liczbaUczestnikow} tripId={tripId} miejsceStartowe={miejsceStartowe} computedPrice={tripPrice + insurancePrice} computingPrice={computingPrice} miejsceDocelowe={miejsceDocelowe} changeActivity={changeActivity} checkOut={timeToMinutes(wybranyHotel?.checkOut) || 720} changeStartHour={changeStartHour} deleteActivity={deleteActivity} startModifyingAct={startModifyingAct} setActivityPanelOpened={setActivityPanelOpened} onAttractionTimeChange={changeActivityTime} swapActivities={swapActivities} onTransportChange={changeChosenTransport} timeSchedule={timeSchedule} routeSchedule={routeSchedule} chosenTransportSchedule={chosenTransportSchedule} loading={konfiguratorLoading} activitiesSchedule={activitiesSchedule} liczbaDni={liczbaDni} key={`schedule-${liczbaDni}-${konfiguratorLoading}-${timeSchedule}`} wybranyDzien={wybranyDzien} setWybranyDzien={setWybranyDzien} addActivity={addActivity} />
-                    {activityPanelOpened &&
+                    {activityPanelOpened && 1 == 2 &&
                         <AddAttractionWrapper>
                             <AddActivityPanelContainer>
                                 <AddActivityPanel atrakcje={atrakcje} key={`${modyfikacja}${atrakcje}`} setModAct={setModyfikacja} dayIndex={wybranyDzien} closePanel={() => setActivityPanelOpened(false)} miejsceDocelowe={miejsceDocelowe.nazwa} modActIdx={modyfikacja.flag ? modyfikacja.idx : null} addActivity={modyfikacja.flag ? changeActivity : addActivity} />
@@ -3458,6 +3459,14 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
                     }
                     {//<AttractionsMap attractions={atrakcje}/>
                     }
+                    {activityPanelOpened &&
+                        <AddActivityNew
+                            miejsceDocelowe={miejsceDocelowe}
+                            atrakcje={atrakcje}
+                            setActivityPanelOpened={setActivityPanelOpened}
+                            wybranyDzien={wybranyDzien}
+                            addActivity={addActivity}>
+                        </AddActivityNew>}
 
                 </KonfiguratorMainMainboxRight>
 

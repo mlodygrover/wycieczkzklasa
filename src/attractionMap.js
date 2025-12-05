@@ -11,7 +11,7 @@ import AttractionResultMediumComponent, {
 // --- 1. Globalne style dla popupa i customowej ikony ---
 const PopupStyles = createGlobalStyle`
   .leaflet-popup-content-wrapper {
-    padding: 18px 10px 10px 10px;
+    padding: 0px;
     border-radius: 12px;
   }
 
@@ -28,6 +28,7 @@ const PopupStyles = createGlobalStyle`
     background: none !important;
     border: none !important;
   }
+    .leaflet-popup-close-button{display: none !important;}
 `;
 
 // --- 2. Wrapper mapy ---
@@ -102,7 +103,7 @@ const createCustomIcon = (isVerified) => {
 };
 
 // --- 6. Główny komponent mapy ---
-const AttractionsMap = ({ attractions = [] }) => {
+const AttractionsMap = ({ attractions = [], addActivity, wybranyDzien}) => {
   const defaultCenter = [52.4064, 16.9252];
 
   const center =
@@ -147,9 +148,10 @@ const AttractionsMap = ({ attractions = [] }) => {
               >
                 <Popup>
                   {isVerified ? (
-                    <AttractionResultMediumVerifiedComponent atrakcja={attraction} />
+                    <AttractionResultMediumVerifiedComponent atrakcja={attraction} wybranyDzien={wybranyDzien} addActivity={addActivity} 
+                    sourcePlace={true}/>
                   ) : (
-                    <AttractionResultMediumComponent atrakcja={attraction} />
+                    <AttractionResultMediumComponent atrakcja={attraction} wybranyDzien={wybranyDzien} addActivity={addActivity} />
                   )}
                 </Popup>
               </Marker>

@@ -335,9 +335,10 @@ export default AttractionResultMediumComponent;
 
 const AttractionResultMediumVerifiedComponentMainbox = styled.div`
     max-width: 300px;
-    min-width: 250px;
+    min-width: 200px;
     width: 90%;
     min-height: 300px;
+    min-width: 250px;
     border-radius: 15px;
     background-size: cover;
     background-position: center;
@@ -507,9 +508,10 @@ export const AttractionResultMediumVerifiedComponent = ({
     atrakcja,
     wybranyDzien,
     addActivity,
-    typ = 1, // 1 – zdjęcie; 2 – mini-mapa Leaflet jako tło
+    typ = 1, // 1 – zdjęcie; 2 – statyczna mapa (kafelek OSM); 3 – mini-mapa Leaflet jako tło
     latMD,
-    lngMD
+    lngMD,
+    sourcePlace = false
 }) => {
     const [wariantsOpened, setWariantsOpened] = useState(false);
     const wariantButtonRef = useRef(null);
@@ -557,48 +559,71 @@ export const AttractionResultMediumVerifiedComponent = ({
     const FALLBACK_WALLPAPER =
         'https://images.unsplash.com/photo-1716481631637-e2d4fd2456e2?q=80&w=870&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D';
 
-    const backgroundUrl = atrakcja?.wallpaper || FALLBACK_WALLPAPER;
-
     const hasCoords =
         atrakcja?.lokalizacja &&
         typeof atrakcja.lokalizacja.lat === 'number' &&
         typeof atrakcja.lokalizacja.lng === 'number';
 
+    // Statyczny kafelek OSM
+    function getStaticMapUrl(lat, lng, zoom = 10) {
+        const latRad = (lat * Math.PI) / 180;
+        const n = Math.pow(2, zoom);
+
+        const xTile = Math.floor(((lng + 180) / 360) * n);
+        const yTile = Math.floor(
+            (1 - Math.log(Math.tan(latRad) + 1 / Math.cos(latRad)) / Math.PI) / 2 * n
+        );
+
+        return `https://tile.openstreetmap.org/${zoom}/${xTile}/${yTile}.png`;
+    }
+
+    // Tło używane dla typ 1 i 2
+    let backgroundUrl = FALLBACK_WALLPAPER;
+
+    if (typ === 1) {
+        backgroundUrl = atrakcja?.wallpaper || FALLBACK_WALLPAPER;
+    } else if (typ === 2 && hasCoords) {
+        // statyczny kafelek OSM zamiast Leafleta
+        backgroundUrl = getStaticMapUrl(
+            atrakcja.lokalizacja.lat,
+            atrakcja.lokalizacja.lng,
+            14
+        );
+    } else if (typ === 2 && !hasCoords) {
+        backgroundUrl = atrakcja?.wallpaper || FALLBACK_WALLPAPER;
+    }
 
     function formatDistanceKm(latA, lngA, latB, lngB) {
         const toRad = (deg) => (deg * Math.PI) / 180;
 
-        const R = 6371; // promień Ziemi w km
-
+        const R = 6371; // km
         const dLat = toRad(latB - latA);
         const dLng = toRad(lngB - lngA);
 
         const a =
             Math.sin(dLat / 2) * Math.sin(dLat / 2) +
             Math.cos(toRad(latA)) *
-            Math.cos(toRad(latB)) *
-            Math.sin(dLng / 2) * Math.sin(dLng / 2);
+                Math.cos(toRad(latB)) *
+                Math.sin(dLng / 2) * Math.sin(dLng / 2);
 
         const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-        const distanceKm = R * c; // w km
+        const distanceKm = R * c;
 
-        const rounded = distanceKm.toFixed(1); // jedna cyfra po przecinku
-
+        const rounded = distanceKm.toFixed(1);
         return `${rounded} km`;
     }
 
     return (
         <AttractionResultMediumVerifiedComponentMainbox
             style={
-                typ === 1
-                    ? {
-                        backgroundImage: `url(${backgroundUrl})`,
-                    }
-                    : {}
+                // typ 1 i 2 – tło jako backgroundImage (zdjęcie lub statyczny kafelek)
+                typ === 1 || typ === 2
+                    ? { backgroundImage: `url(${backgroundUrl})` }
+                    : undefined
             }
         >
-            {/* Mini-mapa Leaflet jako tło tylko dla typ = 2 */}
-            {typ === 2 && hasCoords && (
+            {/* typ 3 – pełny Leaflet jako tło */}
+            {typ === 3 && hasCoords && (
                 <div
                     style={{
                         position: 'absolute',
@@ -640,12 +665,13 @@ export const AttractionResultMediumVerifiedComponent = ({
 
             <div className="verifiedLabels">
                 <div className="categoryIcon">
-                    <img src="../icons/castle.svg" height="25px" />
+                    <img src="../icons/castle.svg" height="25px" alt="" />
                 </div>
-                {typ !== 2 &&
+                {typ == 1 && (
                     <div className="categoryIcon b">
-                        <img src="../icons/verified.svg" height="25px" />
-                    </div>}
+                        <img src="../icons/verified.svg" height="25px" alt="" />
+                    </div>
+                )}
             </div>
 
             <VerifiedMediumMainbox>
@@ -678,22 +704,28 @@ export const AttractionResultMediumVerifiedComponent = ({
                                             )} zł / osoba`
                                             : ''}
                             </span>
-                            {atrakcja?.stronaInternetowa && 1==2&&
-                                <span>
-                                    <SquareArrowOutUpRight size={15} />
-                                    <a href={atrakcja.stronaInternetowa} target="_blank" rel="noreferrer">Witryna</a>
-                                </span>
 
-
-                                ||
-                                1==1 
-                                &&
+                            {(
+                                atrakcja?.lokalizacja &&
+                                typeof latMD === 'number' &&
+                                typeof lngMD === 'number'
+                            ) && (
                                 <span>
                                     <Route size={15} />
-                                    <a href={atrakcja.stronaInternetowa} target="_blank" rel="noreferrer">{formatDistanceKm(atrakcja.lokalizacja.lat, atrakcja.lokalizacja.lng, latMD, lngMD)}</a>
+                                    <a
+                                        href={atrakcja.stronaInternetowa}
+                                        target="_blank"
+                                        rel="noreferrer"
+                                    >
+                                        {formatDistanceKm(
+                                            atrakcja.lokalizacja.lat,
+                                            atrakcja.lokalizacja.lng,
+                                            latMD,
+                                            lngMD
+                                        )}
+                                    </a>
                                 </span>
-                            }
-
+                            )}
                         </div>
                     </div>
                 </div>
@@ -705,6 +737,7 @@ export const AttractionResultMediumVerifiedComponent = ({
                             onSelect={setWariant}
                             selectedVariantInit={selectedVariant}
                             typ={2}
+                            sourcePlace={sourcePlace}
                         />
                     </div>
                 )}
@@ -719,6 +752,7 @@ export const AttractionResultMediumVerifiedComponent = ({
         </AttractionResultMediumVerifiedComponentMainbox>
     );
 };
+
 
 
 

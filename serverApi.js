@@ -1922,14 +1922,18 @@ zwróc informacje o wariantach, cenach, ich nazwach i potencjalnym czasie trwani
 w kontekscie osoby kupujacej bilet normalny bez znizek wchodzacej samemu –
 interesuje nas tylko stala oferta, pomijaj okresowe wydarzenia.
 Interesuje nas tylko oferta dotyczaca tego obiektu, zadnego innego z nim powiazanego.
-Jesli caly obiekt opiera sie jedynie na okresowych wydarzeniach zwroc obiekt {"nazwa":"defEvents"}. Pomijaj oferty wspolne z innymi obiektami - interesuje nas tylko i wylacznie oferta wspomnianego.
+Jesli caly obiekt opiera sie jedynie na okresowych wydarzeniach zwroc obiekt {"nazwa":"defEvents"}. Pomijaj oferty wspolne z innymi obiektami - interesuje nas tylko i wylacznie oferta wspomnianego. Jesli znajdziesz w danym miejscu 
+rozne wersje cenowe zwroc wyzsza, ale w sytuacji gdy sa rozne warianty oferty (np. trasy zwiedzania) zwroc kazdy z nich osobno. Bardzo wazne jest zeby otrzymac wynik!!  W przypadku innej waluty niz PLN przelicz cene na zlotowki. 
+Dodatkowo na koniec kiedy miejsce ma jakas oferte tzn nie jest nazwa "free", dodaj wariant "Punkt na trasie" z cena 0 i oszacuj czas zwiedzania jaki mozna poswiecic na ogladanie miejsca "z zewnatrz".
 Dane zwroc jako CZYSTY JSON bez komentarzy i tekstu pobocznego,
-w formacie jednej z dwoch struktur:
+w formacie jednej z trzech struktur:
 
 1) {"warianty":[{"nazwa":"…","cena":123.45,"czasZwiedzania":90}, ...]}
    - cena liczba (0 jesli bezplatne), czasZwiedzania liczba w minutach
    - czasZwiedzania min. 10
 2) {"nazwa":"defEvents"}  // gdy brak stalej oferty stalej, a sa tylko wydarzenia okresowe
+3) {"nazwa":"noInfo"}    // gdy brak jakichkolwiek informacji o cenach i wariantach
+4) {"nazwa":"free", cenaZwiedzania: 0, czasZwiedzania: (oszacuj ile mozna tam spedzic w mintuach)}      // gdy obiekt jest calkowicie bezplatny bo jest to np przestrzen publiczna
 
 Wartosci MUSZA byc liczbami tam, gdzie wymagane. Nie dodawaj wyjasnien ani tekstu poza JSON.
 `.trim();
