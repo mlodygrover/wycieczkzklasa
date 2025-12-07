@@ -84,13 +84,13 @@ const SelectButton = styled.button`
   font-size: 14px; color:#374151; cursor: pointer; display:flex; align-items:center; justify-content: space-between; font-family: Inter,sans-serif;
   &:hover{ background:#f3f4f6; }
 `;
-const CounterWrapper = styled.div` display:flex; align-items:center; gap:12px; `;
-const CounterButton = styled.button`
+export const CounterWrapper = styled.div` display:flex; align-items:center; gap:12px; width: 100%;`;
+export const CounterButton = styled.button`
   width:36px; height:36px; display:flex; align-items:center; justify-content:center;
   background:${p => p.$primary ? '#000' : '#f3f4f6'}; color:${p => p.$primary ? '#fff' : '#000'};
   border:none; border-radius:10px; cursor:pointer;
 `;
-const CounterInput = styled.input`
+export const CounterInput = styled.input`
   flex:1; height:36px; text-align:center; background:#fafafa; border:none; border-radius:10px; font-size:14px; outline:none; font-family:Inter,sans-serif;
 `;
 const Modal = styled.div`

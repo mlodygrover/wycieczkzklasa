@@ -388,6 +388,7 @@ export const MobileResult = ({
         tmpAttraction.czasZwiedzania = attraction.warianty[idx].czasZwiedzania || 60;
         tmpAttraction.cenaZwiedzania = attraction.warianty[idx].cenaZwiedzania || 0;
         tmpAttraction.selectedVariant = idx;
+        setLocalTime(attraction.warianty[idx].czasZwiedzania || 60)
         changeActivity && changeActivity(dayIdx, actIdx, tmpAttraction);
     }
 

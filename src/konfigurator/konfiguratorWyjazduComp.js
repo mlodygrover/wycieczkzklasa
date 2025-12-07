@@ -47,7 +47,7 @@ const KonfiguratorWyjazduCompMainbox = styled.div`
   align-items: stretch;
   justify-content: flex-start;
   padding-top: 10px;
-  @media screen and (max-width: 800px){ width: 100%; }
+  @media screen and (max-width: 800px){ width: 100%; min-height: fit-content;}
 
   .konifuguratorMainboxTitle{
     font-size: 24px;
@@ -149,7 +149,12 @@ const KonfiguratorWyjazduOutbox = styled.div`
   gap:5px; 
   margin-top:10px; 
   padding-bottom:100px;
-  @media (max-width:800px){ width:95%; }
+  @media (max-width:800px){ 
+    width:95%; 
+    padding-bottom: 20px;
+    border-bottom: 1px solid lightgray;
+    margin-bottom: 10px;
+  }
 `;
 
 const AddAttractionButtonMainbox = styled.div`
@@ -174,6 +179,7 @@ const AddAttractionButtonMainbox = styled.div`
   @media (max-width:800px){ 
     width:100%; 
     height: 80px;
+    margin-top: 0;
   }
 `;
 const AddAttractionButton = ({ click }) => (

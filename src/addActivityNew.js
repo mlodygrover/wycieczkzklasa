@@ -5,7 +5,7 @@ import AttractionResultMediumComponent, { AttractionResultMediumVerifiedComponen
 import { Drama, Landmark, Map, PencilLine, Search, SearchCheck, Shrub, X } from "lucide-react";
 import AttractionsMap from "./attractionMap";
 import { basicActivities } from "./konfiguratorMain";
-
+import Loader from "./roots/loader";
 const fadeInUp = keyframes`
   from {
     opacity: 0;
@@ -455,7 +455,7 @@ export const AddActivityNew = ({ events = [], addActivity, wybranyDzien, miejsce
           chosenOption === 4 && <>
             
             <AtrakcjeList>
-              {events
+              {Array.isArray(events)  ? events
                 .map((atrakcja, idx) => (
                   <AttractionResultMediumVerifiedComponent
                     key={`${atrakcja.googleId}${idx}`}
@@ -468,7 +468,7 @@ export const AddActivityNew = ({ events = [], addActivity, wybranyDzien, miejsce
 
                     sourcePlace={true}
                   />
-                ))}
+                )) : <Loader/>}
               
             </AtrakcjeList>
 

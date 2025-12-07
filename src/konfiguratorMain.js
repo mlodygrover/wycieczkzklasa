@@ -189,9 +189,7 @@ const namesTransportTab = ["Transport zbiorowy", "Wynajęty autokar", "Własny"]
 const namesHotelsTab = ["Ośrodki kolonijne", "Hotele 2/3 gwiazdkowe", "Hotele premium", "Własny"]
 const KonfiguratorMainMainbox = styled.div`
     width: 100%;
-    /* usuń min-height, jeśli chcesz, żeby wysokość wynikała z prawej kolumny
-       (albo zostaw, jeśli minimum 1000px jest Ci potrzebne) */
-    /* min-height: 1000px; */
+    
     display: flex;
     flex-direction: row;
     align-items: stretch;          /* <=== poprawka */
@@ -217,14 +215,13 @@ const KonfiguratorMainMainboxLeft = styled.div`
 
 
     &.right{
-
     padding-top: 10px;
         border-right: none;
         border-left: 1px solid lightgray;
     }
+    height: fit-content;!important;
+    /* ważne: lewa kolumna ma stałą wysokość z JS, a nadmiar treści przewija się w .listBox     overflow: hidden;*/
 
-    /* ważne: lewa kolumna ma stałą wysokość z JS, a nadmiar treści przewija się w .listBox */
-    overflow: hidden;
 
     .listBox {
         width: 100%;
@@ -406,128 +403,7 @@ const KonfiguratorMainMainboxLeft = styled.div`
         z-index: 10;
     }
 `;
-const AttractionResultMedium = styled.div`
-    width: 90%;
-    max-width: 300px;
-    min-height: 200px;
-    background-color: #fbfbfb;
-    border-radius: 15px;
-    border: 1px solid lightgray;
-    margin-top: 10px;
-    display: flex;
-    flex-direction: column;
-    align-items: stretch;
-    justify-content: flex-start;
-    .attractionResultMediumTitleBox{
-        margin-top:  5px;
-        width: 100%;
-        min-height: 50px;
-        display: flex;
-        flex-direction: row;
-        align-items: stretch;
-        justify-content: flex-start;
-        .titleIconBox{
-            width: 50px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-        .titleTextBox{
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            align-items: flex-start;
-            justify-content: center;
-            padding: 10px 0;
-            .attractionResultMediumTitle{
-                font-size: 16px;
-                width: 100%;
-                text-align: left;
-                font-family: Inter, system-ui, -apple-system, sans-serif;
-            }
-            .attractionResultMediumSubtitle{
-                font-size: 12px;
-                color: #606060;
-                font-weight: 300;
-                text-align: left;
-            }
-        }
-    }
-    .attractionResultMediumDetails{
-        flex: 1;
-        width: 90%;
-        box-sizing: border-box;
-        margin: 10px auto;
-        display: flex;
-        flex-direction: column;
-        justify-content: flex-start;
-        align-items: stretch;
-        .attractionResultMediumDetailRow{
-            width: 100%;
-            height: 30px;
-            display: flex;
-            flex-direction: row;
-            align-items: center;
-            justify-content: space-between;
-            color: #505050;
-            font-size: 12px;
-            font-weight: 400;
-            .detailRowElement{
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                gap: 5px;
-                span{
-                    font-size: 11px;
-                }
-                &.b{
-                    border: 1px solid lightgray;   
-                    padding: 2px 4px;
-                    border-radius: 999px; 
-                    background-color: #f4f4f4;
-                    cursor: pointer;
-                    transition: 0.3s ease-in-out;
-                    a{
-                        text-decoration: none;
-                        color: inherit;
-                    }
-                    &:hover{
-                        background-color: #e0e0e0;
-                    }
-                }
-                &.c{
-                    margin-top: 10px;
-                    padding: 2px 6px;
-                    border-radius: 999px; 
-                    border: 1px solid #008d73ff;
-                    background-color: #cfffe4ff;
-                    color: black;
-                    font-weight: 400;
-                }
-            }
-        }
-    }
-    .attractionResultMediumAddBox{
-        height: 30px;
-        width: 90%;
-        background-color: #008d73ff;
-        margin: 10px auto;
-        box-sizing: border-box;
-        border-radius: 5px;
-        color: white;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        text-align: center;
-        font-size: 14px;
-        font-weight: 500;
-        cursor: pointer;
-        transition: 0.3s ease-in-out;
-        &:hover{
-            background-color: #007a61ff;
-        }
-    }
-`
+
 const KonfiguratorMainMainboxRight = styled.div`
     flex: 1;
     height: 100%;
@@ -535,6 +411,10 @@ const KonfiguratorMainMainboxRight = styled.div`
     align-items: center;
     justify-content: center;
     align-self: stretch;      /* <=== dopilnuj rozciągnięcia */
+    @media screen and (max-height: 1000px){
+        height: fit-content;
+        background-color: red;
+    }
 `;
 
 export const KonfiguratorRadioButton = styled.div`
@@ -1208,7 +1088,7 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
     const libraryFilters = ["Muzeum",]
     const [filtersChosen, setFiltersChosen] = useState()
     const [alertsTable, setAlertsTable] = useState([])
-    const [popupPickerOpened, setPopupPickerOpened] = useState(false);
+    const [popupPickerOpened, setPopupPickerOpened] = useState(-1);
     useEffect(() => {
         if (!miejsceStartoweSearching) return;
         setMiejsceStartoweResults([]);
@@ -2073,12 +1953,14 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
             { id: "mainError", type, content }
         ]));
     }
+    /* temp temp temp
     useEffect(() => {
         const timer = setTimeout(() => {
             addAlert("guidance", "");
         }, 5);
         return () => clearTimeout(timer);
     }, []);
+    */
     function addRouteAlert(dayIdx) {
         dayIdx != 0 && setAlertsTable(prev => {
             if (prev.some(alert => alert.id === "routeFromFull")) return prev;
@@ -3242,7 +3124,7 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
 
                 <KonfiguratorMainSettings ref={settingsRef} className={settingsOpened ? "opened" : "closed"}>
 
-                    <SettingsButton onClick={() => setPopupPickerOpened(!popupPickerOpened)} className={miejsceStartowePopupOpened ? "chosen" : ""}>
+                    <SettingsButton onClick={() => setPopupPickerOpened(0)} className={miejsceStartowePopupOpened ? "chosen" : ""}>
                         <Rocket size={30} />
                         Miejsce początkowe:<span>{miejsceStartowe ? miejsceStartowe.nazwa : "..."} </span>
                         {miejsceStartowePopupOpened && <div className="settingsPopup" onClick={(e) => e.stopPropagation()} >
@@ -3285,7 +3167,7 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
                         </div>}
                     </SettingsButton>
 
-                    <SettingsButton className={wyborDatyOpened ? "chosen" : ""} onClick={() => { setWyborDatyOpened(!wyborDatyOpened); setOffOthers(1) }}>
+                    <SettingsButton onClick={() => setPopupPickerOpened(1)} className={miejsceStartowePopupOpened ? "chosen" : ""}>
                         <CalendarDays size={30} />
                         {formatDate(dataPrzyjazdu || "")} - {formatDate(dataWyjazdu || "")}
                         {wyborDatyOpened && <div className="settingsPopup" onClick={(e) => e.stopPropagation()} >
@@ -3293,7 +3175,7 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
                         </div>}
                     </SettingsButton>
 
-                    <SettingsButton className={wyborGosciOpened ? "chosen" : ""} onClick={() => { setWyborGosciOpened(!wyborGosciOpened); setOffOthers(2) }}>
+                    <SettingsButton onClick={() => setPopupPickerOpened(2)} className={miejsceStartowePopupOpened ? "chosen" : ""}>
                         <Users size={30} />
                         {liczbaUczestnikow} uczestników, {liczbaOpiekunow} opiekunów
                         {wyborGosciOpened && <div className="settingsPopup" onClick={(e) => e.stopPropagation()} >
@@ -3463,8 +3345,8 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
                             </label>
                         ))}
                     </PanelBoxNav>
-                    
-                    { radioChosen < 2 && <div className="mainboxLeftInput">
+
+                    {radioChosen < 2 && <div className="mainboxLeftInput">
                         <img src="../icons/search-gray.svg" width={'20px'} />
                         <input type="text" placeholder="Wyszukaj aktywność..." value={attractionsSearching} onChange={(e) => setAttractionsSearching(e.target.value)} />
                     </div>}
@@ -3598,8 +3480,11 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
                 </KonfiguratorMainMainboxRight>
 
                 <KonfiguratorMainMainboxLeft ref={rightRef} className="right">
-                    <ChatBox2 activitiesSchedule={activitiesSchedule} basicActivities={basicActivities} miejsceDocelowe={miejsceDocelowe} attractions={atrakcje} addActivity={addActivity} swapActivities={swapActivities} changeActivity={changeActivity} deleteActivity={deleteActivity} />
-                    <div className="mainboxLeftTitle">
+                    <section style={{ margin: '0 auto', display: 'flex', justifyContent: 'center' }} id="chatbox">
+                        <ChatBox2 activitiesSchedule={activitiesSchedule} basicActivities={basicActivities} miejsceDocelowe={miejsceDocelowe} attractions={atrakcje} addActivity={addActivity} swapActivities={swapActivities} changeActivity={changeActivity} deleteActivity={deleteActivity} />
+
+
+                    </section><div className="mainboxLeftTitle">
                         Podsumowanie wyjazdu
                     </div>
                     <SummaryInfoBox>
@@ -3705,8 +3590,8 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
                     </div>
                 </KonfiguratorMainMainboxLeft>
             </KonfiguratorMainMainbox>
-            {popupPickerOpened &&
-                <PopupManager setPopupPickerOpened={setPopupPickerOpened} miejsceDocelowe={miejsceStartowe} setMiejsceDocelowe={setMiejsceStartowe}>
+            {popupPickerOpened !== -1 &&
+                <PopupManager field={popupPickerOpened} setPopupPickerOpened={setPopupPickerOpened} miejsceDocelowe={miejsceStartowe} setMiejsceDocelowe={setMiejsceStartowe} setLiczbaOpiekunow={setLiczbaOpiekunow} liczbaOpiekunow={liczbaOpiekunow} liczbaUczestnikow={liczbaUczestnikow} setLiczbaUczestnikow={setLiczbaUczestnikow}>
                 </PopupManager>}
             {alertsTable && alertsTable.length ?
                 <AlertsBox key={alertsTable} alertsTable={alertsTable} deleteAlert={deleteAlert} />

@@ -36,8 +36,9 @@ const AlertsOutbox = styled.div`
         text-align: center;
         cursor: pointer;    
         @media screen and (max-width: 600px){
-            width: 100%;
+            width: 98%;
             min-width: 150px;
+            box-sizing: border-box;
         }
         .wypelniacz{
             flex: 1;
