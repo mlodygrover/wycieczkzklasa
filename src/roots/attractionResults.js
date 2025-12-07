@@ -856,7 +856,7 @@ const RouteResultOutbox = styled.div`
         width: 100%;}
     
     }
-    @media screen and (max-width: 800px){
+    @media screen and (max-width: 1200px){
         width: 100%;
         height: 33px;
         background-color: transparent;
@@ -888,7 +888,7 @@ const RouteResultButtonLabel = styled.label`
         border-bottom: 2px solid #008d73ff;
         
     }
-    @media screen and (max-width: 800px){
+    @media screen and (max-width: 1200px){
         height: 100%;
         font-size: 9px;
         border-radius: 5px;

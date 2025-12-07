@@ -30,13 +30,14 @@ import { time } from "framer-motion";
 import useUserStore, { fetchMe } from "./usercontent";
 import { data } from "react-router-dom";
 import AttractionsMap from "./attractionMap";
-import { Bed, Calendar, CalendarDays, Edit, Edit2, Hotel, Moon, Rocket, TramFront, Users } from "lucide-react";
+import { Bed, Calendar, CalendarDays, Drama, Edit, Edit2, Hotel, Landmark, Moon, Rocket, Shrub, TramFront, Users } from "lucide-react";
 import Loader from "./roots/loader";
 import { PopupManager } from "./konfigurator/popupManager";
 import { AddActivityNew } from "./addActivityNew";
+import { format } from "url";
 
 
-const port = "https://wycieczkzklasa.onrender.com"
+const port = process.env.REACT_APP__SERVER_API_SOURCE || "https://wycieczkzklasa.onrender.com";
 const portacc = process.env.REACT_APP_API_SOURCE || "https://api.draftngo.com";
 
 
@@ -214,8 +215,6 @@ const KonfiguratorMainMainboxLeft = styled.div`
     justify-content: flex-start;
     align-items: center;
 
-    /* NIE UŻYWAMY tu już min/max-height */
-    /* &.a { min-height: 1500px; } – usunięte */
 
     &.right{
 
@@ -1289,7 +1288,7 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
     );
 
     const [atrakcje, setAtrakcje] = useState([]);
-
+    const [events, setEvents] = useState(null)
     useEffect(() => {
         const lat = Number(miejsceDocelowe?.location?.lat);
         const lng = Number(miejsceDocelowe?.location?.lng);
@@ -2637,7 +2636,7 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
         const tmpActivities = activitiesSchedule.map(day => [...day]);
         const day = tmpActivities[dayIndex];
         [day[act1], day[act2]] = [day[act2], day[act1]];
-
+        tmpActivities[dayIndex][act2].openedInit = true;
         const success = true;
         if (success) {
             setActivitiesSchedule(tmpActivities);
@@ -3105,6 +3104,117 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
         titleRef.current.textContent = nazwaWyjazdu ?? "";
     }, [nazwaWyjazdu]);
 
+
+    function toYMD(value) {
+        if (!value) return null;
+
+        // jeśli to już string "YYYY-MM-DD" albo dłuższy – przytnij
+        if (typeof value === "string") {
+            const m = value.match(/^\d{4}-\d{2}-\d{2}/);
+            return m ? m[0] : null;
+        }
+
+        // jeśli to Date
+        if (value instanceof Date && !isNaN(value.getTime())) {
+            const y = value.getFullYear();
+            const m = String(value.getMonth() + 1).padStart(2, "0");
+            const d = String(value.getDate()).padStart(2, "0");
+            return `${y}-${m}-${d}`;
+        }
+
+        return null;
+    }
+
+    useEffect(() => {
+        const lat = miejsceDocelowe?.location?.lat;
+        const lng = miejsceDocelowe?.location?.lng;
+
+        const startDate = toYMD(dataPrzyjazdu);
+        const endDate = toYMD(dataWyjazdu);
+
+        // Brak pełnych danych – nie wywołujemy endpointu
+        if (
+            lat == null ||
+            lng == null ||
+            !startDate ||
+            !endDate
+        ) {
+            return;
+        }
+
+        // SSR safeguard (jeśli używasz Next/SSR)
+        if (typeof window === "undefined") {
+            return;
+        }
+
+        const controller = new AbortController();
+
+        // prosty, jednoznaczny klucz cache
+        const key = `tm_${startDate}_${endDate}_${lat}_${lng}`;
+
+        async function fetchTicketmasterEvents() {
+            try {
+                const res = await fetch(
+                    `${port}/ticketmasterEvents` +
+                    `?lat=${encodeURIComponent(lat)}` +
+                    `&lng=${encodeURIComponent(lng)}` +
+                    `&startDate=${encodeURIComponent(startDate)}` +
+                    `&endDate=${encodeURIComponent(endDate)}`,
+                    { signal: controller.signal }
+                );
+
+                if (!res.ok) {
+                    throw new Error(`HTTP ${res.status}`);
+                }
+
+                const data = await res.json();
+                console.log("Ticketmaster events (API):", data);
+
+                const events = data.events || [];
+
+                // 🔹 zapis do localStorage – zawsze STRING
+                try {
+                    localStorage.setItem(key, JSON.stringify(events));
+                } catch (e) {
+                    console.warn("Nie udało się zapisać do localStorage:", e);
+                }
+
+                setEvents(events);
+            } catch (err) {
+                if (err.name === "AbortError") return;
+                console.error("Ticketmaster events error:", err);
+            }
+        }
+
+        // 🔹 najpierw próbujemy cache z localStorage
+        try {
+            const raw = localStorage.getItem(key);
+            if (raw) {
+                const cachedEvents = JSON.parse(raw);
+                console.log("Ticketmaster events (cache):", cachedEvents);
+                setEvents(Array.isArray(cachedEvents) ? cachedEvents : []);
+                return; // nie wywołujemy API
+            }
+        } catch (e) {
+            console.warn("Błąd odczytu z localStorage:", e);
+        }
+
+        // brak cache → wołamy API
+        fetchTicketmasterEvents();
+
+        return () => {
+            controller.abort();
+        };
+    }, [
+        miejsceDocelowe?.location?.lat,
+        miejsceDocelowe?.location?.lng,
+        // jeśli Date, bierzemy getTime jako zależność
+        dataPrzyjazdu instanceof Date ? dataPrzyjazdu.getTime() : dataPrzyjazdu,
+        dataWyjazdu instanceof Date ? dataWyjazdu.getTime() : dataWyjazdu,
+    ]);
+
+
+
     return (
         <>
             <KonfiguratorPhotoWithSettings style={tripId && photoWallpaper ? { backgroundImage: `url(${photoWallpaper})`, } : { backgroundImage: `url(${'https://images.unsplash.com/photo-1716481631637-e2d4fd2456e2?q=80&w=870&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D'})`, }}>
@@ -3333,8 +3443,9 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
                     </div>
                     <PanelBoxNav className="a">
                         {[
-                            { id: 0, icon: "../icons/castle.svg", label: "Podstawowe" },
-                            { id: 1, icon: "../icons/park.svg", label: "Parki" },
+                            { id: 0, icon: Landmark, label: "Podstawowe" },
+                            { id: 2, icon: Drama, label: "Wydarzenia" },
+                            { id: 1, icon: Shrub, label: "Parki" },
                         ].map(option => (
                             <label
                                 key={option.id}
@@ -3348,14 +3459,15 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
                                     onChange={() => setRadioChosen(option.id)}
                                     style={{ display: "none" }}
                                 />
-                                <img src={option.icon} width="25px" alt={option.label} />
+                                <option.icon />
                             </label>
                         ))}
                     </PanelBoxNav>
-                    <div className="mainboxLeftInput">
+                    
+                    { radioChosen < 2 && <div className="mainboxLeftInput">
                         <img src="../icons/search-gray.svg" width={'20px'} />
                         <input type="text" placeholder="Wyszukaj aktywność..." value={attractionsSearching} onChange={(e) => setAttractionsSearching(e.target.value)} />
-                    </div>
+                    </div>}
 
                     <div className={radioChosen === 0 ? "listBox" : "listBox listBox--hidden"}>
                         <div className="mainboxLeftFilterButtons">
@@ -3444,12 +3556,26 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
                                 />
                             ))}
                     </div>
+                    <div className={radioChosen === 2 ? "listBox" : "listBox listBox--hidden"}>
+                        {Array.isArray(events) && events
+                            .map((atrakcja, idx) => (
+                                <AttractionResultMediumVerifiedComponent
+                                    key={`${atrakcja.googleId}${idx}`}
+                                    atrakcja={atrakcja}
+                                    wybranyDzien={wybranyDzien}
+                                    addActivity={addActivity}
+                                    typ={1}
+                                    latMD={miejsceDocelowe.location.lat}
+                                    lngMD={miejsceDocelowe.location.lng}
+                                />
+                            ))}
+                    </div>
                     <div className="bottomGradient"></div>
                 </KonfiguratorMainMainboxLeft>
 
                 <KonfiguratorMainMainboxRight ref={centerRef}>
 
-                    <KonfiguratorWyjazduComp handleSaveClick={handleSaveClick} hasPendingAutoSave={hasPendingAutoSave} dataPrzyjazdu={dataPrzyjazdu} dataWyjazdu={dataWyjazdu} standardHotelu={standardHotelu} standardTransportu={standardTransportu} liczbaOpiekunow={liczbaOpiekunow} liczbaUczestnikow={liczbaUczestnikow} tripId={tripId} miejsceStartowe={miejsceStartowe} computedPrice={tripPrice + insurancePrice} computingPrice={computingPrice} miejsceDocelowe={miejsceDocelowe} changeActivity={changeActivity} checkOut={timeToMinutes(wybranyHotel?.checkOut) || 720} changeStartHour={changeStartHour} deleteActivity={deleteActivity} startModifyingAct={startModifyingAct} setActivityPanelOpened={setActivityPanelOpened} onAttractionTimeChange={changeActivityTime} swapActivities={swapActivities} onTransportChange={changeChosenTransport} timeSchedule={timeSchedule} routeSchedule={routeSchedule} chosenTransportSchedule={chosenTransportSchedule} loading={konfiguratorLoading} activitiesSchedule={activitiesSchedule} liczbaDni={liczbaDni} key={`schedule-${liczbaDni}-${konfiguratorLoading}-${timeSchedule}`} wybranyDzien={wybranyDzien} setWybranyDzien={setWybranyDzien} addActivity={addActivity} />
+                    <KonfiguratorWyjazduComp handleSaveClick={handleSaveClick} hasPendingAutoSave={hasPendingAutoSave} dataPrzyjazdu={dataPrzyjazdu} dataWyjazdu={dataWyjazdu} standardHotelu={standardHotelu} standardTransportu={standardTransportu} liczbaOpiekunow={liczbaOpiekunow} liczbaUczestnikow={liczbaUczestnikow} tripId={tripId} miejsceStartowe={miejsceStartowe} computedPrice={tripPrice + insurancePrice} computingPrice={computingPrice} miejsceDocelowe={miejsceDocelowe} changeActivity={changeActivity} checkOut={timeToMinutes(wybranyHotel?.checkOut) || 720} changeStartHour={changeStartHour} deleteActivity={deleteActivity} startModifyingAct={startModifyingAct} setActivityPanelOpened={setActivityPanelOpened} onAttractionTimeChange={changeActivityTime} swapActivities={swapActivities} onTransportChange={changeChosenTransport} timeSchedule={timeSchedule} routeSchedule={routeSchedule} chosenTransportSchedule={chosenTransportSchedule} loading={konfiguratorLoading} activitiesSchedule={activitiesSchedule} liczbaDni={liczbaDni} key={`schedule-${liczbaDni}-${konfiguratorLoading}-${activitiesSchedule}`} wybranyDzien={wybranyDzien} setWybranyDzien={setWybranyDzien} addActivity={addActivity} />
                     {activityPanelOpened && 1 == 2 &&
                         <AddAttractionWrapper>
                             <AddActivityPanelContainer>
@@ -3465,7 +3591,8 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
                             atrakcje={atrakcje}
                             setActivityPanelOpened={setActivityPanelOpened}
                             wybranyDzien={wybranyDzien}
-                            addActivity={addActivity}>
+                            addActivity={addActivity}
+                            events={events}>
                         </AddActivityNew>}
 
                 </KonfiguratorMainMainboxRight>

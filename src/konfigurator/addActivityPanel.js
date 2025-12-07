@@ -160,9 +160,7 @@ export const PanelBoxNav = styled.div`
     
         &.chosen{
             background-color: #008d73ff;
-            img {
-                filter: brightness(0) invert(1);
-            }
+            color: white;
     
     }
 }

@@ -58,7 +58,9 @@ const MainButton = styled.button`
   &:hover {
     box-shadow: 0 4px 16px rgba(102, 126, 234, 0.4);
     transform: translateY(-1px);
-    
+    @media screen and (max-width: 1200px){
+      transform: none;
+    }
   }
   
   &:active {
@@ -114,6 +116,9 @@ const Dropdown = styled.div`
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   transform-origin: top center;
   margin: 0 auto;
+  @media screen and (min-width: 1200px){
+  }
+  
 `;
 const VariantOption = styled.div`
   padding: 14px 16px;

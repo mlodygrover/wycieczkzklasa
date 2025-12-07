@@ -2,8 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import styled from 'styled-components';
 import axios from 'axios';
 
-
-const port = "https://wycieczkzklasa.onrender.com";
+const port = process.env.REACT_APP__SERVER_API_SOURCE || "https://wycieczkzklasa.onrender.com";
 const ChatBoxMainbox = styled.div`
     width: 80%;
     background-color: #fbfbfb;

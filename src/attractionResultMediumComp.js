@@ -3,7 +3,7 @@ import { MapContainer, Marker, TileLayer, useMapEvent } from "react-leaflet";
 import styled from "styled-components";
 import { minutesToStringTime } from "./roots/attractionResults";
 import VariantButton from "./variantButton";
-import { Route, SquareArrowOutUpRight, Ticket, Timer } from "lucide-react";
+import { BadgeCheck, Drama, Landmark, Route, SquareArrowOutUpRight, Ticket, Timer } from "lucide-react";
 const AttractionResultMedium = styled.div`
     width: 90%;
     max-width: 300px;
@@ -603,8 +603,8 @@ export const AttractionResultMediumVerifiedComponent = ({
         const a =
             Math.sin(dLat / 2) * Math.sin(dLat / 2) +
             Math.cos(toRad(latA)) *
-                Math.cos(toRad(latB)) *
-                Math.sin(dLng / 2) * Math.sin(dLng / 2);
+            Math.cos(toRad(latB)) *
+            Math.sin(dLng / 2) * Math.sin(dLng / 2);
 
         const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
         const distanceKm = R * c;
@@ -665,11 +665,11 @@ export const AttractionResultMediumVerifiedComponent = ({
 
             <div className="verifiedLabels">
                 <div className="categoryIcon">
-                    <img src="../icons/castle.svg" height="25px" alt="" />
+                    {atrakcja?.googleId?.includes("dAct_event") ? <Drama /> : <Landmark />}
                 </div>
                 {typ == 1 && (
                     <div className="categoryIcon b">
-                        <img src="../icons/verified.svg" height="25px" alt="" />
+                        <BadgeCheck />
                     </div>
                 )}
             </div>
@@ -710,22 +710,22 @@ export const AttractionResultMediumVerifiedComponent = ({
                                 typeof latMD === 'number' &&
                                 typeof lngMD === 'number'
                             ) && (
-                                <span>
-                                    <Route size={15} />
-                                    <a
-                                        href={atrakcja.stronaInternetowa}
-                                        target="_blank"
-                                        rel="noreferrer"
-                                    >
-                                        {formatDistanceKm(
-                                            atrakcja.lokalizacja.lat,
-                                            atrakcja.lokalizacja.lng,
-                                            latMD,
-                                            lngMD
-                                        )}
-                                    </a>
-                                </span>
-                            )}
+                                    <span>
+                                        <Route size={15} />
+                                        <a
+                                            href={atrakcja.stronaInternetowa}
+                                            target="_blank"
+                                            rel="noreferrer"
+                                        >
+                                            {formatDistanceKm(
+                                                atrakcja.lokalizacja.lat,
+                                                atrakcja.lokalizacja.lng,
+                                                latMD,
+                                                lngMD
+                                            )}
+                                        </a>
+                                    </span>
+                                )}
                         </div>
                     </div>
                 </div>

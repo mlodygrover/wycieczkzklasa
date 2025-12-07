@@ -1923,7 +1923,7 @@ w kontekscie osoby kupujacej bilet normalny bez znizek wchodzacej samemu –
 interesuje nas tylko stala oferta, pomijaj okresowe wydarzenia.
 Interesuje nas tylko oferta dotyczaca tego obiektu, zadnego innego z nim powiazanego.
 Jesli caly obiekt opiera sie jedynie na okresowych wydarzeniach zwroc obiekt {"nazwa":"defEvents"}. Pomijaj oferty wspolne z innymi obiektami - interesuje nas tylko i wylacznie oferta wspomnianego. Jesli znajdziesz w danym miejscu 
-rozne wersje cenowe zwroc wyzsza, ale w sytuacji gdy sa rozne warianty oferty (np. trasy zwiedzania) zwroc kazdy z nich osobno. Bardzo wazne jest zeby otrzymac wynik!!  W przypadku innej waluty niz PLN przelicz cene na zlotowki. 
+rozne sprzeczne wersje cenowe ZWROC DROZSZA ale w sytuacji gdy sa rozne warianty oferty (np. trasy zwiedzania) zwroc kazdy z nich osobno. Bardzo wazne jest zeby otrzymac wynik!!  W przypadku innej waluty niz PLN przelicz cene na zlotowki. 
 Dodatkowo na koniec kiedy miejsce ma jakas oferte tzn nie jest nazwa "free", dodaj wariant "Punkt na trasie" z cena 0 i oszacuj czas zwiedzania jaki mozna poswiecic na ogladanie miejsca "z zewnatrz".
 Dane zwroc jako CZYSTY JSON bez komentarzy i tekstu pobocznego,
 w formacie jednej z trzech struktur:
@@ -2947,5 +2947,222 @@ async function migrateAttractionMeta() {
 
     console.log("✅ Migracja AttractionMeta zakończona.");
 }
+function toTicketmasterDate(dateStr, endOfDay = false) {
+    if (typeof dateStr !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+        return null;
+    }
+    return endOfDay
+        ? `${dateStr}T23:59:59Z`
+        : `${dateStr}T00:00:00Z`;
+}
 
+// Prosty slug z nazwy wydarzenia
+function makeDynamicGoogleId(prefix, name) {
+    const base = String(name || "event")
+        .toLowerCase()
+        .trim()
+        .replace(/\s+/g, "_")
+        .replace(/[^a-z0-9_]/g, "");
+    return `dAct_event_${prefix}_${base}`;
+}
 
+/**
+ * Normalizacja eventu Ticketmaster -> "attraction-like" kształt
+ */
+function normalizeTicketmasterEvent(ev) {
+    const venue = ev._embedded?.venues?.[0];
+
+    const lat = venue?.location?.latitude
+        ? Number(venue.location.latitude)
+        : null;
+    const lng = venue?.location?.longitude
+        ? Number(venue.location.longitude)
+        : null;
+
+    const addr = [
+        venue?.address?.line1,
+        venue?.city?.name,
+        venue?.country?.name,
+    ]
+        .filter(Boolean)
+        .join(", ");
+
+    // pola daty/godziny
+    const start = ev.dates?.start || {};
+    const end = ev.dates?.end || {};
+
+    const data = start.localDate
+        || (start.dateTime ? start.dateTime.slice(0, 10) : null);
+    const godzinaRozpoczecia = start.localTime
+        || (start.dateTime ? start.dateTime.slice(11, 16) : null);
+
+    const dataZakonczenia = end?.localDate
+        || (end?.dateTime ? end.dateTime.slice(0, 10) : null);
+    const godzinaZakonczenia = end?.localTime
+        || (end?.dateTime ? end.dateTime.slice(11, 16) : null);
+
+    // cena = najwyższa wartość z priceRanges, jeśli jest, inaczej -1
+    let cenaZwiedzania = -1;
+    if (Array.isArray(ev.priceRanges) && ev.priceRanges.length > 0) {
+        const maxVals = ev.priceRanges
+            .map(r => (r.max != null ? Number(r.max) : Number(r.min)))
+            .filter(v => Number.isFinite(v));
+        if (maxVals.length > 0) {
+            cenaZwiedzania = Math.max(...maxVals);
+        }
+    }
+
+    const firstImage = Array.isArray(ev.images) && ev.images.length > 0
+        ? ev.images[0].url
+        : null;
+
+    const kategoria = ev.classifications?.[0]?.segment?.name || null;
+
+    // opis / notatki z Ticketmastera
+    const opis = ev.info || null;
+    const notes = ev.pleaseNote || null;
+
+    return {
+        parentPlaceId: null, // możesz tu wstawić placeId miasta, jeśli je znasz
+        googleId: makeDynamicGoogleId("tm", ev.name),
+        nazwa: ev.name || "",
+        adres: addr || "",
+        ocena: 0,
+        liczbaOpinie: 0,
+
+        lokalizacja: lat != null && lng != null ? { lat, lng } : null,
+        locationGeo: lat != null && lng != null
+            ? {
+                type: "Point",
+                coordinates: [lng, lat],
+            }
+            : null,
+
+        typy: kategoria ? [kategoria] : [],
+        ikona: null,
+
+        stronaInternetowa: ev.url || null,
+        wallpaper: firstImage,
+
+        // meta
+        locationSource: "ticketmaster",
+        dataSource: "ticketmaster",
+
+        // oferta
+        warianty: [],
+        cenaZwiedzania,
+
+        // czas / daty
+        data,                  // data rozpoczęcia (YYYY-MM-DD lub null)
+        godzinaRozpoczecia,    // godzina rozpoczęcia (HH:MM lub null)
+        dataZakonczenia,       // opcjonalnie data zakończenia
+        godzinaZakonczenia,    // opcjonalnie godzina zakończenia
+        czasZwiedzania: 120,   // stałe 120 minut
+
+        // nowe pola tekstowe
+        opis,
+        notes,
+    };
+}
+
+/**
+ * Pobranie i normalizacja wydarzeń z Ticketmaster Discovery API
+ */
+async function fetchTicketmasterEventsNormalized({
+    latNum,
+    lngNum,
+    startDateTime,
+    endDateTime,
+    radiusNum,
+}) {
+    const apiKey = process.env.TM_API_KEY;
+    if (!apiKey) {
+        throw new Error("Brak TM_API_KEY w zmiennych środowiskowych");
+    }
+
+    const TM_URL = "https://app.ticketmaster.com/discovery/v2/events.json";
+
+    const response = await axios.get(TM_URL, {
+        params: {
+            apikey: apiKey,
+            latlong: `${latNum},${lngNum}`,
+            radius: radiusNum,
+            unit: "km",
+            startDateTime,
+            endDateTime,
+            sort: "date,asc",
+        },
+    });
+
+    const events = response.data?._embedded?.events || [];
+    return events.map(normalizeTicketmasterEvent);
+}
+
+/**
+ * GET /ticketmasterEvents
+ */
+app.get("/ticketmasterEvents", async (req, res) => {
+    try {
+        const {
+            lat,
+            lng,
+            startDate,
+            endDate,
+            radius = 50,
+        } = req.query;
+
+        if (!lat || !lng || !startDate || !endDate) {
+            return res.status(400).json({
+                error: "Wymagane parametry: lat, lng, startDate, endDate",
+            });
+        }
+
+        const latNum = Number(lat);
+        const lngNum = Number(lng);
+        const radiusNum = Number(radius);
+
+        if (!Number.isFinite(latNum) || !Number.isFinite(lngNum)) {
+            return res.status(400).json({
+                error: "Parametry lat i lng muszą być liczbami",
+            });
+        }
+
+        const startDateTime = toTicketmasterDate(startDate, false);
+        const endDateTime = toTicketmasterDate(endDate, true);
+
+        if (!startDateTime || !endDateTime) {
+            return res.status(400).json({
+                error: "Parametry startDate i endDate muszą być w formacie YYYY-MM-DD",
+            });
+        }
+
+        const tmEvents = await fetchTicketmasterEventsNormalized({
+            latNum,
+            lngNum,
+            startDateTime,
+            endDateTime,
+            radiusNum,
+        }).catch(err => {
+            console.error("Ticketmaster error:", err?.response?.data || err.message);
+            return [];
+        });
+
+        return res.json({
+            count: tmEvents.length,
+            events: tmEvents,
+        });
+    } catch (err) {
+        console.error("Ticketmaster events error:", err.response?.data || err.message);
+
+        if (err.response) {
+            return res.status(err.response.status || 500).json({
+                error: "Błąd podczas pobierania danych z Ticketmastera",
+                details: err.response.data || null,
+            });
+        }
+
+        return res.status(500).json({
+            error: "Wewnętrzny błąd serwera podczas pobierania wydarzeń",
+        });
+    }
+});

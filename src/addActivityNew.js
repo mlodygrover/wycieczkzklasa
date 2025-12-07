@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import styled, { keyframes } from "styled-components";
 import { AtrakcjaResultMidComp } from "./konfigurator/atrakcjaResultMid";
 import AttractionResultMediumComponent, { AttractionResultMediumVerifiedComponent } from "./attractionResultMediumComp";
-import { Landmark, Map, PencilLine, Search, SearchCheck, Shrub, X } from "lucide-react";
+import { Drama, Landmark, Map, PencilLine, Search, SearchCheck, Shrub, X } from "lucide-react";
 import AttractionsMap from "./attractionMap";
 import { basicActivities } from "./konfiguratorMain";
 
@@ -322,7 +322,7 @@ export const AddActivityNewSearch = ({ attractionsSearching, setAttractionsSearc
     </AddActivityNewMapMainbox>
   )
 }
-export const AddActivityNew = ({ addActivity, wybranyDzien, miejsceDocelowe, atrakcje, setActivityPanelOpened }) => {
+export const AddActivityNew = ({ events = [], addActivity, wybranyDzien, miejsceDocelowe, atrakcje, setActivityPanelOpened }) => {
   // zamykanie po ESC
   useEffect(() => {
     const handleKeyDown = (e) => {
@@ -341,6 +341,7 @@ export const AddActivityNew = ({ addActivity, wybranyDzien, miejsceDocelowe, atr
   const [attractionsSearching, setAttractionsSearching] = useState("");
   const options = [
     { id: 0, icon: Landmark, setter: () => setChosenOption(0) },
+    {id: 4, icon: Drama, setter: () => setChosenOption(4)},
     { id: 1, icon: Shrub, setter: () => setChosenOption(1) },
     { id: 2, icon: Search, setter: () => setChosenOption(2) },
     { id: 3, icon: PencilLine, setter: () => setChosenOption(3) },
@@ -444,6 +445,31 @@ export const AddActivityNew = ({ addActivity, wybranyDzien, miejsceDocelowe, atr
                   />
                 ))}
 
+            </AtrakcjeList>
+
+
+          </>
+
+        }
+        {
+          chosenOption === 4 && <>
+            
+            <AtrakcjeList>
+              {events
+                .map((atrakcja, idx) => (
+                  <AttractionResultMediumVerifiedComponent
+                    key={`${atrakcja.googleId}${idx}`}
+                    atrakcja={atrakcja}
+                    wybranyDzien={wybranyDzien}
+                    addActivity={addActivity}
+                    typ={1}
+                    latMD={miejsceDocelowe.location.lat}
+                    lngMD={miejsceDocelowe.location.lng}
+
+                    sourcePlace={true}
+                  />
+                ))}
+              
             </AtrakcjeList>
 
 

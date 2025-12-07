@@ -109,9 +109,14 @@ const KonfiguratorNavBar = styled.div`
   width: 90%;
   display: flex; 
   align-items: center;
-  gap: 5px; background-color: #f6f6f6; padding: 5px; border-radius: 5px;
+  gap: 5px; 
+  background-color: #f6f6f6; 
+  padding: 5px; 
+  border-radius: 10px;
+  margin: 0 auto;
   @media (max-width: 800px){
-    margin: 10px auto 0;
+  border-radius: 5px;
+    margin: 0px auto;
     width: 95%;
     a{ display:none; }
   }
@@ -122,18 +127,17 @@ const NavBarButton = styled.label`
   font-size:12px; 
   font-weight:500;
   font-family: Inter, system-ui, -apple-system, sans-serif;
-  flex:1; height:100%; border-radius: 5px; color:black; background:inherit; margin-top:1px;
+  flex:1; height:100%; border-radius: 10px; color:black; background:inherit; margin-top:1px;
   cursor:pointer; user-select:none; transition: background-color .3s, color .3s;
   span{ padding-left:3px; font-weight:500; font-size:14px; }
   input[type="radio"]:checked + &{ color:white; background-color:#008d73ff; }
-  @media (max-width: 800px){ a{ display:none; } }
+  @media (max-width: 800px){ border-radius: 5px;a{ display:none; } }
 `;
 
 const KonfiguratorWyjazduBottom = styled.div`
   width: 100%; flex: 1; display:flex; flex-direction:column; 
   align-items:center; 
   justify-content: flex-start;
-   gap:5px; margin-top: 10px;
 `;
 const KonfiguratorWyjazduOutbox = styled.div`
   display:flex; 
@@ -143,7 +147,7 @@ const KonfiguratorWyjazduOutbox = styled.div`
   width:90%; 
   max-width:1000px;
   gap:5px; 
-  margin-top:20px; 
+  margin-top:10px; 
   padding-bottom:100px;
   @media (max-width:800px){ width:95%; }
 `;

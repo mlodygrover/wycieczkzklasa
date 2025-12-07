@@ -6,7 +6,7 @@ import {
 } from 'lucide-react';
 
 
-const port = "https://wycieczkzklasa.onrender.com";
+const port = process.env.REACT_APP__SERVER_API_SOURCE || "https://wycieczkzklasa.onrender.com";
 /* ===================== ANIMATIONS ===================== */
 const pulse = keyframes`
   0%, 100% { box-shadow: 0 0 0 0 rgba(58,126,126,.4); }
