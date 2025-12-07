@@ -148,8 +148,8 @@ const PlaceholderTab = styled.div`
 
 /* ===================== CHOICES ===================== */
 const transportOptions = [
-    { id: 0, name: 'Wynajęty autokar', description: 'Komfortowa podróż autokarem', icon: Bus },
-    { id: 1, name: 'Pociąg', description: 'Szybka podróż koleją', icon: Train },
+    { id: 1, name: 'Wynajęty autokar', description: 'Komfortowa podróż autokarem', icon: Bus },
+    { id: 0, name: 'Transport zbiorowy', description: 'Kolej, autobusy, tramwaje', icon: Train },
     { id: 2, name: 'Transport własny', description: 'Własny środek transportu', icon: Car },
 ];
 const hotelOptions = [
@@ -303,7 +303,7 @@ const SimpleCalendar = ({ selectedDate, onSelect }) => {
     );
 };
 
-const DatePicker = ({ value, onChange, placeholder }) => {
+export const DatePicker = ({ value, onChange, placeholder }) => {
     const [open, setOpen] = useState(false);
     const fmt = (date) => !date ? '' : new Intl.DateTimeFormat('pl-PL', { year: 'numeric', month: 'long', day: 'numeric' }).format(date);
     return (
@@ -323,7 +323,7 @@ const DatePicker = ({ value, onChange, placeholder }) => {
 };
 
 /* ===================== TRANSPORT/HOTEL SELECTORS ===================== */
-const TransportSelector = ({ value, onChange }) => {
+export const TransportSelector = ({ value, onChange }) => {
     const [open, setOpen] = useState(false);
     const selected = transportOptions.find(o => o.id === value);
     return (
@@ -353,7 +353,7 @@ const TransportSelector = ({ value, onChange }) => {
     );
 };
 
-const HotelSelector = ({ value, onChange }) => {
+export const HotelSelector = ({ value, onChange }) => {
     const [open, setOpen] = useState(false);
     const selected = hotelOptions.find(o => o.id === value);
     return (

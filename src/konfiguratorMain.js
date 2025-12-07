@@ -2010,7 +2010,7 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
             for (let actIdx = 0; actIdx < day.length - 1; actIdx++) {
                 let current = day[actIdx];
                 let next = day[actIdx + 1];
-                if (next?.googleId?.includes("dAct_")) {
+                if (next?.googleId?.includes("dAct_") && !next?.googleId?.includes("event")) {
                     next.lokalizacja = current.lokalizacja;
                 }
                 const sameLocation =
@@ -3184,7 +3184,7 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
                         </div>}
                     </SettingsButton>
 
-                    <SettingsButton className={wyborStandardHoteluOpened ? "chosen" : ""} onClick={() => { setWyborStandardHoteluOpened(!wyborStandardHoteluOpened); setOffOthers(3) }}>
+                    <SettingsButton onClick={() => setPopupPickerOpened(3)} className={miejsceStartowePopupOpened ? "chosen" : ""}>
                         <Moon size={30} />
                         Nocleg: {standardHotelu || standardHotelu == 0 ? namesHotelsTab[standardHotelu] : "..."}
                         {wyborStandardHoteluOpened && <div className="settingsPopup" onClick={(e) => e.stopPropagation()} >
@@ -3198,7 +3198,7 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
                         </div>}
                     </SettingsButton>
 
-                    <SettingsButton className={wyborStandardTransportuOpened ? "chosen" : ""} onClick={() => { setWyborStandardTransportuOpened(!wyborStandardTransportuOpened); setOffOthers(4) }}>
+                    <SettingsButton onClick={() => setPopupPickerOpened(4)} className={miejsceStartowePopupOpened ? "chosen" : ""}>
                         <TramFront size={30} />
                         Preferowany transport: {standardTransportu || standardTransportu == 0 ? namesTransportTab[standardTransportu] : "..."}
                         {wyborStandardTransportuOpened && <div className="settingsPopup" onClick={(e) => e.stopPropagation()} >
@@ -3591,7 +3591,9 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
                 </KonfiguratorMainMainboxLeft>
             </KonfiguratorMainMainbox>
             {popupPickerOpened !== -1 &&
-                <PopupManager field={popupPickerOpened} setPopupPickerOpened={setPopupPickerOpened} miejsceDocelowe={miejsceStartowe} setMiejsceDocelowe={setMiejsceStartowe} setLiczbaOpiekunow={setLiczbaOpiekunow} liczbaOpiekunow={liczbaOpiekunow} liczbaUczestnikow={liczbaUczestnikow} setLiczbaUczestnikow={setLiczbaUczestnikow}>
+                <PopupManager
+                    dataPrzyjazdu={dataPrzyjazdu} setDataPrzyjazdu={setDataPrzyjazdu} dataWyjazdu={dataWyjazdu} setDataWyjazdu={setDataWyjazdu}
+                    standardTransportu={standardTransportu} setStandardTransportu={setStandardTransportu} standardHotelu={standardHotelu} setStandardHotelu={setStandardHotelu} field={popupPickerOpened} setPopupPickerOpened={setPopupPickerOpened} miejsceDocelowe={miejsceStartowe} setMiejsceDocelowe={setMiejsceStartowe} setLiczbaOpiekunow={setLiczbaOpiekunow} liczbaOpiekunow={liczbaOpiekunow} liczbaUczestnikow={liczbaUczestnikow} setLiczbaUczestnikow={setLiczbaUczestnikow}>
                 </PopupManager>}
             {alertsTable && alertsTable.length ?
                 <AlertsBox key={alertsTable} alertsTable={alertsTable} deleteAlert={deleteAlert} />

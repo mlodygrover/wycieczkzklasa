@@ -7,7 +7,7 @@ import { timeToMinutes } from "../konfiguratorMain"
 import { minutesToTime } from "../konfigurator/konfiguratorWyjazduComp"
 import React from "react"
 import { Loader2 } from "../loader2"
-import { Clock, MapPin, Ticket, Users, Bus, Car, Train, ChevronUp, ChevronDown, Trash2, RefreshCw, Route } from 'lucide-react';
+import { Clock, MapPin, Ticket, Users, Bus, Car, Train, ChevronUp, ChevronDown, Trash2, RefreshCw, Route, Landmark, Drama, Brush, Shrub, Plane, Bed } from 'lucide-react';
 import VariantButton from "../variantButton"
 
 const GooglePopupCardMainbox = styled.div`
@@ -414,6 +414,7 @@ const AttractionResultFullMainbox = styled.div`
                 display: flex;
                 align-items: center;
                 justify-content: center;       
+                color: white;
             }
            
         }
@@ -688,7 +689,7 @@ export const AttractionResultFull = ({
                 <div className="descPart">
 
                     <div className="attractionTitle">
-                        <div className="titlePic"><img src="../icons/tourist-attraction-white.svg" width="20px" alt="Ikona atrakcji" /></div>{attraction?.nazwa || "brak danych"}
+                        <div className="titlePic">{attraction.googleId.includes("event") ? <Drama size={20}/> : attraction.googleId.includes("dAct") ? <Shrub size={20}/> : attraction.googleId.includes("Route") ? <Plane size={20}/>:attraction.googleId.includes("Hotel") || attraction.googleId.includes("Book")? <Bed size={20}/>: <Landmark size={20}/>}</div>{attraction?.nazwa || "brak danych"}
                     </div>
 
                     <div className="attractionBorder">

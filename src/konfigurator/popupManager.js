@@ -1,7 +1,7 @@
 import styled, { keyframes } from "styled-components";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Check, CheckCheckIcon, Map, Minus, Plus, X } from "lucide-react";
-import { CounterButton, CounterInput, CounterWrapper, LocationSearch } from "../preConfSketch";
+import { CounterButton, CounterInput, CounterWrapper, DatePicker, HotelSelector, LocationSearch, TransportSelector } from "../preConfSketch";
 import LeafletMap from "../roots/googleMapViewer";
 
 // Animacja dla tła (fade-in)
@@ -160,7 +160,7 @@ const SubmitButton = styled.div`
     font-weight: 600;
     cursor: pointer;
     transition: 0.3s ease-in-out;
-    margin-top" 10px;
+    margin-top: 10px;
     &:hover{
         background-color: #404040;
 
@@ -211,10 +211,37 @@ const popups = [
 
         );
     },
-    function DatesPopup({ miejsceDocelowe, setMiejsceDocelowe }) {
+
+    function DatesPopup({ dataPrzyjazdu, setDataPrzyjazdu, dataWyjazdu, setDataWyjazdu, setPopupPickerOpened }) {
+        const [dataPrzyjazduLocal, setDataPrzyjazduLocal] = useState(dataPrzyjazdu)
+        const [dataWyjazduLocal, setDataWyjazduLocal] = useState(dataWyjazdu)
+        function submitParts() {
+            
+            if (dataPrzyjazduLocal > dataWyjazduLocal) return
+            setDataPrzyjazdu(dataPrzyjazduLocal)
+            setDataWyjazdu(dataWyjazduLocal)
+            setPopupPickerOpened(-1)
+        }
+        useEffect(()=>{
+            console.log(dataPrzyjazdu, dataPrzyjazduLocal, dataWyjazdu, dataWyjazduLocal)
+        }, [dataPrzyjazdu, dataPrzyjazduLocal, dataWyjazdu, dataWyjazduLocal])
         return (
             <>
+                <TitleBox>
+                    <div className="subtitleBox">Uuu, sporo nas</div>
+                    <div className="titleBox">Liczba uczestników</div>
+                </TitleBox>
+                <DatePicker value={dataPrzyjazduLocal} onChange={setDataPrzyjazduLocal} placeholder="Wybierz datę wyjazdu" />
+                
+                <TitleBox>
+                    <div className="subtitleBox" style={{ marginTop: '10px' }}>Kazdy opiekun to skarb</div>
+                    <div className="titleBox">Liczba opiekunów</div>
+                </TitleBox>
+                <DatePicker value={dataWyjazduLocal} onChange={setDataWyjazduLocal} placeholder="Wybierz datę powrotu" />
 
+                <SubmitButton onClick={() => submitParts()}>
+                    Zatwierdź
+                </SubmitButton>
             </>
 
         );
@@ -240,7 +267,7 @@ const popups = [
                     <CounterButton $primary onClick={() => setLiczbaUczestnikowLocal((liczbaUczestnikowLocal || 1) + 1)}><Plus size={16} /></CounterButton>
                 </CounterWrapper>
                 <TitleBox>
-                    <div className="subtitleBox">Kazdy opiekun to skarb</div>
+                    <div className="subtitleBox" style={{ marginTop: '10px' }}>Kazdy opiekun to skarb</div>
                     <div className="titleBox">Liczba opiekunów</div>
                 </TitleBox>
                 <CounterWrapper>
@@ -255,69 +282,45 @@ const popups = [
 
         );
     },
-    function StartPlacePopup({ miejsceDocelowe, setMiejsceDocelowe }) {
-        const [miejsceDoceloweLocal, setMiejsceDoceloweLocal] = useState(miejsceDocelowe)
+    function HotelPicker({ standardHotelu, setStandardHotelu, setPopupPickerOpened }) {
+        const [standardHoteluLocal, setStandardHoteluLocal] = useState(standardHotelu)
+        function submitParts() {
+            setStandardHotelu(standardHoteluLocal)
+            setPopupPickerOpened(-1)
+        }
         return (
             <>
                 <TitleBox>
-                    <div className="subtitleBox">Gdzie rozpoczniemy naszą przygodę?</div>
-                    <div className="titleBox">Wybierz miejsce początkowe</div>
+                    <div className="subtitleBox">Sen to podstawa udanego wyjazdu</div>
+                    <div className="titleBox">Standard hotelu</div>
                 </TitleBox>
-                <ContentBar>
-                    <MapBox>
-                        {!miejsceDoceloweLocal?.location?.lat ? (
-                            <div className="alertMap">
-                                <Map size={50} />
-                                Nie wybrano miejsca początkowego
-                            </div>
-                        ) : (
-                            <LeafletMap
-                                lat={miejsceDoceloweLocal.location.lat || 52.5333}
-                                lng={miejsceDoceloweLocal.location.lng || 16.9252}
-                                zoom={9}
-                            />
-                        )}
-                    </MapBox>
 
-                    <LocationSearch
-                        value={miejsceDoceloweLocal?.nazwa || ""}
-                        onChange={(sel) => setMiejsceDoceloweLocal(sel)}
-                        placeholder="Wpisz miejsce docelowe"
-                    />
-                </ContentBar>
+                <HotelSelector value={standardHoteluLocal} onChange={setStandardHoteluLocal} />
+                <SubmitButton onClick={() => submitParts()}>
+                    Zatwierdź
+                </SubmitButton>
             </>
 
         );
     },
-    function StartPlacePopup({ miejsceDocelowe, setMiejsceDocelowe }) {
+    function TransportPicker({ standardTransportu, setStandardTransportu, setPopupPickerOpened }) {
+        const [standardTransportuLocal, setStandardTransportuLocal] = useState(standardTransportu)
+        function submitParts() {
+            console.log("TEST1", standardTransportuLocal)
+            setStandardTransportu(standardTransportuLocal)
+            setPopupPickerOpened(-1)
+        }
         return (
             <>
                 <TitleBox>
-                    <div className="subtitleBox">Gdzie rozpoczniemy naszą przygodę?</div>
-                    <div className="titleBox">Wybierz miejsce początkowe</div>
+                    <div className="subtitleBox">Teleportacja? Jeszcze nie teraz...</div>
+                    <div className="titleBox">StandardTransportu</div>
                 </TitleBox>
-                <ContentBar>
-                    <MapBox>
-                        {!miejsceDocelowe?.location?.lat ? (
-                            <div className="alertMap">
-                                <Map size={50} />
-                                Nie wybrano miejsca początkowego
-                            </div>
-                        ) : (
-                            <LeafletMap
-                                lat={miejsceDocelowe.location.lat || 52.5333}
-                                lng={miejsceDocelowe.location.lng || 16.9252}
-                                zoom={9}
-                            />
-                        )}
-                    </MapBox>
 
-                    <LocationSearch
-                        value={miejsceDocelowe?.nazwa || ""}
-                        onChange={(sel) => setMiejsceDocelowe(sel)}
-                        placeholder="Wpisz miejsce docelowe"
-                    />
-                </ContentBar>
+                <TransportSelector value={standardTransportuLocal} onChange={setStandardTransportuLocal} />
+                <SubmitButton onClick={() => submitParts()}>
+                    Zatwierdź
+                </SubmitButton>
             </>
 
         );
@@ -331,6 +334,9 @@ export const PopupManager = ({
     miejsceDocelowe,
     setMiejsceDocelowe,
     setLiczbaOpiekunow, liczbaOpiekunow = 0, liczbaUczestnikow = 1, setLiczbaUczestnikow,
+    standardHotelu, setStandardHotelu,
+    standardTransportu, setStandardTransportu,
+    dataWyjazdu, setDataWyjazdu, dataPrzyjazdu, setDataPrzyjazdu
 }) => {
     const handleBackdropClick = (e) => {
         if (e.target === e.currentTarget) {
@@ -362,6 +368,9 @@ export const PopupManager = ({
                     setMiejsceDocelowe={setMiejsceDocelowe}
                     setPopupPickerOpened={setPopupPickerOpened}
                     setLiczbaOpiekunow={setLiczbaOpiekunow} liczbaOpiekunow={liczbaOpiekunow} liczbaUczestnikow={liczbaUczestnikow} setLiczbaUczestnikow={setLiczbaUczestnikow}
+                    standardHotelu={standardHotelu} setStandardHotelu={setStandardHotelu}
+                    standardTransportu={standardTransportu} setStandardTransportu={setStandardTransportu}
+                    dataPrzyjazdu={dataPrzyjazdu} setDataPrzyjazdu={setDataPrzyjazdu} dataWyjazdu={dataWyjazdu} setDataWyjazdu={setDataWyjazdu}
                 />
             </FieldMainbox>
         </PopupManagerMainbox>
