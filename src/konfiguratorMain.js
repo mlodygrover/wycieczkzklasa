@@ -360,9 +360,7 @@ const KonfiguratorMainMainboxLeft = styled.div`
                     gap: 10px;
                     flex-shrink: 0;
                     margin-bottom: 5px;
-                    &:hover{
-                        background-color: red;
-                    }
+                 
                 }
             }
             img{
@@ -413,7 +411,6 @@ const KonfiguratorMainMainboxRight = styled.div`
     align-self: stretch;      /* <=== dopilnuj rozciągnięcia */
     @media screen and (max-height: 1000px){
         height: fit-content;
-        background-color: red;
     }
 `;
 
@@ -997,7 +994,13 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
         }
         return "";
     });
-    const [nazwaWyjazdu, setNazwaWyjazdu] = useState("")
+    const [nazwaWyjazdu, setNazwaWyjazdu] = useState(() => {
+        const fromURL = getStr(readURL().searchParams.get("nw"));
+        if (fromURL != null) {
+            return fromURL
+        }
+        return "";
+    })
     const [liczbaDni, setLiczbaDni] = useState(0)
     // ===== EFEKTY: zapis do URL + regularny zapis do localStorage =====
 
@@ -1062,10 +1065,75 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
         writeNumberParam("transportStd", standardTransportu);
         localStorage.setItem("standardTransportu", String(standardTransportu));
     }, [standardTransportu]);
+    useEffect(() => {
 
+        writeNumberParam("nw", nazwaWyjazdu);
+        localStorage.setItem("nazwaWyjazdu", nazwaWyjazdu);
+    }, [nazwaWyjazdu])
     useEffect(() => {
         miejsceDocelowe && localStorage.setItem("miejsceDocelowe", JSON.stringify(miejsceDocelowe))
     }, [miejsceDocelowe, miejsceStartowe])
+
+    useEffect(() => {
+        const lat = miejsceDocelowe?.location?.lat;
+        const lng = miejsceDocelowe?.location?.lng;
+        console.log("Rozpoczynam probe")
+        if (
+            tripId ||
+            downloadPlan ||
+            !miejsceDocelowe?.nazwa ||
+            lat == null ||
+            lng == null
+        ) {
+            console.log("Nie pobieram")
+            return;
+        }
+        if(!nazwaWyjazdu)setNazwaWyjazdu(`Wyjazd do ${miejsceDocelowe.nazwa}`)
+        const controller = new AbortController();
+
+        const fetchPhoto = async () => {
+            console.log("Rozpoczynam probe 2")
+            try {
+                const url =
+                    `${portacc}/getPhotoOfCity` +
+                    `?nazwa=${encodeURIComponent(miejsceDocelowe.nazwa)}` +
+                    `&lat=${encodeURIComponent(lat)}` +
+                    `&lng=${encodeURIComponent(lng)}`;
+
+                const res = await fetch(url, { signal: controller.signal });
+
+                if (!res.ok) {
+                    throw new Error(`HTTP ${res.status}`);
+                }
+
+                const data = await res.json();
+                console.log("otrzymane ", data)
+                if (data && data.photoUrl) {
+                    setPhotoWallpaper(data.photoUrl);
+                }
+            } catch (err) {
+                if (err.name === "AbortError") return;
+                console.error("Błąd przy pobieraniu tła miasta:", err);
+            }
+        };
+
+        // 🔹 debounce 3 sekundy
+        const timeoutId = setTimeout(() => {
+            fetchPhoto();
+        }, 100);
+
+        return () => {
+            controller.abort();
+            clearTimeout(timeoutId);
+        };
+    }, [
+        tripId,
+        downloadPlan,
+        miejsceDocelowe?.nazwa,
+        miejsceDocelowe?.location?.lat,
+        miejsceDocelowe?.location?.lng,
+        portacc,
+    ]);
 
     //dane lokalne
     const [settingsOpened, setSettingsOpened] = useState(false);
@@ -2600,6 +2668,7 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
             });
 
             setLiczbaDni(days);
+            console.log(" __  odwoluje 1")
             setKonfiguratorLoading(false);
         }, 3000);
 
@@ -3099,7 +3168,7 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
 
     return (
         <>
-            <KonfiguratorPhotoWithSettings style={tripId && photoWallpaper ? { backgroundImage: `url(${photoWallpaper})`, } : { backgroundImage: `url(${'https://images.unsplash.com/photo-1716481631637-e2d4fd2456e2?q=80&w=870&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D'})`, }}>
+            <KonfiguratorPhotoWithSettings style={photoWallpaper ? { backgroundImage: `url(${photoWallpaper})`, } : { backgroundImage: `url(${'https://images.unsplash.com/photo-1716481631637-e2d4fd2456e2?q=80&w=870&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D'})`, }}>
 
                 <div className="wyjazdNazwa">
                     <div

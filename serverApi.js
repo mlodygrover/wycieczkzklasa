@@ -2168,7 +2168,7 @@ app.get("/update-offer", async (req, res) => {
 
                 let flattenedVariants = [];
 
-                if (link && 1 == 1) {
+                if (link && 1 == 2) {
                     // a) Próba parsera /place-offer z limitem 2 min
                     try {
                         const controller = new AbortController();

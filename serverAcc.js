@@ -11,7 +11,7 @@ const axios = require("axios");
 const OpenAI = require("openai");
 
 const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
+    apiKey: process.env.OPENAI_API_KEY,
 });
 const app = express();
 // bardzo ważne dla Render / Heroku / proxy
@@ -398,6 +398,37 @@ function computePriceFromAoA(activitiesScheduleAoA) {
 }
 
 // ===================== UNSPLASH =====================
+const wallpaperSchema = new mongoose.Schema(
+    {
+        // dotychczasowe – wygodne do prostego użycia w kodzie
+        location: {
+            lat: { type: Number, required: true },
+            lng: { type: Number, required: true },
+        },
+
+        // NOWE: GeoJSON Point pod 2dsphere
+        locationGeo: {
+            type: {
+                type: String,
+                enum: ["Point"],
+                default: "Point",
+            },
+            coordinates: {
+                // [lng, lat]
+                type: [Number],
+                required: true,
+            },
+        },
+
+        photoLink: { type: String, required: true },
+    },
+    { timestamps: true }
+);
+
+// Indeks geosferyczny dla optymalnego wyszukiwania w promieniu
+wallpaperSchema.index({ locationGeo: "2dsphere" });
+
+const Wallpaper = mongoose.model("Wallpaper", wallpaperSchema);
 
 const UNSPLASH_ACCESS_KEY = process.env.UNSPLASH_ACCESS_KEY;
 
@@ -459,7 +490,6 @@ async function fetchUnsplashPhotoLinkForDestination(
             headers: { Authorization: `Client-ID ${UNSPLASH_ACCESS_KEY}` },
             timeout: timeoutMs,
         });
-        console.log(data.results);
         const photo = Array.isArray(data?.results) ? data.results[0] : null;
         if (!photo) return null;
 
@@ -477,21 +507,133 @@ async function fetchUnsplashPhotoLinkForDestination(
     }
 }
 async function fetchUnsplashPhotoLinkWithTranslation(
-  destName,
-  { timeoutMs = 5000, orientation = "landscape" } = {}
+    destName,
+    lat,
+    lng,
+    { timeoutMs = 5000, orientation = "landscape" } = {}
 ) {
-  if (!destName || !String(destName).trim()) return null;
+    if (!destName || !String(destName).trim()) return null;
 
-  // 1) Tłumaczenie nazwy miasta na angielski
-  const translated = await translateCityNameToEnglish(destName);
-  console.log("[Unsplash] original:", destName, "translated:", translated);
+    const latNum = Number(lat);
+    const lngNum = Number(lng);
 
-  // 2) Zapytanie Unsplash na podstawie przetłumaczonej nazwy
-  return fetchUnsplashPhotoLinkForDestination(translated, {
-    timeoutMs,
-    orientation,
-  });
+    // 1) Jeśli współrzędne są poprawne – najpierw spróbuj cache z DB w promieniu ~2 km
+    if (Number.isFinite(latNum) && Number.isFinite(lngNum)) {
+        try {
+            const existing = await Wallpaper.findOne({
+                locationGeo: {
+                    $near: {
+                        $geometry: {
+                            type: "Point",
+                            coordinates: [lngNum, latNum], // [lng, lat]
+                        },
+                        $maxDistance: 2000, // 2 km
+                    },
+                },
+            }).lean();
+
+            if (existing && existing.photoLink) {
+                return existing.photoLink;
+            }
+        } catch (err) {
+            console.error(
+                "[Wallpaper] Błąd przy odczycie z DB (geo $near):",
+                err?.message || err
+            );
+            // przy błędzie db i tak lecimy dalej na Unsplash
+        }
+    } else {
+        console.warn(
+            "[Wallpaper] Nieprawidłowe współrzędne, pomijam cache w DB (2dsphere)"
+        );
+    }
+
+    // 2) Tłumaczenie nazwy miasta na angielski (OpenAI)
+    const translated = await translateCityNameToEnglish(destName);
+    console.log("[Unsplash] original:", destName, "translated:", translated);
+
+    // 3) Pobranie zdjęcia z Unsplash
+    const photoLink = await fetchUnsplashPhotoLinkForDestination(translated, {
+        timeoutMs,
+        orientation,
+    });
+
+    if (!photoLink) {
+        return null;
+    }
+
+    // 4) Zapis w bazie (jeśli mamy sensowne współrzędne)
+    if (Number.isFinite(latNum) && Number.isFinite(lngNum)) {
+        try {
+            await Wallpaper.findOneAndUpdate(
+                {
+                    // klucz do upsertu – dokładne lat/lng (nie "near")
+                    "location.lat": latNum,
+                    "location.lng": lngNum,
+                },
+                {
+                    $set: {
+                        location: { lat: latNum, lng: lngNum },
+                        locationGeo: {
+                            type: "Point",
+                            coordinates: [lngNum, latNum],
+                        },
+                        photoLink,
+                    },
+                },
+                {
+                    upsert: true,
+                    new: true,
+                }
+            );
+        } catch (err) {
+            console.error(
+                "[Wallpaper] Błąd przy zapisie do DB:",
+                err?.message || err
+            );
+            // nie przerywamy – i tak zwracamy photoLink
+        }
+    }
+
+    return photoLink;
 }
+
+
+app.get("/getPhotoOfCity", async (req, res) => {
+    try {
+        const { nazwa, lat, lng } = req.query;
+
+        // Walidacja parametru
+        if (
+            typeof nazwa !== "string" ||
+            !nazwa.trim()
+        ) {
+            return res.status(400).json({
+                error: "Wymagany parametr 'nazwa' (łańcuch, niepusty).",
+            });
+        }
+
+        // Pobranie zdjęcia z Unsplash (z tłumaczeniem nazwy)
+        const photoUrl = await fetchUnsplashPhotoLinkWithTranslation(nazwa, lat, lng);
+
+        if (!photoUrl) {
+            return res.status(404).json({
+                error: "Nie znaleziono zdjęcia dla podanego miasta.",
+                cityOriginal: nazwa,
+            });
+        }
+
+        return res.status(200).json({
+            cityOriginal: nazwa,
+            photoUrl,
+        });
+    } catch (err) {
+        console.error("[GET /getPhotoOfCity error]", err?.response?.data || err?.message || err);
+        return res.status(500).json({
+            error: "Wewnętrzny błąd serwera podczas pobierania zdjęcia miasta.",
+        });
+    }
+});
 
 // ===================== ENDPOINTY TRIP PLANS =====================
 // ===================== GET /download/trip-plan =====================
@@ -669,7 +811,7 @@ app.post("/api/trip-plans", async (req, res) => {
             priceToSave = serverPrice != null ? serverPrice : undefined;
         }
 
-        const photoLink = await fetchUnsplashPhotoLinkWithTranslation(miejsceDocelowe.nazwa);
+        const photoLink = await fetchUnsplashPhotoLinkWithTranslation(miejsceDocelowe.nazwa, miejsceDocelowe.location.lat, miejsceDocelowe.location.lng);
 
         // public: domyślnie true, ale jeśli klient prześle false → nadpisujemy
         let publicValue;
@@ -1282,10 +1424,10 @@ app.put("/api/trip-plans/:tripId", requireAuth, async (req, res) => {
         }
 
         // jeżeli zmieniło się miejsce docelowe → odśwież zdjęcie, slug i ewentualnie domyślną nazwę
-        if (destinationChanged && miejsceDocelowe?.nazwa) {
+        if (destinationChanged && miejsceDocelowe?.nazwa && miejsceDocelowe?.location?.lat && miejsceDocelowe?.location?.lng) {
             try {
                 const photoLink = await fetchUnsplashPhotoLinkWithTranslation(
-                    miejsceDocelowe.nazwa
+                    miejsceDocelowe.nazwa, miejsceDocelowe.location.lat, miejsceDocelowe.location.lng,
                 );
                 if (photoLink) {
                     updates.photoLink = photoLink;

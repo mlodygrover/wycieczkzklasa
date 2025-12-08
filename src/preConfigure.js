@@ -9,6 +9,7 @@ import { PreConfigureParticipants } from './preConfigureParticipants.js';
 
 const portacc = process.env.REACT_APP_API_SOURCE || "https://api.draftngo.com";
 
+const port = process.env.REACT_APP__SERVER_API_SOURCE || "https://wycieczkzklasa.onrender.com";
 /* ===================== LAYOUT ===================== */
 const PreConfigureMainbox = styled.div`
   width: 100%;
@@ -313,7 +314,7 @@ const readFromUrl = () => {
 
     const downloadPlan = sp.get('downloadPlan') || null;
     const tripId = sp.get('tripId') || null;
-
+    const nazwaWyjazdu = sp.get('nw') || null;
     return {
         miejsceDocelowe,
         miejsceStartowe,
@@ -325,6 +326,7 @@ const readFromUrl = () => {
         standardTransportu,
         downloadPlan,
         tripId,
+        nazwaWyjazdu,
     };
 };
 
@@ -361,7 +363,7 @@ const writeToUrl = (state) => {
     sp.set('guardians', String(state.liczbaOpiekunow ?? 0));
     sp.set('hotelStd', String(state.standardHotelu ?? 1));
     sp.set('transportStd', String(state.standardTransportu ?? 1));
-
+    sp.set('nw', state.nazwaWyjazdu || '');
     const newUrl = `${window.location.pathname}?${sp.toString()}`;
     window.history.replaceState(null, '', newUrl);
 };
@@ -375,7 +377,8 @@ export const PreConfigure = (
     liczbaUczestnikowInit = 1,
     liczbaOpiekunowInit = 0,
     standardHoteluInit = 1,
-    standardTransportuInit = 1
+    standardTransportuInit = 1,
+    nazwaWyjazduInit = "Twój wyjazd"
 ) => {
     // 1) Wczytaj domyślne wartości z URL
     const urlDefaults = useMemo(readFromUrl, []);
@@ -443,7 +446,7 @@ export const PreConfigure = (
         "https://images.unsplash.com/photo-1633268456308-72d1c728943c?auto=format&fit=crop&w=1600&q=80"
     );
     const [publicPlan, setPublicPlan] = useState(true)
-    const [nazwaWyjazdu, setNazwaWyjazdu] = useState(null)
+    const [nazwaWyjazdu, setNazwaWyjazdu] = useState(urlDefaults.nazwaWyjazdu ?? nazwaWyjazduInit)
     const [selectedMenu, setSelectedMenu] = useState(0);
 
     // 4) Stany / błędy planów
@@ -466,6 +469,7 @@ export const PreConfigure = (
             liczbaOpiekunow,
             standardHotelu,
             standardTransportu,
+            nazwaWyjazdu
         });
     }, [
         planReady,
@@ -477,6 +481,7 @@ export const PreConfigure = (
         liczbaOpiekunow,
         standardHotelu,
         standardTransportu,
+        nazwaWyjazdu
     ]);
 
     // 6) Link do konfiguratora – buduj po planReady
@@ -521,7 +526,7 @@ export const PreConfigure = (
         // opcjonalnie tripId / downloadPlan
         if (tripId && String(tripId).trim()) sp.set('tripId', String(tripId));
         if (downloadPlan && String(downloadPlan).trim()) sp.set('downloadPlan', String(downloadPlan));
-
+        if(nazwaWyjazdu)sp.set('nw', nazwaWyjazdu)
         const base = `${window.location.origin}/konfigurator`;
         const url = sp.toString() ? `${base}?${sp.toString()}` : base;
         setKonfiguratorUrl(url);
@@ -537,6 +542,8 @@ export const PreConfigure = (
         standardTransportu,
         tripId,
         downloadPlan,
+        nazwaWyjazdu,
+        
     ]);
 
     // 7) Pobierz plan po tripId
@@ -582,6 +589,7 @@ export const PreConfigure = (
             try {
                 const dp = await fetchDownloadedTripPlan(downloadPlan, { signal: ac.signal });
                 setDownloadedPlan(dp);
+                console.log("TEST2", dp)
                 if (!dp) return;
 
                 const {
@@ -589,9 +597,11 @@ export const PreConfigure = (
                     standardHotelu: sh,
                     standardTransportu: st,
                     photoLink,
+                    nazwa: nazwaWyjazduDP,
                 } = dp;
 
                 if (md) setMiejsceDocelowe(md);
+                if (nazwaWyjazduDP) setNazwaWyjazdu(nazwaWyjazduDP)
                 if (Number.isFinite(sh)) setStandardHotelu(sh);
                 if (Number.isFinite(st)) setStandardTransportu(st);
                 if (typeof photoLink === "string" && photoLink.trim()) setPhotoWallpaper(photoLink);
@@ -847,19 +857,12 @@ export const PreConfigure = (
     const titleRef = useRef(null);
 
     useEffect(() => {
-        // ustaw wartość początkową TYLKO raz (lub gdy zewnętrznie ją zmienisz)
-        if (titleRef.current && !titleRef.current.textContent) {
-            titleRef.current.textContent = nazwaWyjazdu;
-        }
-    }, []); // zależności puste – bez aktualizacji na każdy input
-
-    useEffect(() => {
         if (!titleRef.current) return;
-
-        // Nie nadpisuj, gdy użytkownik aktualnie edytuje tytuł
+        // Nie nadpisuj, jeśli użytkownik edytuje
         if (document.activeElement === titleRef.current) return;
+        if (nazwaWyjazdu == null) return; // nie czyść na null/undefined
 
-        titleRef.current.textContent = nazwaWyjazdu ?? "";
+        titleRef.current.textContent = nazwaWyjazdu;
     }, [nazwaWyjazdu]);
     const canGoToConfigurator = planReady && isValidPreconfigureState({
         miejsceDocelowe,
@@ -871,11 +874,75 @@ export const PreConfigure = (
         standardHotelu,
         standardTransportu,
     });
+    useEffect(() => {
+        const lat = miejsceDocelowe?.location?.lat;
+        const lng = miejsceDocelowe?.location?.lng;
+
+        if (
+            tripId ||
+            downloadPlan ||
+            !miejsceDocelowe?.nazwa ||
+            lat == null ||
+            lng == null
+        ) {
+            return;
+        }
+        setNazwaWyjazdu(`Wyjazd do ${miejsceDocelowe.nazwa}`)
+        const controller = new AbortController();
+
+        const fetchPhoto = async () => {
+            try {
+                const url =
+                    `${portacc}/getPhotoOfCity` +
+                    `?nazwa=${encodeURIComponent(miejsceDocelowe.nazwa)}` +
+                    `&lat=${encodeURIComponent(lat)}` +
+                    `&lng=${encodeURIComponent(lng)}`;
+
+                const res = await fetch(url, { signal: controller.signal });
+
+                if (!res.ok) {
+                    throw new Error(`HTTP ${res.status}`);
+                }
+
+                const data = await res.json();
+
+                if (data && data.photoUrl) {
+                    setPhotoWallpaper(data.photoUrl);
+                }
+            } catch (err) {
+                if (err.name === "AbortError") return;
+                console.error("Błąd przy pobieraniu tła miasta:", err);
+            }
+        };
+
+        // 🔹 debounce 3 sekundy
+        const timeoutId = setTimeout(() => {
+            fetchPhoto();
+        }, 3000);
+
+        return () => {
+            controller.abort();
+            clearTimeout(timeoutId);
+        };
+    }, [
+        tripId,
+        downloadPlan,
+        miejsceDocelowe?.nazwa,
+        miejsceDocelowe?.location?.lat,
+        miejsceDocelowe?.location?.lng,
+        portacc,
+    ]);
+
+
+
 
     return (
         <PreConfigureMainbox>
-            <PreConfigureHeader key={photoWallpaper}>
-                <div className="preConfigureHeaderImage" style={{ backgroundImage: `url(${photoWallpaper})` }}>
+            <PreConfigureHeader>
+                <div
+                    className="preConfigureHeaderImage"
+                    style={{ backgroundImage: `url(${photoWallpaper})` }}
+                >
                     <div className="wyjazdNazwa">
                         <div
                             className="wyjazdNazwaInput"
@@ -885,7 +952,9 @@ export const PreConfigure = (
                             onInput={(e) => {
                                 setNazwaWyjazdu(e.currentTarget.textContent);
                             }}
-                        />
+                        >
+                            {nazwaWyjazdu ?? ""}
+                        </div>
                         <Edit2 size={40} />
                     </div>
                 </div>
