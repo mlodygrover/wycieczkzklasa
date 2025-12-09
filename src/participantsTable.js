@@ -1,0 +1,216 @@
+import styled from "styled-components"
+import React from "react"
+import { Mail, Minus } from "lucide-react"
+
+const ParticipantsTableMainbox = styled.div`
+    width: 90%;
+    max-width: 1600px;
+    min-height: 300px;
+`
+
+const StyledTable = styled.table`
+    width: 100%;
+    border-collapse: collapse;
+    font-family: 'Inter';
+    font-weight: 500;
+    table-layout: fixed; /* pozwala kontrolować szerokości kolumn */
+
+    @media screen and (max-width: 800px) {
+        font-size: 10px;
+    }
+`
+
+const TableRow = styled.tr`
+    border-bottom: 1px solid #d0d0d0;
+    transition: 0.3s ease-in-out;
+
+    &:hover {
+        box-shadow: 0px 0px 4px #d8d8d8ff;
+        border-radius: 5px;
+    }
+
+    &.rowHeader {
+        border-bottom: none;
+        color: #a0a0a0;
+
+        &:hover {
+            box-shadow: none;
+            border-radius: 0;
+        }
+    }
+`
+
+const HeaderCell = styled.th`
+    text-align: left;
+    padding: 5px 2px;
+    box-sizing: border-box;
+    font-weight: 500;
+
+    &.mailCell {
+        /* bazowa szerokość kolumny mailowej */
+        width: 30%;
+    }
+    &.headerMobile{
+        display: none;
+    }
+    @media screen and (max-width: 800px) {
+        &.mailCell {
+            width: 15%;
+            max-width: 15%;
+        }
+        &.headerFull{
+            display: none;
+        }
+        &.headerMobile{
+            display: table-cell;
+        }
+    }
+`
+
+const TableCell = styled.td`
+    text-align: left;
+    padding: 5px 2px;
+    box-sizing: border-box;
+    vertical-align: middle;
+    overflow: hidden;
+
+    &.buttons {
+        text-align: right;
+    }
+
+    &.mailCell {
+        /* pozwala kolumnie się zwężać */
+        width: 30%;
+        max-width: 0; /* ważne przy table-layout: fixed */
+
+        @media screen and (max-width: 800px) {
+            width: 15%;
+            max-width: 15%;
+        }
+    }
+
+    .mail {
+        display: block;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+`
+
+const PaymentStatus = styled.span`
+    padding: 5px 10px;
+    border-radius: 5px;
+    display: inline-block;
+    &.done{
+        color: #1aa04bff;
+        background: #f0fdf4;
+    }
+    &.part{
+
+        color: #9ea01aff;
+        background: #fdfdf0ff;
+    }
+    &.none{
+
+        color: #abababff;
+        background: #ffffffff;
+    }
+    
+`
+const ActionButton = styled.div`
+    background-color: black;
+    color: white;
+    font-weight: 500;
+    padding: 5px 10px;
+    box-sizing: border-box;
+    border-radius: 5px;
+
+    display: inline-flex;        /* zamiast inline-block */
+    align-items: center;         /* wycentrowanie w pionie */
+    justify-content: center;     /* wycentrowanie w poziomie */
+    gap: 4px;                    /* odstęp między tekstem i ikoną */
+    font-size: 12px;
+    vertical-align: middle;  
+    cursor: pointer    
+    transition: 0.3s ease-in-out;
+    &:hover{
+        background-color: #606060;
+    }
+`
+export const ParticipantsTable = () => {
+    return (
+        <ParticipantsTableMainbox>
+            <StyledTable>
+                <thead>
+                    <TableRow className="rowHeader">
+                        <HeaderCell className="headerFull">Imię i nazwisko</HeaderCell>
+                        <HeaderCell className="mailCell headerFull">Adres email</HeaderCell>
+                        <HeaderCell className="headerFull">Status płatności</HeaderCell>
+                        <HeaderCell className="headerMobile">Uczestnik</HeaderCell>
+                        <HeaderCell className="mailCell headerMobile">Email</HeaderCell>
+                        <HeaderCell className="headerMobile">Status</HeaderCell>
+                    </TableRow>
+                </thead>
+                <tbody>
+                    <TableRow>
+                        <TableCell>Jan Kozidupka</TableCell>
+                        <TableCell className="mailCell">
+                            <span className="mail">
+                                kozidupka@gmail.com
+                            </span>
+                        </TableCell>
+                        <TableCell>
+                            <PaymentStatus className="paymentStatus done">
+                                Opłacone
+                            </PaymentStatus>
+                        </TableCell>
+                   
+                    </TableRow>
+                    <TableRow>
+                        <TableCell>Tomasz Psikuta</TableCell>
+                        <TableCell className="mailCell">
+                            <span className="mail">
+                                psikutas@gmail.com
+                            </span>
+                        </TableCell>
+                        <TableCell>
+                            <PaymentStatus className="paymentStatus part">
+                                Częściowo
+                            </PaymentStatus>
+                        </TableCell>
+                   
+                    </TableRow>
+                    <TableRow>
+                        <TableCell>Tomasz Psikuta</TableCell>
+                        <TableCell className="mailCell">
+                            <span className="mail">
+                                psikutas@gmail.com
+                            </span>
+                        </TableCell>
+                        <TableCell>
+                            <PaymentStatus className="paymentStatus none">
+                                Nieopłacone
+                            </PaymentStatus>
+                        </TableCell>
+                 
+                    </TableRow>
+                    <TableRow>
+                        <TableCell>
+                            -
+                        </TableCell>
+                        <TableCell className="mailCell">
+                            -
+                        </TableCell>
+                     
+                        <TableCell className="buttons">
+                            <ActionButton>
+                                Zaproś <Mail size={13} />
+                            </ActionButton>
+
+                        </TableCell>
+                    </TableRow>
+                </tbody>
+            </StyledTable>
+        </ParticipantsTableMainbox>
+    )
+}

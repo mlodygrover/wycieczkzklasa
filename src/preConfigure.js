@@ -6,6 +6,7 @@ import { Edit2, Settings } from 'lucide-react';
 import useUserStore, { fetchMe } from './usercontent.js';
 import EyeCheckbox from './eyeCheckbox.js';
 import { PreConfigureParticipants } from './preConfigureParticipants.js';
+import { ParticipantsTable } from './participantsTable.js';
 
 const portacc = process.env.REACT_APP_API_SOURCE || "https://api.draftngo.com";
 
@@ -93,6 +94,8 @@ const PreConfigureHeaderWrapper = styled.div`
       gap: 5px;
       cursor: pointer;
       transition: background-color 0.3s ease;
+      box-sizing: border-box;
+      
       &.disabled {
         opacity: 0.5;
         cursor: not-allowed;
@@ -113,7 +116,7 @@ const PreConfigureHeaderWrapper = styled.div`
       @media screen and (max-width: 800px){
         font-size: 12px;
         height: 35px;
-        width: 90%;
+        width: 100%;
         svg{
           width: 16px;
         }
@@ -1042,8 +1045,7 @@ export const PreConfigure = (
                 />
             )}
             {selectedMenu === 1 && (
-                <PreConfigureParticipants
-                />
+                <ParticipantsTable/>
             )}
         </PreConfigureMainbox>
     );
