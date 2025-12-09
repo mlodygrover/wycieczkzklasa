@@ -456,7 +456,7 @@ export const PreConfigure = (
     const [planLoading, setPlanLoading] = useState(false);
     const [downloadedLoading, setDownloadedLoading] = useState(false);
     const [downloadedError, setDownloadedError] = useState(null);
-
+    const [synchronisingPlan, setSynchronisingPlan] = useState(false)
     // 5) Sync stanu → URL (bez przeładowania), dopiero gdy planReady
     useEffect(() => {
         if (!planReady) return;
@@ -526,7 +526,7 @@ export const PreConfigure = (
         // opcjonalnie tripId / downloadPlan
         if (tripId && String(tripId).trim()) sp.set('tripId', String(tripId));
         if (downloadPlan && String(downloadPlan).trim()) sp.set('downloadPlan', String(downloadPlan));
-        if(nazwaWyjazdu)sp.set('nw', nazwaWyjazdu)
+        if (nazwaWyjazdu) sp.set('nw', nazwaWyjazdu)
         const base = `${window.location.origin}/konfigurator`;
         const url = sp.toString() ? `${base}?${sp.toString()}` : base;
         setKonfiguratorUrl(url);
@@ -543,7 +543,7 @@ export const PreConfigure = (
         tripId,
         downloadPlan,
         nazwaWyjazdu,
-        
+
     ]);
 
     // 7) Pobierz plan po tripId
@@ -682,92 +682,115 @@ export const PreConfigure = (
 
     // 11) Autozapis (PUT/POST) — tylko dla zalogowanych
     async function saveOrCreateTripPlan({ signal } = {}) {
-        // sprawdzenie zalogowania
-        let userId = useUserStore.getState?.().user?._id ?? null;
-        if (!userId) {
-            try {
-                const me = await fetchMe().catch(() => null);
-                userId = me?._id ?? useUserStore.getState?.().user?._id ?? null;
-            } catch { /* ignore */ }
-        }
-        if (!userId) return;
+        setSynchronisingPlan(true);
 
-        const payload = {
-            miejsceDocelowe: miejsceDocelowe?.nazwa
-                ? {
-                    nazwa: String(miejsceDocelowe.nazwa || "").trim(),
-                    location: {
-                        lat: Number(miejsceDocelowe.location?.lat),
-                        lng: Number(miejsceDocelowe.location?.lng),
-                    },
+        try {
+            // sprawdzenie zalogowania
+            let userId = useUserStore.getState?.().user?._id ?? null;
+            if (!userId) {
+                try {
+                    const me = await fetchMe().catch(() => null);
+                    userId = me?._id ?? useUserStore.getState?.().user?._id ?? null;
+                } catch {
+                    /* ignore */
                 }
-                : undefined,
-            miejsceStartowe: miejsceStartowe?.nazwa
-                ? {
-                    nazwa: String(miejsceStartowe.nazwa || "").trim(),
-                    country: miejsceStartowe.country ?? undefined,
-                    region: miejsceStartowe.region ?? undefined,
-                    id: miejsceStartowe.id ?? undefined,
-                    googleId: miejsceStartowe.googleId ?? undefined,
-                    location: {
-                        lat: Number(miejsceStartowe.location?.lat),
-                        lng: Number(miejsceStartowe.location?.lng),
-                    },
+            }
+            if (!userId) {
+                // brak użytkownika – kończymy, ale finally i tak ustawi synchronisingPlan na false
+                return;
+            }
+
+            const payload = {
+                miejsceDocelowe: miejsceDocelowe?.nazwa
+                    ? {
+                        nazwa: String(miejsceDocelowe.nazwa || "").trim(),
+                        location: {
+                            lat: Number(miejsceDocelowe.location?.lat),
+                            lng: Number(miejsceDocelowe.location?.lng),
+                        },
+                    }
+                    : undefined,
+                miejsceStartowe: miejsceStartowe?.nazwa
+                    ? {
+                        nazwa: String(miejsceStartowe.nazwa || "").trim(),
+                        country: miejsceStartowe.country ?? undefined,
+                        region: miejsceStartowe.region ?? undefined,
+                        id: miejsceStartowe.id ?? undefined,
+                        googleId: miejsceStartowe.googleId ?? undefined,
+                        location: {
+                            lat: Number(miejsceStartowe.location?.lat),
+                            lng: Number(miejsceStartowe.location?.lng),
+                        },
+                    }
+                    : undefined,
+                // mapowanie: dataPrzyjazdu = start, dataWyjazdu = koniec
+                dataPrzyjazdu: dataWyjazdu ? formatYMDLocal(dataWyjazdu) : undefined,
+                dataWyjazdu: dataPowrotu ? formatYMDLocal(dataPowrotu) : undefined,
+                standardHotelu: Number.isFinite(standardHotelu) ? standardHotelu : undefined,
+                standardTransportu: Number.isFinite(standardTransportu) ? standardTransportu : undefined,
+                liczbaUczestnikow: Number.isFinite(liczbaUczestnikow) ? liczbaUczestnikow : undefined,
+                liczbaOpiekunow: Number.isFinite(liczbaOpiekunow) ? liczbaOpiekunow : undefined,
+                public: typeof publicPlan === "boolean" ? publicPlan : undefined,
+                nazwa: nazwaWyjazdu ? nazwaWyjazdu : undefined,
+            };
+
+            const currentTripId = new URLSearchParams(window.location.search).get("tripId");
+            const base = `${portacc}`;
+
+            if (currentTripId && String(currentTripId).trim()) {
+                // PUT – aktualizacja istniejącego planu
+                try {
+                    const resp = await fetch(
+                        `${base}/api/trip-plans/${encodeURIComponent(currentTripId)}`,
+                        {
+                            method: "PUT",
+                            headers: { "Content-Type": "application/json" },
+                            credentials: "include",
+                            body: JSON.stringify(payload),
+                            signal,
+                        }
+                    );
+                    if (resp.ok) {
+                        const updated = await resp.json().catch(() => null);
+                        if (updated?.photoLink) setPhotoWallpaper(updated.photoLink);
+                    }
+                } catch {
+                    /* ignore */
                 }
-                : undefined,
-            // mapowanie: dataPrzyjazdu = start, dataWyjazdu = koniec
-            dataPrzyjazdu: dataWyjazdu ? formatYMDLocal(dataWyjazdu) : undefined,
-            dataWyjazdu: dataPowrotu ? formatYMDLocal(dataPowrotu) : undefined,
-            standardHotelu: Number.isFinite(standardHotelu) ? standardHotelu : undefined,
-            standardTransportu: Number.isFinite(standardTransportu) ? standardTransportu : undefined,
-            liczbaUczestnikow: Number.isFinite(liczbaUczestnikow) ? liczbaUczestnikow : undefined,
-            liczbaOpiekunow: Number.isFinite(liczbaOpiekunow) ? liczbaOpiekunow : undefined,
-            public: typeof publicPlan === "boolean" ? publicPlan : undefined,
-            nazwa: nazwaWyjazdu ? nazwaWyjazdu : undefined,
-        };
+                return;
+            }
 
-        const currentTripId = new URLSearchParams(window.location.search).get("tripId");
-        const base = `${portacc}`;
-
-        if (currentTripId && String(currentTripId).trim()) {
-            // PUT
+            // POST – utwórz i ustaw tripId w URL + stanie
             try {
-                const resp = await fetch(`${base}/api/trip-plans/${encodeURIComponent(currentTripId)}`, {
-                    method: "PUT",
+                const resp = await fetch(`${base}/api/trip-plans`, {
+                    method: "POST",
                     headers: { "Content-Type": "application/json" },
                     credentials: "include",
                     body: JSON.stringify(payload),
                     signal,
                 });
-                if (resp.ok) {
-                    const updated = await resp.json().catch(() => null);
-                    if (updated?.photoLink) setPhotoWallpaper(updated.photoLink);
-                }
-            } catch { /* ignore */ }
-            return;
-        }
+                if (!resp.ok) return;
 
-        // POST – utwórz i ustaw tripId w URL + stanie
-        try {
-            const resp = await fetch(`${base}/api/trip-plans`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                credentials: "include",
-                body: JSON.stringify(payload),
-                signal,
-            });
-            if (!resp.ok) return;
-            const created = await resp.json().catch(() => null);
-            const newId = created?._id;
-            if (newId) {
-                writeTripIdToUrl(newId);
-                try {
-                    const plan = await fetchTripPlanById(newId, { signal });
-                    if (plan?.photoLink) setPhotoWallpaper(plan.photoLink);
-                } catch { /* ignore */ }
+                const created = await resp.json().catch(() => null);
+                const newId = created?._id;
+                if (newId) {
+                    writeTripIdToUrl(newId);
+                    try {
+                        const plan = await fetchTripPlanById(newId, { signal });
+                        if (plan?.photoLink) setPhotoWallpaper(plan.photoLink);
+                    } catch {
+                        /* ignore */
+                    }
+                }
+            } catch {
+                /* ignore */
             }
-        } catch { /* ignore */ }
+        } finally {
+            // ZAWSZE, niezależnie od powodzenia/porażki, wyłączamy flagę
+            setSynchronisingPlan(false);
+        }
     }
+
 
     // === Walidacja ===
     const isFiniteNumber = (v) => typeof v === "number" && Number.isFinite(v);
@@ -834,6 +857,7 @@ export const PreConfigure = (
 
         if (canSave) {
             (async () => {
+                console.log("do zapisania")
                 await saveOrCreateTripPlan({ signal: ac.signal });
             })();
         }
@@ -935,7 +959,9 @@ export const PreConfigure = (
 
 
 
-
+    useEffect(()=>{
+        console.log(synchronisingPlan)
+    }, [synchronisingPlan])
     return (
         <PreConfigureMainbox>
             <PreConfigureHeader>
@@ -968,10 +994,10 @@ export const PreConfigure = (
                     </div>
                     <div className="preConfigureButtons">
                         <a
-                            className={`preConfigureButton${canGoToConfigurator ? '' : ' disabled'}`}
-                            href={canGoToConfigurator ? konfiguratorUrl : undefined}
+                            className={`preConfigureButton${canGoToConfigurator && !synchronisingPlan ? '' : ' disabled'}`}
+                            href={canGoToConfigurator && !synchronisingPlan ? konfiguratorUrl : undefined}
                             onClick={(e) => {
-                                if (!canGoToConfigurator) {
+                                if (!canGoToConfigurator || synchronisingPlan) {
                                     e.preventDefault();
                                     e.stopPropagation();
                                 }

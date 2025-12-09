@@ -14,7 +14,7 @@ import MapLocationPicker from "./roots/wyborLokalizacji";
 import LeafletMap from "./roots/googleMapViewer";
 import { WyborUczestnikow } from "./konfigurator/wyborUczestnikow";
 import Radio1 from "./roots/radio1";
-import { KonfiguratorWyjazduComp, roznicaDni } from "./konfigurator/konfiguratorWyjazduComp";
+import { KonfiguratorWyjazduComp, roznicaDni, SaveButton } from "./konfigurator/konfiguratorWyjazduComp";
 import { AddActivityNavButton, AddActivityPanel, AddActivityPanelNav, PanelBoxNav } from "./konfigurator/addActivityPanel";
 import RouteMap from "./routeMap";
 import { parseJSON } from "date-fns";
@@ -28,13 +28,14 @@ import { time } from "framer-motion";
 
 // === user store (global auth) ===
 import useUserStore, { fetchMe } from "./usercontent";
-import { data } from "react-router-dom";
+import { data, useNavigate } from "react-router-dom";
 import AttractionsMap from "./attractionMap";
-import { Bed, Calendar, CalendarDays, Drama, Edit, Edit2, Hotel, Landmark, Moon, Rocket, Shrub, TramFront, Users } from "lucide-react";
+import { Bed, Calendar, CalendarDays, ChevronLeft, Drama, Edit, Edit2, Hotel, Landmark, Loader2, Moon, Rocket, Shrub, TramFront, Users } from "lucide-react";
 import Loader from "./roots/loader";
 import { PopupManager } from "./konfigurator/popupManager";
 import { AddActivityNew } from "./addActivityNew";
 import { format } from "url";
+import { FeaturesSection } from "./brandTiles";
 
 
 const port = process.env.REACT_APP__SERVER_API_SOURCE || "https://wycieczkzklasa.onrender.com";
@@ -199,6 +200,7 @@ const KonfiguratorMainMainbox = styled.div`
     border-top: 1px solid lightgray;
     @media screen and (max-width: 1000px){
         flex-direction: column;
+        margin-top: 5px;
     }
 `;
 
@@ -678,8 +680,16 @@ const KonfiguratorPhotoWithSettings = styled.div`
         position: relative;
         z-index: 2;
     }
-
+    .wyjazdNazwaButtons{
+        width: 100%;
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        justify-content: flex-start;
+        gap: 5px;
+    }
     .wyjazdNazwa {
+        width: 100%;
         color: white;
         display: flex;
         align-items: center;
@@ -717,6 +727,57 @@ const KonfiguratorPhotoWithSettings = styled.div`
     }
 `;
 
+
+const MobileNavButtons = styled.div`
+    display: flex;
+    flex-direction: row;
+    justify-content: stretch;
+    align-items: center;
+    width: 100%;
+    flex-wrap: wrap;
+    padding: 2px 10px;
+    box-sizing: border-box;
+    gap: 5px;
+    margin-top: 5px;
+    .mobileNavButton{
+        height: 35px;
+        flex: 1;
+        min-width: 200px;
+        border: 1px solid #f0f0f0;
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 500;
+        font-size: 14px;
+        font-family: 'Inter', sans-serif;
+        gap: 2px;
+        cursor: pointer;
+        transition: 0.3s ease-in-out;
+        &.b{
+            color: white;
+            background:  #008d73ff;
+            &:hover { 
+                box-shadow: 0 8px 20px rgba(0,0,0,.06); 
+                background: #006a57ff;
+            }
+            @media screen and   (max-width: 800px){
+                background-color: black;
+                &:hover{
+                    background-color: #404040;
+                }
+            }
+        }
+        &:hover { 
+            box-shadow: 0 8px 20px rgba(0,0,0,.06); 
+            background: #dfdfdfff; 
+        }
+    }
+    @media screen and (min-width: 1199px){
+        display: none;
+
+    }
+`
 const minimum = (a, b) => {
     if (a < b) return a;
     return b;
@@ -1088,7 +1149,7 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
             console.log("Nie pobieram")
             return;
         }
-        if(!nazwaWyjazdu)setNazwaWyjazdu(`Wyjazd do ${miejsceDocelowe.nazwa}`)
+        if (!nazwaWyjazdu) setNazwaWyjazdu(`Wyjazd do ${miejsceDocelowe.nazwa}`)
         const controller = new AbortController();
 
         const fetchPhoto = async () => {
@@ -1153,6 +1214,7 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
     const [activityPanelOpened, setActivityPanelOpened] = useState(false);
     const [modyfikacja, setModyfikacja] = useState({ flag: false, dayIdx: null, idx: null })
 
+    const [redirecting, setRedirecting] = useState(false)
     const libraryFilters = ["Muzeum",]
     const [filtersChosen, setFiltersChosen] = useState()
     const [alertsTable, setAlertsTable] = useState([])
@@ -1909,6 +1971,29 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
             return [];
         }
     });
+    useEffect(() => {
+        const handleBeforeUnload = (event) => {
+            // "Niebezpieczne" wyjście tylko wtedy,
+            // gdy faktycznie coś czeka na autozapis
+            const hasSomethingPending =
+                hasPendingAutoSave ||
+                !!saveTimerRef.current ||
+                (saveControllerRef.current &&
+                    !saveControllerRef.current.signal.aborted);
+
+            if (!hasSomethingPending) {
+                return; // brak niezapisanych zmian → nie pokazujemy dialogu
+            }
+
+            event.preventDefault();
+            event.returnValue = ""; // wymagane, żeby przeglądarka pokazała popup
+        };
+
+        window.addEventListener("beforeunload", handleBeforeUnload);
+        return () => {
+            window.removeEventListener("beforeunload", handleBeforeUnload);
+        };
+    }, [hasPendingAutoSave]);
 
 
 
@@ -2668,7 +2753,6 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
             });
 
             setLiczbaDni(days);
-            console.log(" __  odwoluje 1")
             setKonfiguratorLoading(false);
         }, 3000);
 
@@ -3164,131 +3248,164 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
         dataWyjazdu instanceof Date ? dataWyjazdu.getTime() : dataWyjazdu,
     ]);
 
+    const navigate = useNavigate()
+    const redirectToSettings = async () => {
+        try {
+            if (hasPendingAutoSave) {
+                setRedirecting(true);
+                // 🔽 zakładamy, że handleSaveClick zwraca Promise
+                await handleSaveClick();
+            }
 
+            const url = new URL(window.location.href);
+            const params = url.search || ""; // np. "?tripId=123&arr=2025-05-01..."
 
+            const redirectLink = `/konfigurator-lounge${params}`;
+            navigate(redirectLink);
+        } finally {
+            setRedirecting(false);
+        }
+    };
     return (
-        <>
-            <KonfiguratorPhotoWithSettings style={photoWallpaper ? { backgroundImage: `url(${photoWallpaper})`, } : { backgroundImage: `url(${'https://images.unsplash.com/photo-1716481631637-e2d4fd2456e2?q=80&w=870&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D'})`, }}>
+        redirecting ? <div style={{ height: '100vh', width: '100vw', postion: 'fixed', left: '0', top: '0', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Loader /></div> :
+            <>
+                <KonfiguratorPhotoWithSettings style={photoWallpaper ? { backgroundImage: `url(${photoWallpaper})`, } : { backgroundImage: `url(${'https://images.unsplash.com/photo-1716481631637-e2d4fd2456e2?q=80&w=870&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D'})`, }}>
 
-                <div className="wyjazdNazwa">
-                    <div
-                        className="wyjazdNazwaInput"
-                        contentEditable
-                        suppressContentEditableWarning
-                        ref={titleRef}
-                        onInput={(e) => {
-                            setNazwaWyjazdu(e.currentTarget.textContent);
-                        }}
-                        onKeyDown={(e) => {
-                            if (e.key === "Enter") {
-                                e.preventDefault();       // brak nowej linii
-                                e.stopPropagation();      // opcjonalnie: nie puszczamy dalej
-                                e.currentTarget.blur();   // „zamknięcie” pola
-                                handleSaveClick();        // zapis
-                            }
-                        }}
-                    />
-                    <Edit2 size={40} />
-                </div>
+                    <div className="wyjazdNazwa">
+                        <div
+                            className="wyjazdNazwaInput"
+                            contentEditable
+                            suppressContentEditableWarning
+                            ref={titleRef}
+                            onInput={(e) => {
+                                setNazwaWyjazdu(e.currentTarget.textContent);
+                            }}
+                            onKeyDown={(e) => {
+                                if (e.key === "Enter") {
+                                    e.preventDefault();       // brak nowej linii
+                                    e.stopPropagation();      // opcjonalnie: nie puszczamy dalej
+                                    e.currentTarget.blur();   // „zamknięcie” pola
+                                    handleSaveClick();        // zapis
+                                }
+                            }}
+                        />
+                        <Edit2 size={40} />
+                        <div style={{ flex: '1' }} />
+                        <SaveButton
+                            className="c"
 
-                <KonfiguratorMainSettings ref={settingsRef} className={settingsOpened ? "opened" : "closed"}>
+                        onClick={() => redirectToSettings()}
+                        >
 
-                    <SettingsButton onClick={() => setPopupPickerOpened(0)} className={miejsceStartowePopupOpened ? "chosen" : ""}>
-                        <Rocket size={30} />
-                        Miejsce początkowe:<span>{miejsceStartowe ? miejsceStartowe.nazwa : "..."} </span>
-                        {miejsceStartowePopupOpened && <div className="settingsPopup" onClick={(e) => e.stopPropagation()} >
-                            <SearchBox value={miejsceStartoweSearching} onChange={setMiejsceStartoweSearching} results={miejsceStartoweResults} searchAction={submitMiejsceStartowe} disabled={miejsceStartowe} />
-                            {miejsceStartowe && <>
-                                <MapaBox key={`startowe-${miejsceStartowe.nazwa}`}>
-                                    <LeafletMap lat={miejsceStartowe?.location?.lat || 52.5333} lng={miejsceStartowe?.location?.lng || 16.9252} zoom={9} />
-                                </MapaBox>
-                                <MapaResultBox>
-                                    <PopupResult onClick={() => setMiejsceStartowe("")} onMouseEnter={() => setMiejsceStartoweHovering(true)} onMouseLeave={() => setMiejsceStartoweHovering(false)}>
-                                        <div className="popupResultTitle">
-                                            {miejsceStartowe.nazwa}
+                            <ChevronLeft size={16} />Ustawienia wyjazdu
+                        </SaveButton>
+                        <SaveButton
+                            className="b c"
+
+                        >
+                            Zarezerwuj wyjazd<Rocket size={16} />
+                        </SaveButton>
+                    </div>
+
+
+                    <KonfiguratorMainSettings ref={settingsRef} className={settingsOpened ? "opened" : "closed"}>
+
+                        <SettingsButton onClick={() => setPopupPickerOpened(0)} className={miejsceStartowePopupOpened ? "chosen def" : "def"}>
+                            <Rocket size={30} />
+                            Miejsce początkowe:<span>{miejsceStartowe ? miejsceStartowe.nazwa : "..."} </span>
+                            {miejsceStartowePopupOpened && <div className="settingsPopup" onClick={(e) => e.stopPropagation()} >
+                                <SearchBox value={miejsceStartoweSearching} onChange={setMiejsceStartoweSearching} results={miejsceStartoweResults} searchAction={submitMiejsceStartowe} disabled={miejsceStartowe} />
+                                {miejsceStartowe && <>
+                                    <MapaBox key={`startowe-${miejsceStartowe.nazwa}`}>
+                                        <LeafletMap lat={miejsceStartowe?.location?.lat || 52.5333} lng={miejsceStartowe?.location?.lng || 16.9252} zoom={9} />
+                                    </MapaBox>
+                                    <MapaResultBox>
+                                        <PopupResult onClick={() => setMiejsceStartowe("")} onMouseEnter={() => setMiejsceStartoweHovering(true)} onMouseLeave={() => setMiejsceStartoweHovering(false)}>
+                                            <div className="popupResultTitle">
+                                                {miejsceStartowe.nazwa}
+                                            </div>
+                                            <div className="popupResultSubtitle">
+                                                {miejsceStartowe.wojewodztwo}, {miejsceStartowe.kraj}
+                                            </div>
+                                            <img
+                                                src={"../icons/swap.svg"}
+                                                width={'5%'}
+                                                style={{
+                                                    position: 'absolute',
+                                                    right: '10px',
+                                                    top: '50%',
+                                                    transform: 'translateY(-50%)'
+                                                }}
+                                            />
+                                        </PopupResult>
+                                        <div className={miejsceStartoweHovering ? "changeInfo hovered" : "changeInfo"}>
+                                            kliknij aby zmienić lokalizację
                                         </div>
-                                        <div className="popupResultSubtitle">
-                                            {miejsceStartowe.wojewodztwo}, {miejsceStartowe.kraj}
+                                    </MapaResultBox>
+                                </>}
+                                {!miejsceStartowe &&
+                                    <MapaBox>
+                                        <div className="brakMapy">
+                                            Wyszukaj lokalizacje w polu wyszukiwania
+                                            <img src="../icons/icon-location-gray.svg" width={'100px'} />
                                         </div>
-                                        <img
-                                            src={"../icons/swap.svg"}
-                                            width={'5%'}
-                                            style={{
-                                                position: 'absolute',
-                                                right: '10px',
-                                                top: '50%',
-                                                transform: 'translateY(-50%)'
-                                            }}
-                                        />
-                                    </PopupResult>
-                                    <div className={miejsceStartoweHovering ? "changeInfo hovered" : "changeInfo"}>
-                                        kliknij aby zmienić lokalizację
-                                    </div>
-                                </MapaResultBox>
-                            </>}
-                            {!miejsceStartowe &&
-                                <MapaBox>
-                                    <div className="brakMapy">
-                                        Wyszukaj lokalizacje w polu wyszukiwania
-                                        <img src="../icons/icon-location-gray.svg" width={'100px'} />
-                                    </div>
-                                </MapaBox>}
-                        </div>}
-                    </SettingsButton>
+                                    </MapaBox>}
+                            </div>}
+                        </SettingsButton>
 
-                    <SettingsButton onClick={() => setPopupPickerOpened(1)} className={miejsceStartowePopupOpened ? "chosen" : ""}>
-                        <CalendarDays size={30} />
-                        {formatDate(dataPrzyjazdu || "")} - {formatDate(dataWyjazdu || "")}
-                        {wyborDatyOpened && <div className="settingsPopup" onClick={(e) => e.stopPropagation()} >
-                            <DataWybor dataStart={dataPrzyjazdu} dataEnd={dataWyjazdu} setDataEnd={setDataWyjazdu} setDataStart={setDataPrzyjazdu} />
-                        </div>}
-                    </SettingsButton>
+                        <SettingsButton onClick={() => setPopupPickerOpened(1)} className={miejsceStartowePopupOpened ? "chosen def" : "def"}>
+                            <CalendarDays size={30} />
+                            {formatDate(dataPrzyjazdu || "")} - {formatDate(dataWyjazdu || "")}
+                            {wyborDatyOpened && <div className="settingsPopup" onClick={(e) => e.stopPropagation()} >
+                                <DataWybor dataStart={dataPrzyjazdu} dataEnd={dataWyjazdu} setDataEnd={setDataWyjazdu} setDataStart={setDataPrzyjazdu} />
+                            </div>}
+                        </SettingsButton>
 
-                    <SettingsButton onClick={() => setPopupPickerOpened(2)} className={miejsceStartowePopupOpened ? "chosen" : ""}>
-                        <Users size={30} />
-                        {liczbaUczestnikow} uczestników, {liczbaOpiekunow} opiekunów
-                        {wyborGosciOpened && <div className="settingsPopup" onClick={(e) => e.stopPropagation()} >
-                            Liczba uczestników
-                            <WyborUczestnikow uczestnicy={liczbaUczestnikow} setUczestnicy={setLiczbaUczestnikow} opiekunowie={liczbaOpiekunow} setOpiekunowie={setLiczbaOpiekunow} />
-                        </div>}
-                    </SettingsButton>
+                        <SettingsButton onClick={() => setPopupPickerOpened(2)} className={miejsceStartowePopupOpened ? "chosen def" : "def"}>
+                            <Users size={30} />
+                            {liczbaUczestnikow} uczestników, {liczbaOpiekunow} opiekunów
+                            {wyborGosciOpened && <div className="settingsPopup" onClick={(e) => e.stopPropagation()} >
+                                Liczba uczestników
+                                <WyborUczestnikow uczestnicy={liczbaUczestnikow} setUczestnicy={setLiczbaUczestnikow} opiekunowie={liczbaOpiekunow} setOpiekunowie={setLiczbaOpiekunow} />
+                            </div>}
+                        </SettingsButton>
 
-                    <SettingsButton onClick={() => setPopupPickerOpened(3)} className={miejsceStartowePopupOpened ? "chosen" : ""}>
-                        <Moon size={30} />
-                        Nocleg: {standardHotelu || standardHotelu == 0 ? namesHotelsTab[standardHotelu] : "..."}
-                        {wyborStandardHoteluOpened && <div className="settingsPopup" onClick={(e) => e.stopPropagation()} >
-                            Standard hotelu
-                            <Radio1
-                                setWybor={setStandardHotelu}
-                                value={standardHotelu}
-                                name="hotel-standard"
-                                key={standardHotelu}
-                            />
-                        </div>}
-                    </SettingsButton>
+                        <SettingsButton onClick={() => setPopupPickerOpened(3)} className={miejsceStartowePopupOpened ? "chosen def" : "def"}>
+                            <Moon size={30} />
+                            Nocleg: {standardHotelu || standardHotelu == 0 ? namesHotelsTab[standardHotelu] : "..."}
+                            {wyborStandardHoteluOpened && <div className="settingsPopup" onClick={(e) => e.stopPropagation()} >
+                                Standard hotelu
+                                <Radio1
+                                    setWybor={setStandardHotelu}
+                                    value={standardHotelu}
+                                    name="hotel-standard"
+                                    key={standardHotelu}
+                                />
+                            </div>}
+                        </SettingsButton>
 
-                    <SettingsButton onClick={() => setPopupPickerOpened(4)} className={miejsceStartowePopupOpened ? "chosen" : ""}>
-                        <TramFront size={30} />
-                        Preferowany transport: {standardTransportu || standardTransportu == 0 ? namesTransportTab[standardTransportu] : "..."}
-                        {wyborStandardTransportuOpened && <div className="settingsPopup" onClick={(e) => e.stopPropagation()} >
-                            Forma transportu
-                            <Radio1
-                                options={[
-                                    { value: 1, icon: "../icons/icon-private-bus.svg", label: "Wynajęty autokar" },
-                                    { value: 0, icon: "../icons/icon-public-trannsport.svg", label: "Transport publiczny" },
-                                    { value: 2, icon: "../icons/icon-own-transport.svg", label: "Własny" }
-                                ]}
-                                setWybor={setStandardTransportu}
-                                value={standardTransportu}
-                                name="transport-form"
-                            />
-                        </div>}
-                    </SettingsButton>
-                </KonfiguratorMainSettings>
+                        <SettingsButton onClick={() => setPopupPickerOpened(4)} className={miejsceStartowePopupOpened ? "chosen def" : "def"}>
+                            <TramFront size={30} />
+                            Preferowany transport: {standardTransportu || standardTransportu == 0 ? namesTransportTab[standardTransportu] : "..."}
+                            {wyborStandardTransportuOpened && <div className="settingsPopup" onClick={(e) => e.stopPropagation()} >
+                                Forma transportu
+                                <Radio1
+                                    options={[
+                                        { value: 1, icon: "../icons/icon-private-bus.svg", label: "Wynajęty autokar" },
+                                        { value: 0, icon: "../icons/icon-public-trannsport.svg", label: "Transport publiczny" },
+                                        { value: 2, icon: "../icons/icon-own-transport.svg", label: "Własny" }
+                                    ]}
+                                    setWybor={setStandardTransportu}
+                                    value={standardTransportu}
+                                    name="transport-form"
+                                />
+                            </div>}
+                        </SettingsButton>
+                    </KonfiguratorMainSettings>
 
-            </KonfiguratorPhotoWithSettings>
+                </KonfiguratorPhotoWithSettings>
 
-            {/*<KonfiguratorMainSettings ref={settingsRef} className={settingsOpened ? "opened" : "closed"}>
+                {/*<KonfiguratorMainSettings ref={settingsRef} className={settingsOpened ? "opened" : "closed"}>
 
                 <SettingsButton onClick={() => { setMiejsceStartowePopupOpened(!miejsceStartowePopupOpened); setOffOthers(0) }} className={miejsceStartowePopupOpened ? "chosen" : ""}>
                     <img height="30px" width="30px" src="../icons/icon-rocket.svg" />
@@ -3382,293 +3499,302 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
                     </div>}
                 </SettingsButton>
             </KonfiguratorMainSettings>*/}
-
-            <KonfiguratorMainMainbox>
-                <KonfiguratorMainMainboxLeft
-                    ref={leftRef}
-                    className="a"
-                    style={{ height: `${leftHeight}px` }}
-                >
-                    <div className="mainboxLeftTitle">
-                        Biblioteka atrakcji
+                <MobileNavButtons>
+                    <div className="mobileNavButton" 
+                        onClick={() => redirectToSettings()}>
+                        <ChevronLeft size={16} />Ustawienia wyjazdu
                     </div>
-                    <PanelBoxNav className="a">
-                        {[
-                            { id: 0, icon: Landmark, label: "Podstawowe" },
-                            { id: 2, icon: Drama, label: "Wydarzenia" },
-                            { id: 1, icon: Shrub, label: "Parki" },
-                        ].map(option => (
-                            <label
-                                key={option.id}
-                                className={radioChosen === option.id ? "panelBoxNavButton chosen" : "panelBoxNavButton"}
-                            >
-                                <input
-                                    type="radio"
-                                    name="navChoice"
-                                    value={option.id}
-                                    checked={radioChosen === option.id}
-                                    onChange={() => setRadioChosen(option.id)}
-                                    style={{ display: "none" }}
-                                />
-                                <option.icon />
-                            </label>
-                        ))}
-                    </PanelBoxNav>
+                    <div className="mobileNavButton b">
 
-                    {radioChosen < 2 && <div className="mainboxLeftInput">
-                        <img src="../icons/search-gray.svg" width={'20px'} />
-                        <input type="text" placeholder="Wyszukaj aktywność..." value={attractionsSearching} onChange={(e) => setAttractionsSearching(e.target.value)} />
-                    </div>}
+                        Zarezerwuj wyjazd<Rocket size={16} />
+                    </div>
+                </MobileNavButtons>
+                <KonfiguratorMainMainbox>
+                    <KonfiguratorMainMainboxLeft
+                        ref={leftRef}
+                        className="a"
+                        style={{ height: `${leftHeight}px` }}
+                    >
+                        <div className="mainboxLeftTitle">
+                            Biblioteka atrakcji
+                        </div>
+                        <PanelBoxNav className="a">
+                            {[
+                                { id: 0, icon: Landmark, label: "Podstawowe" },
+                                { id: 2, icon: Drama, label: "Wydarzenia" },
+                                { id: 1, icon: Shrub, label: "Parki" },
+                            ].map(option => (
+                                <label
+                                    key={option.id}
+                                    className={radioChosen === option.id ? "panelBoxNavButton chosen" : "panelBoxNavButton"}
+                                >
+                                    <input
+                                        type="radio"
+                                        name="navChoice"
+                                        value={option.id}
+                                        checked={radioChosen === option.id}
+                                        onChange={() => setRadioChosen(option.id)}
+                                        style={{ display: "none" }}
+                                    />
+                                    <option.icon />
+                                </label>
+                            ))}
+                        </PanelBoxNav>
 
-                    <div className={radioChosen === 0 ? "listBox" : "listBox listBox--hidden"}>
-                        <div className="mainboxLeftFilterButtons">
-                            <div className={filtersLeftOpened ? "mainboxLeftFilterButton opened" : "mainboxLeftFilterButton"}>
-                                <div className="mainboxLeftFilterHeader" onClick={() => setFiltersLeftOpened(!filtersLeftOpened)}>
-                                    <img src="../icons/arrow-down.svg" height="15px" alt="arrow" /> Wybierz
+                        {radioChosen < 2 && <div className="mainboxLeftInput">
+                            <img src="../icons/search-gray.svg" width={'20px'} />
+                            <input type="text" placeholder="Wyszukaj aktywność..." value={attractionsSearching} onChange={(e) => setAttractionsSearching(e.target.value)} />
+                        </div>}
+
+                        <div className={radioChosen === 0 ? "listBox" : "listBox listBox--hidden"}>
+                            <div className="mainboxLeftFilterButtons">
+                                <div className={filtersLeftOpened ? "mainboxLeftFilterButton opened" : "mainboxLeftFilterButton"}>
+                                    <div className="mainboxLeftFilterHeader" onClick={() => setFiltersLeftOpened(!filtersLeftOpened)}>
+                                        <img src="../icons/arrow-down.svg" height="15px" alt="arrow" /> Wybierz
+                                    </div>
+
+                                    <div className="mainboxLeftFilterResults" onClick={(e) => e.stopPropagation()}>
+                                        <div className="mainboxLeftFilterResult">
+                                            <Checkbox2 /> Muzeum
+                                        </div>
+                                        <div className="mainboxLeftFilterResult">
+                                            <Checkbox2 /> Park
+                                        </div>
+                                        <div className="mainboxLeftFilterResult">
+                                            <Checkbox2 /> Zamek
+                                        </div>
+                                    </div>
                                 </div>
 
-                                <div className="mainboxLeftFilterResults" onClick={(e) => e.stopPropagation()}>
-                                    <div className="mainboxLeftFilterResult">
-                                        <Checkbox2 /> Muzeum
-                                    </div>
-                                    <div className="mainboxLeftFilterResult">
-                                        <Checkbox2 /> Park
-                                    </div>
-                                    <div className="mainboxLeftFilterResult">
-                                        <Checkbox2 /> Zamek
-                                    </div>
+                                <div className="mainboxLeftFilterButton">
+
                                 </div>
                             </div>
 
-                            <div className="mainboxLeftFilterButton">
+                            {atrakcje
+                                .filter(atrakcja =>
+                                    atrakcja.dataSource !== "Bot" && (
+                                        atrakcja.nazwa.toLowerCase().includes(attractionsSearching.toLowerCase()) ||
+                                        atrakcja.adres.toLowerCase().includes(attractionsSearching.toLowerCase()))
+                                )
+                                .toSorted((a, b) => (b.liczbaOpinie * b.ocena || 0) - (a.liczbaOpinie * a.ocena || 0))
+                                .map((atrakcja, idx) => (
+                                    <AttractionResultMediumVerifiedComponent
+                                        key={`${atrakcja.googleId}${idx}`}
+                                        atrakcja={atrakcja}
+                                        wybranyDzien={wybranyDzien}
+                                        addActivity={addActivity}
+                                        typ={1}
+                                        latMD={miejsceDocelowe.location.lat}
+                                        lngMD={miejsceDocelowe.location.lng}
+                                    />
+                                ))}
+                            {atrakcje.length === 0 && <><Loader />Wczytywanie atrakcji...</> ||
+                                <div className="googleLogoDiv">
+                                    <img src="googlelogo.svg" />
+                                </div>}
+                            {atrakcje
+                                .filter(atrakcja =>
+                                    atrakcja.dataSource === "Bot" && (
+                                        atrakcja.nazwa.toLowerCase().includes(attractionsSearching.toLowerCase()) ||
+                                        atrakcja.adres.toLowerCase().includes(attractionsSearching.toLowerCase()))
+                                )
+                                .toSorted((a, b) => (b.liczbaOpinie * b.ocena || 0) - (a.liczbaOpinie * a.ocena || 0))
+                                .map((atrakcja, idx) => (
+                                    <AttractionResultMediumVerifiedComponent
+                                        key={`${atrakcja.googleId}${idx}`}
+                                        atrakcja={atrakcja}
+                                        wybranyDzien={wybranyDzien}
+                                        addActivity={addActivity}
+                                        typ={3}
+                                        latMD={miejsceDocelowe.location.lat}
+                                        lngMD={miejsceDocelowe.location.lng}
+                                    />
+                                ))}
+                        </div>
+                        <div className={radioChosen === 1 ? "listBox" : "listBox listBox--hidden"}>
+                            {basicActivities
+                                .filter(atrakcja => {
+                                    const search = attractionsSearching.toLowerCase();
+                                    const name = (atrakcja.nazwa || "").toLowerCase();
+                                    const address = (atrakcja.adres || "").toLowerCase();
+                                    return name.includes(search) || address.includes(search);
+                                })
+                                .toSorted((a, b) =>
+                                    (a.nazwa || "").localeCompare(b.nazwa || "", "pl", { sensitivity: "base" })
+                                )
+                                .map((atrakcja, idx) => (
+                                    <AttractionResultMediumComponent
+                                        key={`${atrakcja.googleId}${idx}`}
+                                        atrakcja={atrakcja}
+                                        wybranyDzien={wybranyDzien}
+                                        addActivity={addActivity}
+                                        baseVersion={true}
+                                    />
+                                ))}
+                        </div>
+                        <div className={radioChosen === 2 ? "listBox" : "listBox listBox--hidden"}>
+                            {Array.isArray(events) && events
+                                .map((atrakcja, idx) => (
+                                    <AttractionResultMediumVerifiedComponent
+                                        key={`${atrakcja.googleId}${idx}`}
+                                        atrakcja={atrakcja}
+                                        wybranyDzien={wybranyDzien}
+                                        addActivity={addActivity}
+                                        typ={1}
+                                        latMD={miejsceDocelowe.location.lat}
+                                        lngMD={miejsceDocelowe.location.lng}
+                                    />
+                                ))}
+                        </div>
+                        <div className="bottomGradient"></div>
+                    </KonfiguratorMainMainboxLeft>
 
+                    <KonfiguratorMainMainboxRight ref={centerRef}>
+
+                        <KonfiguratorWyjazduComp redirecting={redirecting} setRedirecting={setRedirecting} handleSaveClick={handleSaveClick} hasPendingAutoSave={hasPendingAutoSave} dataPrzyjazdu={dataPrzyjazdu} dataWyjazdu={dataWyjazdu} standardHotelu={standardHotelu} standardTransportu={standardTransportu} liczbaOpiekunow={liczbaOpiekunow} liczbaUczestnikow={liczbaUczestnikow} tripId={tripId} miejsceStartowe={miejsceStartowe} computedPrice={tripPrice + insurancePrice} computingPrice={computingPrice} miejsceDocelowe={miejsceDocelowe} changeActivity={changeActivity} checkOut={timeToMinutes(wybranyHotel?.checkOut) || 720} changeStartHour={changeStartHour} deleteActivity={deleteActivity} startModifyingAct={startModifyingAct} setActivityPanelOpened={setActivityPanelOpened} onAttractionTimeChange={changeActivityTime} swapActivities={swapActivities} onTransportChange={changeChosenTransport} timeSchedule={timeSchedule} routeSchedule={routeSchedule} chosenTransportSchedule={chosenTransportSchedule} loading={konfiguratorLoading} activitiesSchedule={activitiesSchedule} liczbaDni={liczbaDni} key={`schedule-${liczbaDni}-${konfiguratorLoading}-${activitiesSchedule}`} wybranyDzien={wybranyDzien} setWybranyDzien={setWybranyDzien} addActivity={addActivity} />
+                        {activityPanelOpened && 1 == 2 &&
+                            <AddAttractionWrapper>
+                                <AddActivityPanelContainer>
+                                    <AddActivityPanel atrakcje={atrakcje} key={`${modyfikacja}${atrakcje}`} setModAct={setModyfikacja} dayIndex={wybranyDzien} closePanel={() => setActivityPanelOpened(false)} miejsceDocelowe={miejsceDocelowe.nazwa} modActIdx={modyfikacja.flag ? modyfikacja.idx : null} addActivity={modyfikacja.flag ? changeActivity : addActivity} />
+                                </AddActivityPanelContainer>
+                            </AddAttractionWrapper>
+                        }
+                        {//<AttractionsMap attractions={atrakcje}/>
+                        }
+                        {activityPanelOpened &&
+                            <AddActivityNew
+                                miejsceDocelowe={miejsceDocelowe}
+                                atrakcje={atrakcje}
+                                setActivityPanelOpened={setActivityPanelOpened}
+                                wybranyDzien={wybranyDzien}
+                                addActivity={addActivity}
+                                events={events}>
+                            </AddActivityNew>}
+
+                    </KonfiguratorMainMainboxRight>
+
+                    <KonfiguratorMainMainboxLeft ref={rightRef} className="right">
+                        <section style={{ margin: '0 auto', display: 'flex', justifyContent: 'center' }} id="chatbox">
+                            <ChatBox2 activitiesSchedule={activitiesSchedule} basicActivities={basicActivities} miejsceDocelowe={miejsceDocelowe} attractions={atrakcje} addActivity={addActivity} swapActivities={swapActivities} changeActivity={changeActivity} deleteActivity={deleteActivity} />
+
+
+                        </section><div className="mainboxLeftTitle">
+                            Podsumowanie wyjazdu
+                        </div>
+                        <SummaryInfoBox>
+                            <div className="summaryInfoBoxTitle">
+                                <img src="../icons/hotel-white.svg" width="20px" />
+                                {standardHotelu != 0 && standardHotelu != 3 ? "Hotel" : "Nocleg"}
                             </div>
-                        </div>
+                            {standardHotelu != 3 &&
+                                <>
+                                    <div className="summaryInfoBoxTitle b" >
+                                        <img src="../icons/hotelName-white.svg" width="20px" />
+                                        Nazwa: {wybranyHotel.nazwa}
+                                    </div>
+                                    <div className="summaryInfoBoxTitle b" >
+                                        <img src="../icons/time-white.svg" width="20px" />
+                                        Doba hotelowa: {wybranyHotel.checkIn} - {wybranyHotel.checkOut}
+                                    </div>
+                                </>
+                            }
+                        </SummaryInfoBox>
 
-                        {atrakcje
-                            .filter(atrakcja =>
-                                atrakcja.dataSource !== "Bot" && (
-                                    atrakcja.nazwa.toLowerCase().includes(attractionsSearching.toLowerCase()) ||
-                                    atrakcja.adres.toLowerCase().includes(attractionsSearching.toLowerCase()))
-                            )
-                            .toSorted((a, b) => (b.liczbaOpinie * b.ocena || 0) - (a.liczbaOpinie * a.ocena || 0))
-                            .map((atrakcja, idx) => (
-                                <AttractionResultMediumVerifiedComponent
-                                    key={`${atrakcja.googleId}${idx}`}
-                                    atrakcja={atrakcja}
-                                    wybranyDzien={wybranyDzien}
-                                    addActivity={addActivity}
-                                    typ={1}
-                                    latMD={miejsceDocelowe.location.lat}
-                                    lngMD={miejsceDocelowe.location.lng}
-                                />
-                            ))}
-                        {atrakcje.length === 0 && <><Loader />Wczytywanie atrakcji...</> ||
-                            <div className="googleLogoDiv">
-                                <img src="googlelogo.svg" />
-                            </div>}
-                        {atrakcje
-                            .filter(atrakcja =>
-                                atrakcja.dataSource === "Bot" && (
-                                    atrakcja.nazwa.toLowerCase().includes(attractionsSearching.toLowerCase()) ||
-                                    atrakcja.adres.toLowerCase().includes(attractionsSearching.toLowerCase()))
-                            )
-                            .toSorted((a, b) => (b.liczbaOpinie * b.ocena || 0) - (a.liczbaOpinie * a.ocena || 0))
-                            .map((atrakcja, idx) => (
-                                <AttractionResultMediumVerifiedComponent
-                                    key={`${atrakcja.googleId}${idx}`}
-                                    atrakcja={atrakcja}
-                                    wybranyDzien={wybranyDzien}
-                                    addActivity={addActivity}
-                                    typ={3}
-                                    latMD={miejsceDocelowe.location.lat}
-                                    lngMD={miejsceDocelowe.location.lng}
-                                />
-                            ))}
-                    </div>
-                    <div className={radioChosen === 1 ? "listBox" : "listBox listBox--hidden"}>
-                        {basicActivities
-                            .filter(atrakcja => {
-                                const search = attractionsSearching.toLowerCase();
-                                const name = (atrakcja.nazwa || "").toLowerCase();
-                                const address = (atrakcja.adres || "").toLowerCase();
-                                return name.includes(search) || address.includes(search);
-                            })
-                            .toSorted((a, b) =>
-                                (a.nazwa || "").localeCompare(b.nazwa || "", "pl", { sensitivity: "base" })
-                            )
-                            .map((atrakcja, idx) => (
-                                <AttractionResultMediumComponent
-                                    key={`${atrakcja.googleId}${idx}`}
-                                    atrakcja={atrakcja}
-                                    wybranyDzien={wybranyDzien}
-                                    addActivity={addActivity}
-                                    baseVersion={true}
-                                />
-                            ))}
-                    </div>
-                    <div className={radioChosen === 2 ? "listBox" : "listBox listBox--hidden"}>
-                        {Array.isArray(events) && events
-                            .map((atrakcja, idx) => (
-                                <AttractionResultMediumVerifiedComponent
-                                    key={`${atrakcja.googleId}${idx}`}
-                                    atrakcja={atrakcja}
-                                    wybranyDzien={wybranyDzien}
-                                    addActivity={addActivity}
-                                    typ={1}
-                                    latMD={miejsceDocelowe.location.lat}
-                                    lngMD={miejsceDocelowe.location.lng}
-                                />
-                            ))}
-                    </div>
-                    <div className="bottomGradient"></div>
-                </KonfiguratorMainMainboxLeft>
-
-                <KonfiguratorMainMainboxRight ref={centerRef}>
-
-                    <KonfiguratorWyjazduComp handleSaveClick={handleSaveClick} hasPendingAutoSave={hasPendingAutoSave} dataPrzyjazdu={dataPrzyjazdu} dataWyjazdu={dataWyjazdu} standardHotelu={standardHotelu} standardTransportu={standardTransportu} liczbaOpiekunow={liczbaOpiekunow} liczbaUczestnikow={liczbaUczestnikow} tripId={tripId} miejsceStartowe={miejsceStartowe} computedPrice={tripPrice + insurancePrice} computingPrice={computingPrice} miejsceDocelowe={miejsceDocelowe} changeActivity={changeActivity} checkOut={timeToMinutes(wybranyHotel?.checkOut) || 720} changeStartHour={changeStartHour} deleteActivity={deleteActivity} startModifyingAct={startModifyingAct} setActivityPanelOpened={setActivityPanelOpened} onAttractionTimeChange={changeActivityTime} swapActivities={swapActivities} onTransportChange={changeChosenTransport} timeSchedule={timeSchedule} routeSchedule={routeSchedule} chosenTransportSchedule={chosenTransportSchedule} loading={konfiguratorLoading} activitiesSchedule={activitiesSchedule} liczbaDni={liczbaDni} key={`schedule-${liczbaDni}-${konfiguratorLoading}-${activitiesSchedule}`} wybranyDzien={wybranyDzien} setWybranyDzien={setWybranyDzien} addActivity={addActivity} />
-                    {activityPanelOpened && 1 == 2 &&
-                        <AddAttractionWrapper>
-                            <AddActivityPanelContainer>
-                                <AddActivityPanel atrakcje={atrakcje} key={`${modyfikacja}${atrakcje}`} setModAct={setModyfikacja} dayIndex={wybranyDzien} closePanel={() => setActivityPanelOpened(false)} miejsceDocelowe={miejsceDocelowe.nazwa} modActIdx={modyfikacja.flag ? modyfikacja.idx : null} addActivity={modyfikacja.flag ? changeActivity : addActivity} />
-                            </AddActivityPanelContainer>
-                        </AddAttractionWrapper>
-                    }
-                    {//<AttractionsMap attractions={atrakcje}/>
-                    }
-                    {activityPanelOpened &&
-                        <AddActivityNew
-                            miejsceDocelowe={miejsceDocelowe}
-                            atrakcje={atrakcje}
-                            setActivityPanelOpened={setActivityPanelOpened}
-                            wybranyDzien={wybranyDzien}
-                            addActivity={addActivity}
-                            events={events}>
-                        </AddActivityNew>}
-
-                </KonfiguratorMainMainboxRight>
-
-                <KonfiguratorMainMainboxLeft ref={rightRef} className="right">
-                    <section style={{ margin: '0 auto', display: 'flex', justifyContent: 'center' }} id="chatbox">
-                        <ChatBox2 activitiesSchedule={activitiesSchedule} basicActivities={basicActivities} miejsceDocelowe={miejsceDocelowe} attractions={atrakcje} addActivity={addActivity} swapActivities={swapActivities} changeActivity={changeActivity} deleteActivity={deleteActivity} />
-
-
-                    </section><div className="mainboxLeftTitle">
-                        Podsumowanie wyjazdu
-                    </div>
-                    <SummaryInfoBox>
-                        <div className="summaryInfoBoxTitle">
-                            <img src="../icons/hotel-white.svg" width="20px" />
-                            {standardHotelu != 0 && standardHotelu != 3 ? "Hotel" : "Nocleg"}
-                        </div>
-                        {standardHotelu != 3 &&
-                            <>
-                                <div className="summaryInfoBoxTitle b" >
-                                    <img src="../icons/hotelName-white.svg" width="20px" />
-                                    Nazwa: {wybranyHotel.nazwa}
-                                </div>
-                                <div className="summaryInfoBoxTitle b" >
-                                    <img src="../icons/time-white.svg" width="20px" />
-                                    Doba hotelowa: {wybranyHotel.checkIn} - {wybranyHotel.checkOut}
-                                </div>
-                            </>
-                        }
-                    </SummaryInfoBox>
-
-                    <SummaryInfoBox className="b">
-                        <div className="summaryInfoBoxTitle">
-                            <img src="../icons/hotel-white.svg" width="20px" />
-                            Przejazd do {miejsceDocelowe?.nazwa}
-                        </div>
-                        {
-                            standardTransportu == 0 ?
-                                routeToPrint && routeToPrint.length > 0 ?
-                                    <>
-                                        {
-                                            routeToPrint.map((rt, rtIdx) => (
-                                                <div className="routeSummaryRow" key={`${rt.line}_${rtIdx}`}>
-                                                    <img src="../icons/train-white.svg" height={'20px'} />
-                                                    <div className="routeSummaryRowContent">{rt.line}, {minutesToStringTime(rt.time)}<a>{rt.depart} - {rt.arrival}</a></div>
-                                                </div>
-                                            ))
-                                        }
-                                        <div className="summaryInfoBoxMoreButton" onClick={() => addRouteAlert(0)}>
-                                            Pokaż całą trasę
-                                        </div>
-                                    </>
+                        <SummaryInfoBox className="b">
+                            <div className="summaryInfoBoxTitle">
+                                <img src="../icons/hotel-white.svg" width="20px" />
+                                Przejazd do {miejsceDocelowe?.nazwa}
+                            </div>
+                            {
+                                standardTransportu == 0 ?
+                                    routeToPrint && routeToPrint.length > 0 ?
+                                        <>
+                                            {
+                                                routeToPrint.map((rt, rtIdx) => (
+                                                    <div className="routeSummaryRow" key={`${rt.line}_${rtIdx}`}>
+                                                        <img src="../icons/train-white.svg" height={'20px'} />
+                                                        <div className="routeSummaryRowContent">{rt.line}, {minutesToStringTime(rt.time)}<a>{rt.depart} - {rt.arrival}</a></div>
+                                                    </div>
+                                                ))
+                                            }
+                                            <div className="summaryInfoBoxMoreButton" onClick={() => addRouteAlert(0)}>
+                                                Pokaż całą trasę
+                                            </div>
+                                        </>
+                                        :
+                                        "To nie będzie ciężki przejazd"
                                     :
-                                    "To nie będzie ciężki przejazd"
-                                :
-                                standardTransportu == 1 ?
-                                    <>
-                                        <img src="../icons/bus-white.svg" height="30px" />
-                                    </>
-                                    :
-                                    <>
-                                        <img src="../icons/ownTransport-white.svg" height="30px" />
-                                        Własny transport
-                                    </>
-                        }
-                    </SummaryInfoBox>
+                                    standardTransportu == 1 ?
+                                        <>
+                                            <img src="../icons/bus-white.svg" height="30px" />
+                                        </>
+                                        :
+                                        <>
+                                            <img src="../icons/ownTransport-white.svg" height="30px" />
+                                            Własny transport
+                                        </>
+                            }
+                        </SummaryInfoBox>
 
-                    <SummaryInfoBox className="b">
-                        <div className="summaryInfoBoxTitle">
-                            <img src="../icons/hotel-white.svg" width="20px" />
-                            Powrót do {miejsceStartowe?.nazwa}
+                        <SummaryInfoBox className="b">
+                            <div className="summaryInfoBoxTitle">
+                                <img src="../icons/hotel-white.svg" width="20px" />
+                                Powrót do {miejsceStartowe?.nazwa}
+                            </div>
+                            {
+                                standardTransportu == 0 ?
+                                    routeFromPrint && routeFromPrint.length > 0 ?
+                                        <>
+                                            {
+                                                routeFromPrint.map((rt, rtIdx) => (
+                                                    <div className="routeSummaryRow" key={`${rt.line}_${rtIdx}`}>
+                                                        <img src="../icons/train-white.svg" height={'20px'} />
+                                                        <div className="routeSummaryRowContent">{rt.line}, {minutesToStringTime(rt.time)}<a>{rt.depart} - {rt.arrival}</a></div>
+                                                    </div>
+                                                ))
+                                            }
+                                            <div className="summaryInfoBoxMoreButton" onClick={() => addRouteAlert(routeSchedule.length - 1)}>
+                                                Pokaż całą trasę
+                                            </div>
+                                        </>
+                                        :
+                                        "To nie będzie ciężki przejazd"
+                                    :
+                                    standardTransportu == 1 ?
+                                        <>
+                                            <img src="../icons/bus-white.svg" height="30px" />
+                                        </>
+                                        :
+                                        <>
+                                            <img src="../icons/ownTransport-white.svg" height="30px" />
+                                            Własny transport
+                                        </>
+                            }
+                        </SummaryInfoBox>
+
+                        <CostSummary tripPrice={tripPrice} insurancePrice={insurancePrice} liczbaOpiekunow={liczbaOpiekunow} liczbaUczestnikow={liczbaUczestnikow} />
+                        <div className="mainboxLeftTitle" style={{ paddingTop: '10px', marginTop: '20px', borderTop: '1px solid #ccc' }}>
+                            Podsumowanie dnia
                         </div>
-                        {
-                            standardTransportu == 0 ?
-                                routeFromPrint && routeFromPrint.length > 0 ?
-                                    <>
-                                        {
-                                            routeFromPrint.map((rt, rtIdx) => (
-                                                <div className="routeSummaryRow" key={`${rt.line}_${rtIdx}`}>
-                                                    <img src="../icons/train-white.svg" height={'20px'} />
-                                                    <div className="routeSummaryRowContent">{rt.line}, {minutesToStringTime(rt.time)}<a>{rt.depart} - {rt.arrival}</a></div>
-                                                </div>
-                                            ))
-                                        }
-                                        <div className="summaryInfoBoxMoreButton" onClick={() => addRouteAlert(routeSchedule.length - 1)}>
-                                            Pokaż całą trasę
-                                        </div>
-                                    </>
-                                    :
-                                    "To nie będzie ciężki przejazd"
-                                :
-                                standardTransportu == 1 ?
-                                    <>
-                                        <img src="../icons/bus-white.svg" height="30px" />
-                                    </>
-                                    :
-                                    <>
-                                        <img src="../icons/ownTransport-white.svg" height="30px" />
-                                        Własny transport
-                                    </>
-                        }
-                    </SummaryInfoBox>
-
-                    <CostSummary tripPrice={tripPrice} insurancePrice={insurancePrice} liczbaOpiekunow={liczbaOpiekunow} liczbaUczestnikow={liczbaUczestnikow} />
-                    <div className="mainboxLeftTitle" style={{ paddingTop: '10px', marginTop: '20px', borderTop: '1px solid #ccc' }}>
-                        Podsumowanie dnia
-                    </div>
-                    <div style={{ pointerEvents: "none", height: '270px', width: '90%', borderRadius: '15px', overflow: 'hidden', backgroundColor: '#f0f0f0', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        <RouteMap
-                            schedule={activitiesSchedule[wybranyDzien]}
-                            key={JSON.stringify(activitiesSchedule[wybranyDzien])}
-                        />
-                    </div>
-                </KonfiguratorMainMainboxLeft>
-            </KonfiguratorMainMainbox>
-            {popupPickerOpened !== -1 &&
-                <PopupManager
-                    dataPrzyjazdu={dataPrzyjazdu} setDataPrzyjazdu={setDataPrzyjazdu} dataWyjazdu={dataWyjazdu} setDataWyjazdu={setDataWyjazdu}
-                    standardTransportu={standardTransportu} setStandardTransportu={setStandardTransportu} standardHotelu={standardHotelu} setStandardHotelu={setStandardHotelu} field={popupPickerOpened} setPopupPickerOpened={setPopupPickerOpened} miejsceDocelowe={miejsceStartowe} setMiejsceDocelowe={setMiejsceStartowe} setLiczbaOpiekunow={setLiczbaOpiekunow} liczbaOpiekunow={liczbaOpiekunow} liczbaUczestnikow={liczbaUczestnikow} setLiczbaUczestnikow={setLiczbaUczestnikow}>
-                </PopupManager>}
-            {alertsTable && alertsTable.length ?
-                <AlertsBox key={alertsTable} alertsTable={alertsTable} deleteAlert={deleteAlert} />
-                :
-                null
-            }
-        </>
+                        <div style={{ pointerEvents: "none", height: '270px', width: '90%', borderRadius: '15px', overflow: 'hidden', backgroundColor: '#f0f0f0', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <RouteMap
+                                schedule={activitiesSchedule[wybranyDzien]}
+                                key={JSON.stringify(activitiesSchedule[wybranyDzien])}
+                            />
+                        </div>
+                    </KonfiguratorMainMainboxLeft>
+                </KonfiguratorMainMainbox>
+                {popupPickerOpened !== -1 &&
+                    <PopupManager
+                        dataPrzyjazdu={dataPrzyjazdu} setDataPrzyjazdu={setDataPrzyjazdu} dataWyjazdu={dataWyjazdu} setDataWyjazdu={setDataWyjazdu}
+                        standardTransportu={standardTransportu} setStandardTransportu={setStandardTransportu} standardHotelu={standardHotelu} setStandardHotelu={setStandardHotelu} field={popupPickerOpened} setPopupPickerOpened={setPopupPickerOpened} miejsceDocelowe={miejsceStartowe} setMiejsceDocelowe={setMiejsceStartowe} setLiczbaOpiekunow={setLiczbaOpiekunow} liczbaOpiekunow={liczbaOpiekunow} liczbaUczestnikow={liczbaUczestnikow} setLiczbaUczestnikow={setLiczbaUczestnikow}>
+                    </PopupManager>}
+                {alertsTable && alertsTable.length ?
+                    <AlertsBox key={alertsTable} alertsTable={alertsTable} deleteAlert={deleteAlert} />
+                    :
+                    null
+                }
+            </>
     )
 }

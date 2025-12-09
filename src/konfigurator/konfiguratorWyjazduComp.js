@@ -5,8 +5,9 @@ import React from "react";
 import { AddActivityPanel } from "./addActivityPanel";
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 import { AttractionResultFull, RouteResult } from "../roots/attractionResults";
-import { Plus, Save } from "lucide-react";
+import { ArrowLeft, ChevronLast, ChevronLeft, MoveLeft, MoveLeftIcon, Plus, Rocket, Save } from "lucide-react";
 import { MobileResult } from "../roots/attractionResultMobile";
+import { useNavigate } from "react-router-dom";
 
 const portacc = process.env.REACT_APP_API_SOURCE || "https://api.draftngo.com";
 
@@ -47,7 +48,7 @@ const KonfiguratorWyjazduCompMainbox = styled.div`
   align-items: stretch;
   justify-content: flex-start;
   padding-top: 10px;
-  @media screen and (max-width: 800px){ width: 100%; min-height: fit-content;}
+  @media screen and (max-width: 800px){ width: 100%; min-height: fit-content; margin-top: 0;}
 
   .konifuguratorMainboxTitle{
     font-size: 24px;
@@ -59,18 +60,14 @@ const KonfiguratorWyjazduCompMainbox = styled.div`
     padding-bottom: 10px;
     border-bottom: 1px solid lightgray;
     margin-bottom: 10px;
+    padding: 5px 10px;
     box-sizing: border-box;
     display: flex;
     align-items: center;
     gap: 12px;
     justify-content: space-between;
 
-    @media screen and (max-width: 800px){
-      padding-left: 15px;
-      flex-direction: column;
-      align-items: flex-start;
-      gap: 8px;
-    }
+ 
   }
 
   .title-left,
@@ -84,24 +81,52 @@ const KonfiguratorWyjazduCompMainbox = styled.div`
 
 
 
-const SaveButton = styled.button`
-  height: 40px;
-  padding: 0px 20px;
-  border-radius: 8px;
-  border: 2px solid #000000ff;
+export const SaveButton = styled.button`
+
+    &.c{
+        @media screen and (max-width: 1200px){
+        display: none;
+        }
+    }
+    text-decoration: none;
+    height: 40px;
+    padding: 0px 20px;
+    border: 1px solid #f0f0f0;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 500;
+    font-size: 14px;
+    font-family: 'Inter', sans-serif;
+
   background: #ffffff;
   color: #000000ff;
-  font-family: Inter, system-ui, -apple-system, sans-serif;
-  font-weight: 500 !important;
+
   cursor: pointer;
   transition:.2s ease-in-out;
-  display: flex;
-  align-items: center;
-  justify-content: center;
   gap: 3px;
-  &:hover { box-shadow: 0 8px 20px rgba(0,0,0,.06); background: #f9fafb; }
-  &:active { transform: scale(.99); }
-  &:disabled { opacity: .6; cursor: not-allowed; border: 2px solid lightgray; }
+  &.b{
+    color: white;
+    background:  #008d73ff;
+    border: none;
+    &:hover { 
+        box-shadow: 0 8px 20px rgba(0,0,0,.06); 
+        background: #006a57ff;
+    }
+  }
+  &:hover { 
+    box-shadow: 0 8px 20px rgba(0,0,0,.06); 
+    background: #f9fafb; 
+  }
+  &:active { 
+    transform: scale(.99); 
+  }
+  &:disabled { 
+    opacity: .6; 
+    cursor: not-allowed; 
+    border: 1px solid #f0f0f0; 
+  }
 `;
 
 const KonfiguratorNavBar = styled.div`
@@ -213,6 +238,7 @@ export const KonfiguratorWyjazduComp = ({
     onTransportChange, timeSchedule, chosenTransportSchedule,
     loading, atrakcje, routeSchedule, activitiesSchedule,
     liczbaDni, wybranyDzien, setWybranyDzien, checkOut, miejsceStartowe, liczbaUczestnikow, liczbaOpiekunow, standardTransportu, standardHotelu, dataPrzyjazdu, dataWyjazdu, hasPendingAutoSave, handleSaveClick,
+    redirecting, setRedirecting,
 }) => {
 
     const [localWybranyDzien, setLocalWybranyDzien] = useState(wybranyDzien);
@@ -240,7 +266,7 @@ export const KonfiguratorWyjazduComp = ({
      * Zapisuje plan wraz z computedPrice.
      * Wymaga: activitiesSchedule (array-of-arrays), miejsceDocelowe (obiekt), computedPrice (number).
      */
-    async function saveActivitiesSchedule(activitiesSchedule, miejsceDocelowe, miejsceStartowe, dataPrzyjazdu, dataWyjazdu, liczbaUczestnikow, liczbaOpiekunow, standardHotelu, standardTransportu, computedPrice) {
+    async function saveActivitiesSchedule( activitiesSchedule, miejsceDocelowe, miejsceStartowe, dataPrzyjazdu, dataWyjazdu, liczbaUczestnikow, liczbaOpiekunow, standardHotelu, standardTransportu, computedPrice) {
         if (!Array.isArray(activitiesSchedule)) {
             throw new Error('Parametr "activitiesSchedule" musi być tablicą.');
         }
@@ -304,6 +330,25 @@ export const KonfiguratorWyjazduComp = ({
 
     const lastIdx = activitiesSchedule[Math.min(wybranyDzien, activitiesSchedule.length - 1)].length - 1;
 
+    const navigate = useNavigate();
+    const redirectToSettings = async () => {
+        try {
+            if (hasPendingAutoSave) {
+                setRedirecting(true);
+                // 🔽 zakładamy, że handleSaveClick zwraca Promise
+                await handleSaveClick();
+            }
+
+            const url = new URL(window.location.href);
+            const params = url.search || ""; // np. "?tripId=123&arr=2025-05-01..."
+
+            const redirectLink = `/konfigurator-lounge${params}`;
+            navigate(redirectLink);
+        } finally {
+            setRedirecting(false);
+        }
+    };
+
     return (
         <KonfiguratorWyjazduCompMainbox>
             <div className="konifuguratorMainboxTitle">
@@ -328,8 +373,9 @@ export const KonfiguratorWyjazduComp = ({
                                 ? 'Czekaj na cenę…'
                                 : (loading || scheduleLoading)
                                     ? 'Ładowanie…'
-                                    : <><Save size={20} />Zapisz</>}
+                                    : <><Save size={20} /></>}
                     </SaveButton>
+                  
                 </div>
             </div>
 
