@@ -899,7 +899,7 @@ app.get("/api/trip-plans", async (_req, res) => {
                 createdAt: d.createdAt,
                 updatedAt: d.updatedAt,
                 authors: d.authors,
-                users: Array.isArray(doc.users) ? doc.users : [],   // <-- DODANE
+                users: Array.isArray(d.users) ? d.users : [],   // <-- DODANE
                 miejsceDocelowe: d.miejsceDocelowe,
                 miejsceStartowe: d.miejsceStartowe,
                 dataPrzyjazdu: d.dataPrzyjazdu,
@@ -1053,7 +1053,7 @@ app.get("/api/trip-plans/by-author/:userId", requireAuth, async (req, res) => {
                 createdAt: d.createdAt,
                 updatedAt: d.updatedAt,
                 authors: d.authors,
-                users: Array.isArray(doc.users) ? doc.users : [],   // <-- DODANE
+                users: Array.isArray(d.users) ? d.users : [],   // <-- DODANE
                 miejsceDocelowe: d.miejsceDocelowe,
                 miejsceStartowe: d.miejsceStartowe,
                 dataPrzyjazdu: d.dataPrzyjazdu,
