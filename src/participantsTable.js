@@ -184,6 +184,7 @@ export const ParticipantsTable = ({ users = [], authors = [] }) => {
                     </TableRow>
                 </thead>
                 <tbody>
+                    {/*}
                    <TableRow>
                         <TableCell>Jan Kozidupka</TableCell>
                         <TableCell className="mailCell">
@@ -226,6 +227,8 @@ export const ParticipantsTable = ({ users = [], authors = [] }) => {
                         </TableCell>
 
                     </TableRow>
+
+                    */}
                     <TableRow>
                        
                     </TableRow>

@@ -1065,7 +1065,7 @@ app.post("/api/trip-plans", async (req, res) => {
  */
 app.get("/api/trip-plans", async (_req, res) => {
     try {
-        const docs = await TripPlan.find().sort({ createdAt: -1 }).lean();
+        const docs = await TripPlan.find().sort({ updatedAt: -1 }).lean();
 
         const out = docs.map((d) => {
             const aoa = unpackDays(d.activitiesSchedule);
@@ -1297,9 +1297,9 @@ app.delete("/api/trip-plans/:id", async (req, res) => {
 
 /**
  * GET /api/trip-plans/by-author/:userId
- * Lista planów konkretnego autora (paginacja) – pełne pola.
+ * Lista planów, w których user jest autorem LUB uczestnikiem (users).
+ * W każdym rekordzie dodajemy pole `role`: "author" | "user".
  */
-// Wersja z autoryzacją – tylko właściciel może zobaczyć swoje plany
 app.get("/api/trip-plans/by-author/:userId", requireAuth, async (req, res) => {
     try {
         const { userId } = req.params;
@@ -1320,10 +1320,22 @@ app.get("/api/trip-plans/by-author/:userId", requireAuth, async (req, res) => {
         const limit = Math.min(Math.max(limitRaw, 1), 100);
         const skip = (page - 1) * limit;
 
-        const query = { authors: new mongoose.Types.ObjectId(userId) };
+        const userObjectId = new mongoose.Types.ObjectId(userId);
+
+        // 🔹 Szukamy planów, gdzie user jest autorem LUB uczestnikiem
+        const query = {
+            $or: [
+                { authors: userObjectId },
+                { users: userObjectId },
+            ],
+        };
 
         const [items, total] = await Promise.all([
-            TripPlan.find(query).sort({ createdAt: -1 }).skip(skip).limit(limit).lean(),
+            TripPlan.find(query)
+                .sort({ createdAt: -1 })
+                .skip(skip)
+                .limit(limit)
+                .lean(),
             TripPlan.countDocuments(query),
         ]);
 
@@ -1341,12 +1353,22 @@ app.get("/api/trip-plans/by-author/:userId", requireAuth, async (req, res) => {
                 })
                 : [];
 
+            const authorsArr = Array.isArray(d.authors) ? d.authors : [];
+            const usersArr   = Array.isArray(d.users) ? d.users : [];
+
+            // 🔹 Wyznaczenie roli użytkownika w danym planie
+            const userIdStr = String(userId);
+            const isAuthor = authorsArr.some(a => String(a) === userIdStr);
+            const role = isAuthor ? "author" : "user";
+
             return {
                 _id: d._id,
                 createdAt: d.createdAt,
                 updatedAt: d.updatedAt,
-                authors: d.authors,
-                users: Array.isArray(d.users) ? d.users : [],   // <-- DODANE
+                authors: authorsArr,
+                users: usersArr,
+                role, // <-- TU DODAJEMY ROLĘ
+
                 miejsceDocelowe: d.miejsceDocelowe,
                 miejsceStartowe: d.miejsceStartowe,
                 dataPrzyjazdu: d.dataPrzyjazdu,
@@ -1360,7 +1382,7 @@ app.get("/api/trip-plans/by-author/:userId", requireAuth, async (req, res) => {
                 photoLink: d.photoLink ?? null,
                 public: typeof d.public === "boolean" ? d.public : true,
                 nazwa: d.nazwa ?? null,
-                startHours, // <-- NOWE POLE
+                startHours,
             };
         });
 
@@ -1376,6 +1398,7 @@ app.get("/api/trip-plans/by-author/:userId", requireAuth, async (req, res) => {
         return res.status(500).json({ error: "ServerError" });
     }
 });
+
 
 // Publiczna lista planów konkretnego autora – tylko te z public: true
 app.get("/api/trip-plans/public/by-author/:userId", async (req, res) => {

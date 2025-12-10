@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import styled from 'styled-components';
 import { Tab, TabsContainer } from './profilePage';
 import { PreConfigureSketch } from './preConfSketch';
-import { Edit2, Settings, Share, Share2 } from 'lucide-react';
+import { Check, Copy, Edit2, Settings, Share, Share2 } from 'lucide-react';
 import useUserStore, { fetchMe } from './usercontent.js';
 import EyeCheckbox from './eyeCheckbox.js';
 import { PreConfigureParticipants } from './preConfigureParticipants.js';
@@ -200,6 +200,130 @@ const PreConfigureHeader = styled.div`
   }
 `;
 
+const PreConfigureSharePopupWrapper = styled.div`
+    position: fixed;
+    left: 0;
+    top: 0;
+    height: 100%;
+    width: 100%;
+    background-color: #00000062;
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+`;
+
+const PreConfigureSharePopup = styled.div`
+    width: 95%;
+    max-width: 400px;
+    min-height: 300px;
+    background-color: white;
+    box-shadow: 0 0 50px gray;
+    border-radius: 20px;
+    .sharePopupTitle{
+        padding: 20px;
+        padding-bottom: 0;
+        box-sizing: border-box;
+        font-size: 22px;
+        font-family: 'Inter';
+        font-weight: 600;
+        text-align: left;
+        display: flex;
+        align-items: center;
+        justify-content: flex-start;
+    }
+    .sharePopupSubtitle{
+        padding: 0 20px;
+        box-sizing: border-box;
+        font-size: 14px;
+        font-family: 'Inter';
+        font-weight: 500;
+        text-align: left;
+        color: #606060;
+        span{
+            font-weight: 600;
+            color: black;
+        }
+    }
+    .sharePopupReflinkWrapper{
+        padding: 15px 20px;
+        box-sizing: border-box;
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        justify-content: center;
+        text-align: left;
+
+        .sharePopupReflink{
+            width: 100%;
+            border-radius: 5px;
+            padding: 10px 10px; /* Zmniejszony padding wewnętrzny */
+            padding-right: 50px; /* Mniejsze miejsce na kwadratowy przycisk */
+            color: #404040;
+            border: 1px solid lightgray;
+            box-sizing: border-box;
+            text-wrap: nowrap;
+            overflow: hidden;
+            position: relative;
+            font-size: 14px;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            justify-content: flex-start;
+            gap: 4px;
+            min-height: 40px; /* Zapewnia minimalną wysokość */
+
+            svg{
+                flex-shrink: 0;
+            }
+
+            .sharePopupReflinkText{
+                overflow: hidden;
+                text-overflow: ellipsis;
+            }
+
+            .sharePopupCopyButton{
+                position: absolute;
+                right: 5px; /* Przyciągnięty do prawej */
+                top: 50%;
+                transform: translateY(-50%);
+                border: none;
+                border-radius: 4px;
+                padding: 0;
+                width: 30px;  /* Szerokość = 30px */
+                height: 30px; /* Wysokość = 30px, tworzy kwadrat */
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 12px;
+                font-weight: 600;
+                font-family: 'Inter', sans-serif;
+                cursor: pointer;
+                background-color: #000;
+                color: #fff;
+                white-space: nowrap;
+                transition: background-color 0.3s ease, color 0.3s ease;
+                z-index: 10001;
+                
+                svg {
+                    width: 16px;
+                    height: 16px;
+                }
+
+                &[data-status="Skopiowano"] {
+                    background-color: #4CAF50; /* Zielony kolor po skopiowaniu */
+                    color: white;
+                }
+            }
+
+            &:after{
+                /* Usuwamy efekt cienia/zanikania tekstu, bo przycisk jest mniejszy */
+                content: none;
+            }
+        }
+    }
+
+`
 /* ===================== DATE HELPERS (LOCAL, NO TZ SHIFT) ===================== */
 const pad2 = (n) => String(n).padStart(2, '0');
 const formatYMDLocal = (d) => {
@@ -462,6 +586,9 @@ export const PreConfigure = (
     const [synchronisingPlan, setSynchronisingPlan] = useState(false)
     const [shareTripUrl, setShareTripUrl] = useState("");
     const userFromStore = useUserStore((state) => state.user);
+    const [sharePopupOpened, setSharePopupOpened] = useState(false);
+    // 🆕 NOWY STAN: status przycisku kopiowania
+    const [copyStatus, setCopyStatus] = useState("Kopiuj");
 
     // 5) Sync stanu → URL (bez przeładowania), dopiero gdy planReady
     useEffect(() => {
@@ -1080,24 +1207,29 @@ export const PreConfigure = (
                     </div>
 
                     <div className="preConfigureButtons">
-                        <a
-                            className={`preConfigureButton${canGoToConfigurator && !synchronisingPlan ? '' : ' disabled'}`}
-                            href={canGoToConfigurator && !synchronisingPlan ? konfiguratorUrl : undefined}
-                            onClick={(e) => {
-                                if (!canGoToConfigurator || synchronisingPlan) {
-                                    e.preventDefault();
-                                    e.stopPropagation();
-                                }
-                            }}
-                        >
-                            <Settings size={20} />
-                            Konfigurator
-                        </a>
+                        {shareTripUrl &&
+                            <a
+                                className={`preConfigureButton${canGoToConfigurator && !synchronisingPlan ? '' : ' disabled'}`}
+                                href={canGoToConfigurator && !synchronisingPlan ? konfiguratorUrl : undefined}
+                                onClick={(e) => {
+                                    if (!canGoToConfigurator || synchronisingPlan) {
+                                        e.preventDefault();
+                                        e.stopPropagation();
+                                    }
+                                }}
+                            >
+                                <Settings size={20} />
+                                Konfigurator
+                            </a>
+                        }
+                        {shareTripUrl &&
+                            <a className={publicPlan ? "preConfigureButton b" : "preConfigureButton b privatePlan"} onClick={() => setSharePopupOpened(!sharePopupOpened)}>
+                                <Share2 />
+                                Zaproś uczestników
+                            </a>
 
-                        <a className={publicPlan ? "preConfigureButton b" : "preConfigureButton b privatePlan"} >
-                            <Share2 />
-                            Zaproś uczestników {shareTripUrl}
-                        </a>
+                        }
+
                         <a className={publicPlan ? "preConfigureButton b" : "preConfigureButton b privatePlan"} onClick={() => setPublicPlan(!publicPlan)}>
                             <EyeCheckbox ifChecked={publicPlan} />
                             Plan publiczny
@@ -1135,6 +1267,56 @@ export const PreConfigure = (
             {selectedMenu === 1 && (
                 <ParticipantsTable users={synchronisedPlan?.participants ?? ["err_loading"]} authors={synchronisedPlan?.authors ?? ["err_loading"]} />
             )}
+            {selectedMenu === 2 && (
+                // Zakładka płatności (obecnie pusta)
+                <div style={{ padding: '20px', textAlign: 'center' }}>
+                    Sekcja płatności jest w trakcie implementacji.
+                </div>
+            )}
+            {sharePopupOpened && <PreConfigureSharePopupWrapper onClick={() => setSharePopupOpened(false)}>
+                <PreConfigureSharePopup onClick={(e) => { e.stopPropagation() }}>
+                    <div className='sharePopupTitle'>
+                        Zapraszanie uczestników
+                    </div>
+                    <div className='sharePopupSubtitle'>
+                        Dodaj uczestników do wyjazdu, udostępniając im link umożliwiający dołączenie.
+                    </div>
+                    <div className='sharePopupReflinkWrapper'>
+
+                        <div className='sharePopupReflink'>
+                            <Share2 size={16} />
+                            <span className="sharePopupReflinkText">
+                                {shareTripUrl}
+                            </span>
+                            <button
+                                type="button"
+                                className="sharePopupCopyButton"
+                                data-status={copyStatus} // Użycie stanu do stylizacji CSS
+                                onClick={() => {
+                                    if (!shareTripUrl || copyStatus === "Skopiowano") return; // Blokada przed ponownym kliknięciem
+
+                                    // 1. Kopiowanie do schowka
+                                    navigator.clipboard?.writeText(shareTripUrl).catch(console.error);
+
+                                    // 2. Zmiana statusu na "Skopiowano"
+                                    setCopyStatus("Skopiowano");
+
+                                    // 3. Po 2 sekundach powrót do "Kopiuj"
+                                    setTimeout(() => {
+                                        setCopyStatus("Kopiuj");
+                                    }, 2000);
+                                }}
+                            >
+                                {copyStatus === "Skopiowano" ? <Check size={12} /> : <Copy size={12} />}
+                            </button>
+                        </div>
+
+                    </div>
+                    <div className='sharePopupSubtitle'>
+                        Aby uczestnik mógł edytować plan, należy nadać mu uprawnienia autora w zakładce <span>Uczestnicy</span>.
+                    </div>
+                </PreConfigureSharePopup>
+            </PreConfigureSharePopupWrapper>}
         </PreConfigureMainbox>
     );
 };

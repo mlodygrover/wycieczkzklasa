@@ -549,6 +549,7 @@ export const ProfilePage = () => {
                         date: dateStr,                                // np. "17–20 GRU 2025"
                         days: Number.isFinite(daysCnt) ? daysCnt : 1, // liczba dni
                         status: "sketch",                             // lub inny status, jeśli go masz
+                        role: p?.role || "author",
                         image: p?.photoLink ||                        // fallback obrazka
                             "https://images.unsplash.com/photo-1633268456308-72d1c728943c?auto=format&fit=crop&w=1600&q=80",
                         // możesz dołożyć dodatkowe pola, jeśli komponenty ich wymagają
@@ -615,9 +616,13 @@ export const ProfilePage = () => {
             {activeTab === "overview" && (
                 <>
                     <SectionTitle>
-                        Stworzone wyjazdy
+                        Twoje wyjazdy
                     </SectionTitle>
                     <SummaryTrips tripsLocal={userTrips || []} />
+                    <SectionTitle>
+                        Stworzone wyjazdy
+                    </SectionTitle>
+                    <SummaryTrips tripsLocal={userTrips.filter(t => t.role === "author")} />
                     <SectionTitle>
                         Wyjazdy zaplanowane
                     </SectionTitle>
