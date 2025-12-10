@@ -9,6 +9,7 @@ const cors = require('cors');
 const FacebookStrategy = require('passport-facebook').Strategy;
 const axios = require("axios");
 const OpenAI = require("openai");
+const bcrypt = require('bcryptjs');
 
 const openai = new OpenAI({
     apiKey: process.env.OPENAI_API_KEY,
@@ -53,6 +54,22 @@ const userSchema = new mongoose.Schema(
 
 const User = mongoose.model('User', userSchema);
 
+function validateEmail(email) {
+    if (typeof email !== 'string') return false;
+    const trimmed = email.trim().toLowerCase();
+    // bardzo prosty regex; w razie potrzeby można zaostrzyć
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed);
+}
+
+function validatePassword(password) {
+    if (typeof password !== 'string') return false;
+    // minimalnie: 8 znaków; można dodać wymagania typu cyfra/duża litera itd.
+    return password.length >= 8;
+}
+function idEquals(a, b) {
+    if (!a || !b) return false;
+    return String(a) === String(b);
+}
 /* =========================
    3) Middleware
    ========================= */
@@ -196,6 +213,173 @@ app.post('/auth/logout', (req, res) => {
     req.logout(() => {
         req.session.destroy(() => res.clearCookie('sid').json({ ok: true }));
     });
+});
+/**
+ * POST /auth/register
+ * Rejestracja konta lokalnego: email + hasło (+ opcjonalnie username)
+ */
+app.post('/auth/register', async (req, res) => {
+    try {
+        let { email, password, username } = req.body || {};
+
+        if (!validateEmail(email)) {
+            return res.status(400).json({ error: "InvalidEmail", message: "Podaj poprawny adres email." });
+        }
+        if (!validatePassword(password)) {
+            return res.status(400).json({
+                error: "WeakPassword",
+                message: "Hasło musi mieć co najmniej 8 znaków."
+            });
+        }
+
+        email = email.trim().toLowerCase();
+
+        const existing = await User.findOne({ email }).lean();
+        if (existing) {
+            // Można tu rozróżnić: konto lokalne / tylko facebook.
+            return res.status(409).json({
+                error: "EmailTaken",
+                message: "Użytkownik z takim adresem email już istnieje."
+            });
+        }
+
+        const saltRounds = 10;
+        const hashedPassword = await bcrypt.hash(password, saltRounds);
+
+        const user = await User.create({
+            email,
+            username: username && username.trim() ? username.trim() : email.split('@')[0],
+            hashedPassword,
+        });
+
+        // od razu logujemy po rejestracji
+        req.login(user, (err) => {
+            if (err) {
+                console.error("req.login error after register:", err);
+                return res.status(500).json({ error: "ServerError" });
+            }
+            // nie zwracamy hashedPassword
+            const safeUser = {
+                _id: user._id,
+                email: user.email,
+                username: user.username,
+                profilePic: user.profilePic,
+                credits: user.credits,
+            };
+            return res.status(201).json({ ok: true, user: safeUser });
+        });
+    } catch (err) {
+        console.error("POST /auth/register error:", err);
+        return res.status(500).json({ error: "ServerError" });
+    }
+});
+/**
+ * POST /auth/login
+ * Logowanie lokalne: email + hasło
+ */
+app.post('/auth/login', async (req, res) => {
+    try {
+        let { email, password } = req.body || {};
+
+        if (!validateEmail(email) || typeof password !== 'string') {
+            return res.status(400).json({
+                error: "InvalidCredentials",
+                message: "Nieprawidłowy email lub hasło."
+            });
+        }
+
+        email = email.trim().toLowerCase();
+
+        // hashedPassword jest select:false -> trzeba jawnie dołączyć
+        const user = await User.findOne({ email }).select('+hashedPassword');
+        if (!user || !user.hashedPassword) {
+            // brak konta lokalnego -> można zasugerować logowanie przez FB
+            return res.status(400).json({
+                error: "InvalidCredentials",
+                message: "Nieprawidłowy email lub hasło."
+            });
+        }
+
+        const ok = await bcrypt.compare(password, user.hashedPassword);
+        if (!ok) {
+            return res.status(400).json({
+                error: "InvalidCredentials",
+                message: "Nieprawidłowy email lub hasło."
+            });
+        }
+
+        // poprawne hasło -> zakładamy sesję
+        req.login(user, (err) => {
+            if (err) {
+                console.error("req.login error in /auth/login:", err);
+                return res.status(500).json({ error: "ServerError" });
+            }
+
+            const safeUser = {
+                _id: user._id,
+                email: user.email,
+                username: user.username,
+                profilePic: user.profilePic,
+                credits: user.credits,
+            };
+            return res.json({ ok: true, user: safeUser });
+        });
+    } catch (err) {
+        console.error("POST /auth/login error:", err);
+        return res.status(500).json({ error: "ServerError" });
+    }
+});
+/**
+ * POST /auth/set-password
+ * Ustawia lub zmienia hasło lokalne dla zalogowanego użytkownika.
+ * - jeżeli użytkownik nie ma jeszcze hasła (konto wyłącznie FB) -> wystarczy newPassword
+ * - jeżeli ma hasło -> wymagamy currentPassword (+ weryfikacja)
+ */
+app.post('/auth/set-password', requireAuth, async (req, res) => {
+    try {
+        const { currentPassword, newPassword } = req.body || {};
+
+        if (!validatePassword(newPassword)) {
+            return res.status(400).json({
+                error: "WeakPassword",
+                message: "Nowe hasło musi mieć co najmniej 8 znaków."
+            });
+        }
+
+        // pobieramy pełnego usera z hasłem
+        const user = await User.findById(req.user._id).select('+hashedPassword');
+        if (!user) {
+            return res.status(404).json({ error: "NotFound" });
+        }
+
+        if (user.hashedPassword) {
+            // użytkownik już ma hasło -> wymagamy currentPassword
+            if (typeof currentPassword !== 'string' || !currentPassword.length) {
+                return res.status(400).json({
+                    error: "CurrentPasswordRequired",
+                    message: "Podaj obecne hasło."
+                });
+            }
+
+            const ok = await bcrypt.compare(currentPassword, user.hashedPassword);
+            if (!ok) {
+                return res.status(400).json({
+                    error: "InvalidCurrentPassword",
+                    message: "Nieprawidłowe obecne hasło."
+                });
+            }
+        }
+
+        const saltRounds = 10;
+        const newHash = await bcrypt.hash(newPassword, saltRounds);
+        user.hashedPassword = newHash;
+        await user.save();
+
+        return res.json({ ok: true });
+    } catch (err) {
+        console.error("POST /auth/set-password error:", err);
+        return res.status(500).json({ error: "ServerError" });
+    }
 });
 
 // Health-check (opcjonalnie)
@@ -651,7 +835,7 @@ app.get("/download/trip-plan", async (req, res) => {
             _id: new mongoose.Types.ObjectId(tripId),
         })
             .select(
-                "computedPrice miejsceDocelowe standardTransportu standardHotelu activitiesSchedule photoLink nazwa startHours"
+                "computedPrice miejsceDocelowe standardTransportu standardHotelu activitiesSchedule photoLink nazwa startHours authors"
             )
             .lean();
 
@@ -664,6 +848,10 @@ app.get("/download/trip-plan", async (req, res) => {
                 Array.isArray(d?.activities) ? d.activities : []
             )
             : [];
+        const firstAuthor =
+            Array.isArray(doc.authors) && doc.authors.length > 0
+                ? doc.authors[0]
+                : null;
 
         res.status(200).json({
             computedPrice: typeof doc.computedPrice === "number" ? doc.computedPrice : 0,
@@ -674,6 +862,7 @@ app.get("/download/trip-plan", async (req, res) => {
             photoLink: doc.photoLink ?? null,
             nazwa: doc.nazwa ?? null,
             startHours: Array.isArray(doc.startHours) ? doc.startHours : [],
+            authors: firstAuthor ? [firstAuthor] : []
         });
     } catch (err) {
         console.error("GET /download/trip-plan error:", err);
@@ -924,20 +1113,111 @@ app.get("/api/trip-plans", async (_req, res) => {
     }
 });
 
+// zakładam, że masz gdzieś powyżej:
+// const User = mongoose.model("User", userSchema);
+// albo import User z osobnego pliku
+
+async function findUsersData(userIds) {
+    if (!Array.isArray(userIds) || userIds.length === 0) {
+        return [];
+    }
+
+    // Filtrowanie i mapowanie do ObjectId
+    const objectIds = userIds
+        .map((id) => {
+            try {
+                return new mongoose.Types.ObjectId(id);
+            } catch {
+                return null;
+            }
+        })
+        .filter((id) => id !== null);
+
+    if (!objectIds.length) {
+        return [];
+    }
+
+    // Pobieramy tylko niezbędne pola
+    const users = await User.find(
+        { _id: { $in: objectIds } },
+        { username: 1, email: 1 } // projection
+    ).lean();
+
+    // Mapowanie po _id → łatwe łączenie z tablicą users z planu
+    const mapById = new Map(
+        users.map((u) => [String(u._id), u])
+    );
+
+    // Zwracamy w kolejności users z TripPlan
+    return userIds
+        .map((rawId) => {
+            const key = String(rawId);
+            const u = mapById.get(key);
+            if (!u) {
+                // jeśli z jakiegoś powodu user już nie istnieje w DB,
+                // można go pominąć albo zwrócić „pusty” rekord – tu pomijam
+                return null;
+            }
+            return {
+                userId: u._id,
+                username: u.username ?? null,
+                email: u.email ?? null,
+                payments: "none",     // na razie roboczo stałe
+            };
+        })
+        .filter(Boolean);
+}
 
 /**
  * GET /api/trip-plans/:id
- * Pojedynczy plan (z obsługą startHours).
+ * Pojedynczy plan (z obsługą startHours i opcjonalnym extended=1/true).
+ * Dostęp tylko dla użytkownika, który jest w doc.users LUB doc.authors.
  */
-app.get("/api/trip-plans/:id", async (req, res) => {
+app.get("/api/trip-plans/:id", requireAuth, async (req, res) => {
     try {
         const { id } = req.params;
+
+        // query.extended może być: "true", "1", true itd.
+        const extendedRaw = req.query.extended;
+        const extended =
+            extendedRaw === "true" ||
+            extendedRaw === "1" ||
+            extendedRaw === true;
+
         if (!mongoose.Types.ObjectId.isValid(id)) {
             return res.status(400).json({ error: "InvalidObjectId" });
         }
 
         const doc = await TripPlan.findById(id).lean();
-        if (!doc) return res.status(404).json({ error: "NotFound" });
+        if (!doc) {
+            return res.status(404).json({ error: "NotFound" });
+        }
+
+        // --- KONTROLA DOSTĘPU ---
+
+        const requesterId = req.user?._id;
+        if (!requesterId) {
+            // w praktyce requireAuth już to łapie, ale dla pewności:
+            return res.status(401).json({ error: "Unauthenticated" });
+        }
+
+        const usersArray = Array.isArray(doc.users) ? doc.users : [];
+        const authorsArray = Array.isArray(doc.authors) ? doc.authors : [];
+
+        // najpierw sprawdzamy, czy jest w users
+        const isUser = usersArray.some((u) => idEquals(u, requesterId));
+
+        // jeśli nie ma w users, sprawdzamy authors
+        const isAuthor = !isUser && authorsArray.some((a) => idEquals(a, requesterId));
+
+        if (!isUser && !isAuthor) {
+            return res.status(403).json({
+                error: "Forbidden",
+                message: "Nie masz dostępu do tego planu.",
+            });
+        }
+
+        // --- LOGIKA ODP. JAK DOTYCHCZAS ---
 
         const aoa = unpackDays(doc.activitiesSchedule);
         const price =
@@ -945,7 +1225,6 @@ app.get("/api/trip-plans/:id", async (req, res) => {
                 ? doc.computedPrice
                 : computePriceFromAoA(aoa);
 
-        // Bezpieczne wystawienie startHours jako tablicy liczb (minuty)
         const startHours = Array.isArray(doc.startHours)
             ? doc.startHours.map((v) => {
                 const n = Number(v);
@@ -953,12 +1232,12 @@ app.get("/api/trip-plans/:id", async (req, res) => {
             })
             : [];
 
-        return res.json({
+        const baseResponse = {
             _id: doc._id,
             createdAt: doc.createdAt,
             updatedAt: doc.updatedAt,
-            authors: doc.authors,
-            users: Array.isArray(doc.users) ? doc.users : [],   // <-- DODANE
+            authors: authorsArray,
+            users: usersArray,
             miejsceDocelowe: doc.miejsceDocelowe,
             miejsceStartowe: doc.miejsceStartowe,
             dataPrzyjazdu: doc.dataPrzyjazdu,
@@ -972,13 +1251,27 @@ app.get("/api/trip-plans/:id", async (req, res) => {
             photoLink: doc.photoLink ?? null,
             public: typeof doc.public === "boolean" ? doc.public : true,
             nazwa: doc.nazwa ?? null,
-            startHours, // <-- NOWE POLE W ODPOWIEDZI
+            startHours,
+        };
+
+        if (!extended) {
+            // zwykła odpowiedź
+            return res.json(baseResponse);
+        }
+
+        // extended=true → doładowujemy participants
+        const participants = await findUsersData(usersArray);
+
+        return res.json({
+            ...baseResponse,
+            participants,
         });
     } catch (err) {
         console.error("GET /api/trip-plans/:id error:", err);
         return res.status(500).json({ error: "ServerError" });
     }
 });
+
 
 
 /**
@@ -1175,7 +1468,7 @@ app.get("/api/trip-plans/:tripId/by-author/:userId", async (req, res) => {
             _id: new mongoose.Types.ObjectId(tripId),
             $or: [
                 { authors: new mongoose.Types.ObjectId(userId) },
-                { users:   new mongoose.Types.ObjectId(userId) },
+                { users: new mongoose.Types.ObjectId(userId) },
             ],
         }).lean();
 
@@ -1810,6 +2103,22 @@ function makeJoinCodeFromTripId(tripId) {
 
     return (alnum + extra).slice(0, 6);
 }
+function toObjectId(id) {
+    return new mongoose.Types.ObjectId(id);
+}
+
+
+function ensureAuthorsInUsers(plan) {
+    const usersSet = new Set((plan.users || []).map((u) => String(u)));
+    (plan.authors || []).forEach((a) => usersSet.add(String(a)));
+    plan.users = Array.from(usersSet).map((id) => toObjectId(id));
+}
+
+function currentParticipantsCount(plan) {
+    // Liczymy po users, bo w users mają być też autorzy.
+    return Array.isArray(plan.users) ? plan.users.length : 0;
+}
+
 // POST /api/trip-plans/:tripId/join-by-code/:userId
 // body: { code: "ABC123" }
 // - weryfikacja cookies (requireAuth)
@@ -1903,7 +2212,54 @@ app.post("/api/trip-plans/:tripId/join-by-code/:userId", requireAuth, async (req
     }
 });
 
+/**
+ * GET /api/trip-plans/:tripId/join-code
+ * Zwraca joinCode dla planu, jeśli zgłaszający jest autorem.
+ */
+app.get("/api/trip-plans/:tripId/join-code", requireAuth, async (req, res) => {
+    try {
+        const { tripId } = req.params;
 
+        // walidacja tripId
+        if (!mongoose.Types.ObjectId.isValid(tripId)) {
+            return res.status(400).json({ error: "InvalidObjectId", which: "tripId" });
+        }
+
+        // pobranie planu
+        const plan = await TripPlan.findById(tripId).select("_id authors").lean();
+        if (!plan) {
+            return res.status(404).json({ error: "NotFound" });
+        }
+
+        // weryfikacja, czy zgłaszający jest autorem
+        const requesterId = req.user?._id;
+        if (!requesterId) {
+            return res.status(401).json({ error: "Unauthenticated" });
+        }
+
+        const isAuthor = Array.isArray(plan.authors)
+            ? plan.authors.some((a) => idEquals(a, requesterId))
+            : false;
+
+        if (!isAuthor) {
+            return res.status(403).json({
+                error: "Forbidden",
+                message: "Tylko autorzy planu mogą pobrać kod dołączenia.",
+            });
+        }
+
+        // generowanie joinCode
+        const joinCode = makeJoinCodeFromTripId(plan._id);
+
+        return res.json({
+            tripId: plan._id,
+            joinCode,
+        });
+    } catch (err) {
+        console.error("GET /api/trip-plans/:tripId/join-code error:", err);
+        return res.status(500).json({ error: "ServerError" });
+    }
+});
 // ===================== POMOCNICZY ENDPOINT USER (bez zmian) =====================
 
 app.get("/api/users/:userId/name", async (req, res) => {

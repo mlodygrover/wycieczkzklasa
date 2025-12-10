@@ -409,7 +409,7 @@ const API_BASE = `${portacc}`;
 // --- POMOCNICZE FUNKCJE API ---
 
 async function GetTripSummaryById(tripId) {
-  const url = `${API_BASE}/api/trip-plans/${encodeURIComponent(tripId)}`;
+  const url = `${API_BASE}/download/trip-plan/?tripId=${encodeURIComponent(tripId)}`;
   try {
     const resp = await fetch(url, { method: "GET" });
 
@@ -513,10 +513,7 @@ async function CreateTripsArray(tripIds) {
 
     const authorName = await getUserNameById(authorId);
 
-    const duration = formatDurationDays(
-      tripSummary.dataPrzyjazdu,
-      tripSummary.dataWyjazdu
-    );
+    const duration = `${tripSummary.activitiesSchedule.length} dni`;
 
     const priceNumber =
       typeof tripSummary.computedPrice === "number"

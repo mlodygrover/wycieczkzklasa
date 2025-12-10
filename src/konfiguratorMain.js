@@ -1458,7 +1458,7 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
             if (hasDownloadPlan) {
                 try {
                     console.log("Pobieram plan (downloadPlan):", downloadPlan);
-                    const url = `${portacc}/api/trip-plans/${encodeURIComponent(downloadPlan)}`;
+                    const url = `${portacc}/download/trip-plan/?tripId=${encodeURIComponent(downloadPlan)}`;
                     const resp = await fetch(url, { method: "GET", credentials: "include" });
 
                     if (!aborted && resp.ok) {

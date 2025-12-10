@@ -1,6 +1,6 @@
 import styled from "styled-components"
 import React, { useEffect, useState } from "react"
-import { Mail, Minus } from "lucide-react"
+import { Crown, Mail, Minus } from "lucide-react"
 import useUserStore, { fetchMe } from "./usercontent"
 
 const ParticipantsTableMainbox = styled.div`
@@ -17,7 +17,7 @@ const StyledTable = styled.table`
     table-layout: fixed; /* pozwala kontrolować szerokości kolumn */
 
     @media screen and (max-width: 800px) {
-        font-size: 10px;
+        font-size: 12px;
     }
 `
 
@@ -38,6 +38,10 @@ const TableRow = styled.tr`
             box-shadow: none;
             border-radius: 0;
         }
+    }
+    &.loggedUser{
+        background-color: #f8f9ff;
+        border-left: 3px solid #4f46e5;
     }
 `
 
@@ -70,7 +74,7 @@ const HeaderCell = styled.th`
 
 const TableCell = styled.td`
     text-align: left;
-    padding: 5px 2px;
+    padding: 5px 3px;
     box-sizing: border-box;
     vertical-align: middle;
     overflow: hidden;
@@ -95,6 +99,13 @@ const TableCell = styled.td`
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
+    }
+    .youSpan{
+        font-size: 12px;
+        color: #4f46e5;
+    }
+    .crownSpan{
+        color: #4f46e5;
     }
 `
 
@@ -173,7 +184,7 @@ export const ParticipantsTable = ({ users = [], authors = [] }) => {
                     </TableRow>
                 </thead>
                 <tbody>
-                    <TableRow>
+                   <TableRow>
                         <TableCell>Jan Kozidupka</TableCell>
                         <TableCell className="mailCell">
                             <span className="mail">
@@ -216,34 +227,22 @@ export const ParticipantsTable = ({ users = [], authors = [] }) => {
 
                     </TableRow>
                     <TableRow>
-                        <TableCell>
-                            -
-                        </TableCell>
-                        <TableCell className="mailCell">
-                            -
-                        </TableCell>
-
-                        <TableCell className="buttons">
-                            <ActionButton>
-                                Zaproś <Mail size={13} />
-                            </ActionButton>
-
-                        </TableCell>
+                       
                     </TableRow>
                     {Array.isArray(users) && users.length
-                        ? users.map((uId, idx) => {
-                            const userIdStr = String(uId); // jeśli to ObjectId/number – normalizujemy
-                            const isLogged = loggedUserId && loggedUserId === userIdStr;
-
+                        ? users.map((user, idx) => {
+                            const userId= String(user.userId); // jeśli to ObjectId/number – normalizujemy
+                            const isLogged = loggedUserId && loggedUserId === userId;
+                            const isAuthor = authors.includes(userId)
                             return (
-                                <TableRow key={userIdStr || idx}>
+                                <TableRow key={userId || idx} className={isLogged ? "loggedUser" : ""}>
                                     <TableCell>
-                                        {userIdStr} {isLogged && <span>(ty)</span>}
+                                        {user.username} {isAuthor && <span className="crownSpan"><Crown size={14}/></span>} {isLogged && <span className="youSpan">(ty)</span>}
                                     </TableCell>
                                     <TableCell className="mailCell">
                                         <span className="mail">
                                             {/* tu docelowo wstawisz prawdziwy email */}
-                                            psikutas@gmail.com
+                                            {user.email}
                                         </span>
                                     </TableCell>
                                     <TableCell>

@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import styled from 'styled-components';
 import { Tab, TabsContainer } from './profilePage';
 import { PreConfigureSketch } from './preConfSketch';
-import { Edit2, Settings } from 'lucide-react';
+import { Edit2, Settings, Share, Share2 } from 'lucide-react';
 import useUserStore, { fetchMe } from './usercontent.js';
 import EyeCheckbox from './eyeCheckbox.js';
 import { PreConfigureParticipants } from './preConfigureParticipants.js';
@@ -231,7 +231,7 @@ export async function fetchTripPlanById(tripId, { signal } = {}) {
     if (!tripId || !String(tripId).trim()) {
         throw new Error('tripId is required');
     }
-    const url = `${portacc}/api/trip-plans/${encodeURIComponent(tripId)}`;
+    const url = `${portacc}/api/trip-plans/${encodeURIComponent(tripId)}?extended=true`;
     const resp = await fetch(url, {
         method: 'GET',
         credentials: 'include',
@@ -460,6 +460,9 @@ export const PreConfigure = (
     const [downloadedLoading, setDownloadedLoading] = useState(false);
     const [downloadedError, setDownloadedError] = useState(null);
     const [synchronisingPlan, setSynchronisingPlan] = useState(false)
+    const [shareTripUrl, setShareTripUrl] = useState("");
+    const userFromStore = useUserStore((state) => state.user);
+
     // 5) Sync stanu → URL (bez przeładowania), dopiero gdy planReady
     useEffect(() => {
         if (!planReady) return;
@@ -649,6 +652,7 @@ export const PreConfigure = (
         const photoWallpaperSource = synchronisedPlan.photoLink;
         const publicPlanSource = synchronisedPlan.public;
         const nazwaWyjazduSource = synchronisedPlan.nazwa;
+
         if (start) setDataWyjazdu(start);
         if (end) setDataPowrotu(end);
 
@@ -669,9 +673,89 @@ export const PreConfigure = (
         if (typeof publicPlanSource === "boolean") {
             setPublicPlan(publicPlanSource);
         }
-        console.log("TETS2", nazwaWyjazduSource)
-        if (nazwaWyjazduSource) setNazwaWyjazdu(nazwaWyjazduSource)
-    }, [synchronisedPlan]);
+        console.log("TETS2", nazwaWyjazduSource);
+        if (nazwaWyjazduSource) setNazwaWyjazdu(nazwaWyjazduSource);
+
+        // === NOWA CZĘŚĆ: generowanie linku z join-code ===
+        let aborted = false;
+        (async () => {
+            try {
+                // 1) Upewniamy się, że mamy zalogowanego usera
+                let currentUser = userFromStore;
+                if (!currentUser?._id) {
+                    await fetchMe().catch(() => null);
+                    currentUser = useUserStore.getState().user;
+                }
+                if (aborted) return;
+
+                if (!currentUser?._id) {
+                    // Brak zalogowanego użytkownika – czyścimy URL i kończymy
+                    setShareTripUrl("");
+                    return;
+                }
+
+                const loggedUserId = String(currentUser._id);
+
+                // 2) Sprawdzamy, czy zalogowany user jest autorem planu
+                const authors = Array.isArray(synchronisedPlan.authors)
+                    ? synchronisedPlan.authors.map((a) => String(a))
+                    : [];
+
+                const isAuthor = authors.includes(loggedUserId);
+
+                if (!isAuthor) {
+                    // Nie jest autorem → nie generujemy kodu
+                    setShareTripUrl("");
+                    return;
+                }
+
+                // 3) Pobranie join-code z backendu
+                const tripId = String(synchronisedPlan._id);
+                const resp = await fetch(
+                    `${portacc}/api/trip-plans/${encodeURIComponent(tripId)}/join-code`,
+                    {
+                        method: "GET",
+                        credentials: "include",
+                        headers: { Accept: "application/json" },
+                    }
+                );
+
+                if (aborted) return;
+
+                if (!resp.ok) {
+                    console.error("Nie udało się pobrać join-code:", resp.status);
+                    setShareTripUrl("");
+                    return;
+                }
+
+                const data = await resp.json();
+                const joinCode = data?.joinCode;
+                const respTripId = data?.tripId || tripId;
+
+                if (!joinCode) {
+                    setShareTripUrl("");
+                    return;
+                }
+
+                // 4) Budujemy URL do udostępniania /join-trip?tripId=...&code=...
+                const shareUrl =
+                    `${window.location.origin}` +
+                    `/join-trip?tripId=${encodeURIComponent(respTripId)}` +
+                    `&code=${encodeURIComponent(joinCode)}`;
+
+                setShareTripUrl(shareUrl);
+            } catch (e) {
+                if (aborted) return;
+                console.error("Błąd podczas generowania linku z join-code:", e);
+                setShareTripUrl("");
+            }
+        })();
+
+        return () => {
+            aborted = true;
+        };
+    }, [synchronisedPlan, userFromStore?._id]);
+
 
     // 10) Helper: ustaw/zmień tripId w URL i w stanie
     function writeTripIdToUrl(newId) {
@@ -961,8 +1045,7 @@ export const PreConfigure = (
     ]);
 
 
-
-    useEffect(()=>{
+    useEffect(() => {
         console.log(synchronisingPlan)
     }, [synchronisingPlan])
     return (
@@ -995,6 +1078,7 @@ export const PreConfigure = (
                             Zarządzaj szczegółami swojego wyjazdu lub przejdź do konfiguratora
                         </div>
                     </div>
+
                     <div className="preConfigureButtons">
                         <a
                             className={`preConfigureButton${canGoToConfigurator && !synchronisingPlan ? '' : ' disabled'}`}
@@ -1010,6 +1094,10 @@ export const PreConfigure = (
                             Konfigurator
                         </a>
 
+                        <a className={publicPlan ? "preConfigureButton b" : "preConfigureButton b privatePlan"} >
+                            <Share2 />
+                            Zaproś uczestników {shareTripUrl}
+                        </a>
                         <a className={publicPlan ? "preConfigureButton b" : "preConfigureButton b privatePlan"} onClick={() => setPublicPlan(!publicPlan)}>
                             <EyeCheckbox ifChecked={publicPlan} />
                             Plan publiczny
@@ -1045,7 +1133,7 @@ export const PreConfigure = (
                 />
             )}
             {selectedMenu === 1 && (
-                <ParticipantsTable users={synchronisedPlan?.users ?? ["err_loading"]} authors={synchronisedPlan?.authors ?? ["err_loading"]}/>
+                <ParticipantsTable users={synchronisedPlan?.participants ?? ["err_loading"]} authors={synchronisedPlan?.authors ?? ["err_loading"]} />
             )}
         </PreConfigureMainbox>
     );
