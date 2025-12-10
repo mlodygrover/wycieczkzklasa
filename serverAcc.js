@@ -265,6 +265,7 @@ const TripPlanSchema = new mongoose.Schema(
     {
         computedPrice: { type: Number, default: 0 },
         authors: [{ type: mongoose.Schema.Types.ObjectId, ref: "User", index: true }],
+        users: [{ type: mongoose.Schema.Types.ObjectId, ref: "User", index: true }],
 
         miejsceDocelowe: { type: MiejsceSchema, required: true },
 
@@ -829,6 +830,7 @@ app.post("/api/trip-plans", async (req, res) => {
 
         const createDoc = {
             authors: [req.user._id],
+            users: [req.user._id], // autor od razu jest w users
             miejsceDocelowe,
             miejsceStartowe,
             dataPrzyjazdu: dv.a,
@@ -840,6 +842,7 @@ app.post("/api/trip-plans", async (req, res) => {
             computedPrice: priceToSave,
             photoLink: photoLink || null,
         };
+
 
         if (typeof packedSchedule !== "undefined") {
             createDoc.activitiesSchedule = packedSchedule;
@@ -896,6 +899,7 @@ app.get("/api/trip-plans", async (_req, res) => {
                 createdAt: d.createdAt,
                 updatedAt: d.updatedAt,
                 authors: d.authors,
+                users: Array.isArray(doc.users) ? doc.users : [],   // <-- DODANE
                 miejsceDocelowe: d.miejsceDocelowe,
                 miejsceStartowe: d.miejsceStartowe,
                 dataPrzyjazdu: d.dataPrzyjazdu,
@@ -954,6 +958,7 @@ app.get("/api/trip-plans/:id", async (req, res) => {
             createdAt: doc.createdAt,
             updatedAt: doc.updatedAt,
             authors: doc.authors,
+            users: Array.isArray(doc.users) ? doc.users : [],   // <-- DODANE
             miejsceDocelowe: doc.miejsceDocelowe,
             miejsceStartowe: doc.miejsceStartowe,
             dataPrzyjazdu: doc.dataPrzyjazdu,
@@ -1048,6 +1053,7 @@ app.get("/api/trip-plans/by-author/:userId", requireAuth, async (req, res) => {
                 createdAt: d.createdAt,
                 updatedAt: d.updatedAt,
                 authors: d.authors,
+                users: Array.isArray(doc.users) ? doc.users : [],   // <-- DODANE
                 miejsceDocelowe: d.miejsceDocelowe,
                 miejsceStartowe: d.miejsceStartowe,
                 dataPrzyjazdu: d.dataPrzyjazdu,
@@ -1151,8 +1157,8 @@ app.get("/api/trip-plans/public/by-author/:userId", async (req, res) => {
     }
 });
 /**
- * GET /api/trip-plans/:tripId/by-author/:userId
- * Zwraca plan, jeśli userId ∈ authors; inaczej null.
+ * GET /api/trip-plans/:tripId/by-author-or-user/:userId
+ * Zwraca plan, jeśli userId ∈ authors LUB userId ∈ users; inaczej null.
  */
 app.get("/api/trip-plans/:tripId/by-author/:userId", async (req, res) => {
     try {
@@ -1167,7 +1173,10 @@ app.get("/api/trip-plans/:tripId/by-author/:userId", async (req, res) => {
 
         const doc = await TripPlan.findOne({
             _id: new mongoose.Types.ObjectId(tripId),
-            authors: new mongoose.Types.ObjectId(userId),
+            $or: [
+                { authors: new mongoose.Types.ObjectId(userId) },
+                { users:   new mongoose.Types.ObjectId(userId) },
+            ],
         }).lean();
 
         if (!doc) {
@@ -1192,6 +1201,7 @@ app.get("/api/trip-plans/:tripId/by-author/:userId", async (req, res) => {
             createdAt: doc.createdAt,
             updatedAt: doc.updatedAt,
             authors: doc.authors,
+            users: Array.isArray(doc.users) ? doc.users : [],   // <-- uczestnicy
             miejsceDocelowe: doc.miejsceDocelowe,
             miejsceStartowe: doc.miejsceStartowe,
             dataPrzyjazdu: doc.dataPrzyjazdu,
@@ -1205,13 +1215,14 @@ app.get("/api/trip-plans/:tripId/by-author/:userId", async (req, res) => {
             photoLink: doc.photoLink ?? null,
             public: typeof doc.public === "boolean" ? doc.public : true,
             nazwa: doc.nazwa ?? null,
-            startHours, // <-- NOWE POLE
+            startHours,
         });
     } catch (err) {
         console.error("GET /api/trip-plans/:tripId/by-author/:userId error:", err);
         return res.status(500).json({ error: "ServerError" });
     }
 });
+
 /**
  * PUT /api/trip-plans/:tripId
  * Aktualizuje plan, walidując nowe pola (w tym uczestników/opiekunów).
@@ -1477,12 +1488,17 @@ app.put("/api/trip-plans/:tripId", requireAuth, async (req, res) => {
                 return Number.isFinite(n) ? Math.trunc(n) : 0;
             })
             : [];
+        // Bezpieczne users:
+        const usersOut = Array.isArray(updated.users)
+            ? updated.users
+            : [];
 
         return res.json({
             _id: updated._id,
             createdAt: updated.createdAt,
             updatedAt: updated.updatedAt,
             authors: updated.authors,
+            users: usersOut,              // ⬅️ tutaj dodajesz userów
             miejsceDocelowe: updated.miejsceDocelowe,
             miejsceStartowe: updated.miejsceStartowe,
             dataPrzyjazdu: updated.dataPrzyjazdu,
@@ -1498,15 +1514,394 @@ app.put("/api/trip-plans/:tripId", requireAuth, async (req, res) => {
             urlSlug: updated.urlSlug ?? undefined,
             publicUrl: updated.publicUrl ?? undefined,
             nazwa: updated.nazwa ?? null,
-            startHours: startHoursOut, // <-- NOWE POLE W ODPOWIEDZI
+            startHours: startHoursOut,
         });
+
     } catch (err) {
         console.error("PUT /api/trip-plans/:tripId error:", err);
         return res.status(500).json({ error: "ServerError" });
     }
 });
 
+app.post("/api/trip-plans/:tripId/users/:userId", requireAuth, async (req, res) => {
+    try {
+        const { tripId, userId } = req.params;
 
+        if (!mongoose.Types.ObjectId.isValid(tripId)) {
+            return res.status(400).json({ error: "InvalidObjectId", which: "tripId" });
+        }
+        if (!mongoose.Types.ObjectId.isValid(userId)) {
+            return res.status(400).json({ error: "InvalidObjectId", which: "userId" });
+        }
+
+        const plan = await TripPlan.findById(tripId);
+        if (!plan) {
+            return res.status(404).json({ error: "NotFound" });
+        }
+
+        const requesterId = req.user._id;
+        const isAuthor = (plan.authors || []).some((a) => idEquals(a, requesterId));
+        if (!isAuthor) {
+            return res.status(403).json({ error: "Forbidden", message: "Tylko autor może dodawać uczestników." });
+        }
+
+        // Upewnij się, że wszyscy autorzy są w users
+        ensureAuthorsInUsers(plan);
+
+        // Czy już jest uczestnikiem?
+        const already = (plan.users || []).some((u) => idEquals(u, userId));
+        if (already) {
+            return res.status(200).json({
+                ok: true,
+                message: "Użytkownik już jest uczestnikiem.",
+                users: plan.users,
+            });
+        }
+
+        // Sprawdź limit liczby uczestników
+        const currentCount = currentParticipantsCount(plan);
+        if (typeof plan.liczbaUczestnikow === "number" && currentCount >= plan.liczbaUczestnikow) {
+            return res.status(400).json({
+                error: "LimitReached",
+                message: "Przekroczona maksymalna liczba uczestników dla tego planu.",
+            });
+        }
+
+        plan.users.push(toObjectId(userId));
+        ensureAuthorsInUsers(plan); // jeszcze raz, na wszelki wypadek
+        await plan.save();
+
+        return res.status(200).json({
+            ok: true,
+            users: plan.users,
+        });
+    } catch (err) {
+        console.error("POST /api/trip-plans/:tripId/users/:userId error:", err);
+        return res.status(500).json({ error: "ServerError" });
+    }
+});
+app.post("/api/trip-plans/:tripId/authors/:userId", requireAuth, async (req, res) => {
+    try {
+        const { tripId, userId } = req.params;
+
+        if (!mongoose.Types.ObjectId.isValid(tripId)) {
+            return res.status(400).json({ error: "InvalidObjectId", which: "tripId" });
+        }
+        if (!mongoose.Types.ObjectId.isValid(userId)) {
+            return res.status(400).json({ error: "InvalidObjectId", which: "userId" });
+        }
+
+        const plan = await TripPlan.findById(tripId);
+        if (!plan) {
+            return res.status(404).json({ error: "NotFound" });
+        }
+
+        const requesterId = req.user._id;
+        const requesterIsAuthor = (plan.authors || []).some((a) => idEquals(a, requesterId));
+        if (!requesterIsAuthor) {
+            return res.status(403).json({ error: "Forbidden", message: "Tylko autor może dodawać kolejnych autorów." });
+        }
+
+        // Czy już jest autorem?
+        const alreadyAuthor = (plan.authors || []).some((a) => idEquals(a, userId));
+        if (!alreadyAuthor) {
+            plan.authors.push(toObjectId(userId));
+        }
+
+        // Upewnij się, że autor jest też w users
+        const wasUser = (plan.users || []).some((u) => idEquals(u, userId));
+        if (!wasUser) {
+            // sprawdź limit uczestników przy dodawaniu do users
+            const currentCount = currentParticipantsCount(plan);
+            if (typeof plan.liczbaUczestnikow === "number" && currentCount >= plan.liczbaUczestnikow) {
+                return res.status(400).json({
+                    error: "LimitReached",
+                    message: "Nie można dodać autora, bo limit uczestników został osiągnięty.",
+                });
+            }
+            plan.users = plan.users || [];
+            plan.users.push(toObjectId(userId));
+        }
+
+        ensureAuthorsInUsers(plan);
+        await plan.save();
+
+        return res.status(200).json({
+            ok: true,
+            authors: plan.authors,
+            users: plan.users,
+        });
+    } catch (err) {
+        console.error("POST /api/trip-plans/:tripId/authors/:userId error:", err);
+        return res.status(500).json({ error: "ServerError" });
+    }
+});
+app.delete("/api/trip-plans/:tripId/users/:userId", requireAuth, async (req, res) => {
+    try {
+        const { tripId, userId } = req.params;
+
+        if (!mongoose.Types.ObjectId.isValid(tripId)) {
+            return res.status(400).json({ error: "InvalidObjectId", which: "tripId" });
+        }
+        if (!mongoose.Types.ObjectId.isValid(userId)) {
+            return res.status(400).json({ error: "InvalidObjectId", which: "userId" });
+        }
+
+        const plan = await TripPlan.findById(tripId);
+        if (!plan) {
+            return res.status(404).json({ error: "NotFound" });
+        }
+
+        const requesterId = req.user._id;
+        const isAuthor = (plan.authors || []).some((a) => idEquals(a, requesterId));
+
+        const isSelf = idEquals(userId, requesterId);
+
+        if (!isAuthor && !isSelf) {
+            return res.status(403).json({
+                error: "Forbidden",
+                message: "Musisz być autorem lub usuwać samego siebie.",
+            });
+        }
+
+        // Czy usuwany jest autorem?
+        const isTargetAuthor = (plan.authors || []).some((a) => idEquals(a, userId));
+
+        if (isTargetAuthor) {
+            // Nie pozwalamy usunąć ostatniego autora
+            const authorsCount = (plan.authors || []).length;
+            if (authorsCount <= 1) {
+                return res.status(400).json({
+                    error: "LastAuthor",
+                    message: "Nie można usunąć ostatniego autora planu.",
+                });
+            }
+
+            plan.authors = (plan.authors || []).filter((a) => !idEquals(a, userId));
+        }
+
+        // Usuń z users
+        const beforeCount = currentParticipantsCount(plan);
+        plan.users = (plan.users || []).filter((u) => !idEquals(u, userId));
+        const afterCount = currentParticipantsCount(plan);
+
+        if (beforeCount === afterCount) {
+            // nie było takiego uczestnika
+            return res.status(404).json({
+                error: "NotFound",
+                message: "Użytkownik nie jest uczestnikiem tego planu.",
+            });
+        }
+
+        await plan.save();
+
+        return res.status(200).json({
+            ok: true,
+            authors: plan.authors,
+            users: plan.users,
+        });
+    } catch (err) {
+        console.error("DELETE /api/trip-plans/:tripId/users/:userId error:", err);
+        return res.status(500).json({ error: "ServerError" });
+    }
+});
+app.delete("/api/trip-plans/:tripId/authors/:userId", requireAuth, async (req, res) => {
+    try {
+        const { tripId, userId } = req.params;
+
+        if (!mongoose.Types.ObjectId.isValid(tripId)) {
+            return res.status(400).json({ error: "InvalidObjectId", which: "tripId" });
+        }
+        if (!mongoose.Types.ObjectId.isValid(userId)) {
+            return res.status(400).json({ error: "InvalidObjectId", which: "userId" });
+        }
+
+        const plan = await TripPlan.findById(tripId);
+        if (!plan) {
+            return res.status(404).json({ error: "NotFound" });
+        }
+
+        const requesterId = req.user._id;
+        const requesterIsAuthor = (plan.authors || []).some((a) => idEquals(a, requesterId));
+        if (!requesterIsAuthor) {
+            return res.status(403).json({
+                error: "Forbidden",
+                message: "Tylko autor może usuwać innych autorów.",
+            });
+        }
+
+        const isTargetAuthor = (plan.authors || []).some((a) => idEquals(a, userId));
+        if (!isTargetAuthor) {
+            return res.status(404).json({
+                error: "NotFound",
+                message: "Użytkownik nie jest autorem tego planu.",
+            });
+        }
+
+        const authorsCount = (plan.authors || []).length;
+        if (authorsCount <= 1) {
+            return res.status(400).json({
+                error: "LastAuthor",
+                message: "Nie można usunąć ostatniego autora planu.",
+            });
+        }
+
+        plan.authors = (plan.authors || []).filter((a) => !idEquals(a, userId));
+
+        // Użytkownika NIE usuwamy z users – dalej jest uczestnikiem
+        ensureAuthorsInUsers(plan); // tylko dla spójności
+
+        await plan.save();
+
+        return res.status(200).json({
+            ok: true,
+            authors: plan.authors,
+            users: plan.users,
+        });
+    } catch (err) {
+        console.error("DELETE /api/trip-plans/:tripId/authors/:userId error:", err);
+        return res.status(500).json({ error: "ServerError" });
+    }
+});
+
+const crypto = require("crypto");
+
+const JOIN_CODE_SECRET = process.env.JOIN_CODE_SECRET;
+if (!JOIN_CODE_SECRET) {
+    console.warn(
+        "[WARN] JOIN_CODE_SECRET nie jest ustawione w env – " +
+        "dla produkcji KONIECZNIE ustaw silny sekret!"
+    );
+}
+
+/**
+ * Generuje deterministyczny 6-znakowy kod na podstawie tripId,
+ * z użyciem tajnego seeda z env (JOIN_CODE_SECRET).
+ * 
+ * - bez seeda użytkownik nie odtworzy zależności tripId → code,
+ * - ten sam tripId zawsze da ten sam code (przy tym samym secie),
+ * - kod jest z alfabetu [A-Z0-9] (usuwamy inne znaki).
+ */
+function makeJoinCodeFromTripId(tripId) {
+    const secret = JOIN_CODE_SECRET || "DEV_FALLBACK_SECRET_ONLY_FOR_LOCAL";
+    const idStr = String(tripId);
+
+    // HMAC(SHA-256) z tajnym kluczem
+    const raw = crypto
+        .createHmac("sha256", secret)
+        .update(idStr)
+        .digest("base64url"); // np. 'q1fS3D8-...'
+
+    // Usuwamy znaki nie-alfanumeryczne, żeby kod był łatwy do przepisania
+    const alnum = raw.replace(/[^a-zA-Z0-9]/g, "").toUpperCase();
+
+    // Przycinamy do 6 znaków – jeśli z jakiegoś powodu byłoby mniej, uzupełniamy heksami z dodatkowego hash
+    if (alnum.length >= 6) {
+        return alnum.slice(0, 6);
+    }
+
+    // Bardzo defensywne podejście: praktycznie nie powinno się zdarzyć,
+    // ale na wszelki wypadek dociągamy dodatkowy materiał z SHA256(idStr).
+    const extra = crypto
+        .createHash("sha256")
+        .update(idStr)
+        .digest("hex")
+        .toUpperCase();
+
+    return (alnum + extra).slice(0, 6);
+}
+// POST /api/trip-plans/:tripId/join-by-code/:userId
+// body: { code: "ABC123" }
+// - weryfikacja cookies (requireAuth)
+// - sprawdzenie, czy requester == userId (żeby nie dodawać innych ludzi)
+// - sprawdzenie, czy code == hash(tripId)
+// - sprawdzenie limitu liczbaUczestnikow
+// - dodanie userId do users (i upewnienie, że authors ⊆ users)
+app.post("/api/trip-plans/:tripId/join-by-code/:userId", requireAuth, async (req, res) => {
+    try {
+        const { tripId, userId } = req.params;
+        const { code } = req.body || {};
+
+        if (!mongoose.Types.ObjectId.isValid(tripId)) {
+            return res.status(400).json({ error: "InvalidObjectId", which: "tripId" });
+        }
+        if (!mongoose.Types.ObjectId.isValid(userId)) {
+            return res.status(400).json({ error: "InvalidObjectId", which: "userId" });
+        }
+
+        if (typeof code !== "string" || !code.trim()) {
+            return res.status(400).json({
+                error: "BadPayload",
+                message: "Brakuje kodu lub jest nieprawidłowy.",
+            });
+        }
+
+        // 🔒 Użytkownik z cookies musi być tą samą osobą, którą próbujemy dodać
+        if (!idEquals(req.user._id, userId)) {
+            return res.status(403).json({
+                error: "Forbidden",
+                message: "Nie możesz dodawać innych użytkowników do planu za pomocą kodu.",
+            });
+        }
+
+        const plan = await TripPlan.findById(tripId);
+        if (!plan) {
+            return res.status(404).json({ error: "NotFound" });
+        }
+
+        // 🔐 Weryfikacja kodu – generujemy oczekiwany kod z tripId
+        const expectedCode = makeJoinCodeFromTripId(plan._id);
+        if (expectedCode !== String(code).trim().toUpperCase()) {
+            return res.status(400).json({
+                error: "InvalidCode",
+                message: "Podany kod jest nieprawidłowy dla tego planu.",
+            });
+        }
+
+        // Upewnij się, że authors ⊆ users
+        ensureAuthorsInUsers(plan);
+
+        // Czy user już jest w users?
+        const alreadyUser = (plan.users || []).some((u) => idEquals(u, userId));
+        if (alreadyUser) {
+            return res.status(200).json({
+                ok: true,
+                message: "Użytkownik już jest uczestnikiem tego planu.",
+                users: plan.users,
+            });
+        }
+
+        // Sprawdzenie limitu liczbaUczestnikow
+        const currentCount = currentParticipantsCount(plan);
+        if (
+            typeof plan.liczbaUczestnikow === "number" &&
+            currentCount >= plan.liczbaUczestnikow
+        ) {
+            return res.status(400).json({
+                error: "LimitReached",
+                message: "Przekroczona maksymalna liczba uczestników dla tego planu.",
+            });
+        }
+
+        // Dodanie użytkownika do participants
+        if (!Array.isArray(plan.users)) {
+            plan.users = [];
+        }
+        plan.users.push(toObjectId(userId));
+        ensureAuthorsInUsers(plan); // na wszelki wypadek, żeby autorzy byli w users
+
+        await plan.save();
+
+        return res.status(200).json({
+            ok: true,
+            tripId: plan._id,
+            users: plan.users,
+        });
+    } catch (err) {
+        console.error("POST /api/trip-plans/:tripId/join-by-code/:userId error:", err);
+        return res.status(500).json({ error: "ServerError" });
+    }
+});
 
 
 // ===================== POMOCNICZY ENDPOINT USER (bez zmian) =====================

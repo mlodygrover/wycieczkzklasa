@@ -1,6 +1,7 @@
 import styled from "styled-components"
-import React from "react"
+import React, { useEffect, useState } from "react"
 import { Mail, Minus } from "lucide-react"
+import useUserStore, { fetchMe } from "./usercontent"
 
 const ParticipantsTableMainbox = styled.div`
     width: 90%;
@@ -137,7 +138,27 @@ const ActionButton = styled.div`
         background-color: #606060;
     }
 `
-export const ParticipantsTable = () => {
+export const ParticipantsTable = ({ users = [], authors = [] }) => {
+    // pobieramy usera ze store
+    const userFromStore = useUserStore((state) => state.user);
+
+    // jeśli w store nic nie ma – próbujemy dociągnąć z backendu
+    useEffect(() => {
+        if (!userFromStore?._id) {
+            (async () => {
+                try {
+                    const me = await fetchMe().catch(() => null);
+                    // fetchMe samo zapisze usera w store (w Twojej implementacji)
+                } catch {
+                    /* ignore */
+                }
+            })();
+        }
+    }, [userFromStore?._id]);
+
+    // zalogowany userId (może być null)
+    const loggedUserId = userFromStore?._id ? String(userFromStore._id) : null;
+
     return (
         <ParticipantsTableMainbox>
             <StyledTable>
@@ -164,7 +185,7 @@ export const ParticipantsTable = () => {
                                 Opłacone
                             </PaymentStatus>
                         </TableCell>
-                   
+
                     </TableRow>
                     <TableRow>
                         <TableCell>Tomasz Psikuta</TableCell>
@@ -178,7 +199,7 @@ export const ParticipantsTable = () => {
                                 Częściowo
                             </PaymentStatus>
                         </TableCell>
-                   
+
                     </TableRow>
                     <TableRow>
                         <TableCell>Tomasz Psikuta</TableCell>
@@ -192,7 +213,7 @@ export const ParticipantsTable = () => {
                                 Nieopłacone
                             </PaymentStatus>
                         </TableCell>
-                 
+
                     </TableRow>
                     <TableRow>
                         <TableCell>
@@ -201,7 +222,7 @@ export const ParticipantsTable = () => {
                         <TableCell className="mailCell">
                             -
                         </TableCell>
-                     
+
                         <TableCell className="buttons">
                             <ActionButton>
                                 Zaproś <Mail size={13} />
@@ -209,6 +230,31 @@ export const ParticipantsTable = () => {
 
                         </TableCell>
                     </TableRow>
+                    {Array.isArray(users) && users.length
+                        ? users.map((uId, idx) => {
+                            const userIdStr = String(uId); // jeśli to ObjectId/number – normalizujemy
+                            const isLogged = loggedUserId && loggedUserId === userIdStr;
+
+                            return (
+                                <TableRow key={userIdStr || idx}>
+                                    <TableCell>
+                                        {userIdStr} {isLogged && <span>(ty)</span>}
+                                    </TableCell>
+                                    <TableCell className="mailCell">
+                                        <span className="mail">
+                                            {/* tu docelowo wstawisz prawdziwy email */}
+                                            psikutas@gmail.com
+                                        </span>
+                                    </TableCell>
+                                    <TableCell>
+                                        <PaymentStatus className="paymentStatus none">
+                                            Nieopłacone
+                                        </PaymentStatus>
+                                    </TableCell>
+                                </TableRow>
+                            );
+                        })
+                        : null}
                 </tbody>
             </StyledTable>
         </ParticipantsTableMainbox>

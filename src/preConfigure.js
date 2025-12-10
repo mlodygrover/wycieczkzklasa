@@ -1045,7 +1045,7 @@ export const PreConfigure = (
                 />
             )}
             {selectedMenu === 1 && (
-                <ParticipantsTable/>
+                <ParticipantsTable users={synchronisedPlan?.users ?? ["err_loading"]} authors={synchronisedPlan?.authors ?? ["err_loading"]}/>
             )}
         </PreConfigureMainbox>
     );
