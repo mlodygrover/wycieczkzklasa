@@ -21,6 +21,7 @@ const shimmer = keyframes`
 const MainContainer = styled.div`
   width: 100%; min-height: 100vh; display: flex; flex-direction: column;
   align-items: center; justify-content: flex-start; background: #fff; padding: 0 16px;
+  box-sizing: border-box;
 `;
 const ContentWrapper = styled.div`
   width: 90%; max-width: 1600px; display: flex; flex-direction: column; align-items: center;
