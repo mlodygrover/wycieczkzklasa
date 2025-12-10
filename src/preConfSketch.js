@@ -4,6 +4,7 @@ import {
     MapPin, Search, X, Calendar as CalendarIcon, Minus, Plus, Bus, Train, Car,
     Home, Building2, Star, Check, Map, ChevronLeft, ChevronRight, AlertCircle
 } from 'lucide-react';
+import { TripSchedulePreview } from './activitiesSchedulePreview';
 
 
 const port = process.env.REACT_APP__SERVER_API_SOURCE || "https://wycieczkzklasa.onrender.com";
@@ -517,6 +518,7 @@ export const PreConfigureSketch = ({
     setLiczbaOpiekunow,
     setStandardHotelu,
     setStandardTransportu,
+
 }) => {
     const [selectedMenu, setSelectedMenu] = useState(0);
     const [showMapModal, setShowMapModal] = useState(null);
@@ -624,7 +626,9 @@ export const PreConfigureSketch = ({
                             <BoxTitle>Standard transportu</BoxTitle>
                             <TransportSelector value={standardTransportu} onChange={setStandardTransportu} />
                         </ConfigBox>
+
                     </GridContainer>
+
                 )}
 
                 {selectedMenu === 1 && (

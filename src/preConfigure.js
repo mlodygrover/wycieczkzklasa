@@ -2,11 +2,12 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import styled from 'styled-components';
 import { Tab, TabsContainer } from './profilePage';
 import { PreConfigureSketch } from './preConfSketch';
-import { Check, Copy, Edit2, Settings, Share, Share2 } from 'lucide-react';
+import { Check, Copy, Edit2, Settings, Share, Share2, X } from 'lucide-react';
 import useUserStore, { fetchMe } from './usercontent.js';
 import EyeCheckbox from './eyeCheckbox.js';
 import { PreConfigureParticipants } from './preConfigureParticipants.js';
 import { ParticipantsTable } from './participantsTable.js';
+import { TripSchedulePreview } from './activitiesSchedulePreview.js';
 
 const portacc = process.env.REACT_APP_API_SOURCE || "https://api.draftngo.com";
 
@@ -220,9 +221,33 @@ const PreConfigureSharePopup = styled.div`
     background-color: white;
     box-shadow: 0 0 50px gray;
     border-radius: 20px;
-    .sharePopupTitle{
-        padding: 20px;
+
+    .sharePopupCloseBar{
+        width: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+        padding: 8px;
         padding-bottom: 0;
+        box-sizing: border-box;
+        .sharePopupCloseButton{
+            height: 25px;
+            width: 25px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background-color: #f0f0f0;
+            border-radius: 5px;
+            transition: 0.3s ease-in-out;
+            cursor: pointer;
+            &:hover{
+                background-color: #e0e0e0;
+            }
+        }
+    
+    }
+    .sharePopupTitle{
+        padding: 0 20px;
         box-sizing: border-box;
         font-size: 22px;
         font-family: 'Inter';
@@ -568,6 +593,7 @@ export const PreConfigure = (
     const [standardTransportu, setStandardTransportu] = useState(
         hasTripIdInUrl ? standardTransportuInit : (urlDefaults.standardTransportu ?? standardTransportuInit)
     );
+    const [activitiesSchedule, setActivitiesSchedule] = useState([[]])
 
     const [photoWallpaper, setPhotoWallpaper] = useState(
         "https://images.unsplash.com/photo-1633268456308-72d1c728943c?auto=format&fit=crop&w=1600&q=80"
@@ -731,6 +757,7 @@ export const PreConfigure = (
                     standardTransportu: st,
                     photoLink,
                     nazwa: nazwaWyjazduDP,
+                    activitiesSchedule: AS,
                 } = dp;
 
                 if (md) setMiejsceDocelowe(md);
@@ -738,6 +765,7 @@ export const PreConfigure = (
                 if (Number.isFinite(sh)) setStandardHotelu(sh);
                 if (Number.isFinite(st)) setStandardTransportu(st);
                 if (typeof photoLink === "string" && photoLink.trim()) setPhotoWallpaper(photoLink);
+                if(AS)setActivitiesSchedule(AS)
             } catch (e) {
                 if (e?.name !== "AbortError") {
                     setDownloadedError(e?.message || "Fetch error");
@@ -779,7 +807,7 @@ export const PreConfigure = (
         const photoWallpaperSource = synchronisedPlan.photoLink;
         const publicPlanSource = synchronisedPlan.public;
         const nazwaWyjazduSource = synchronisedPlan.nazwa;
-
+        const activitiesScheduleSource = synchronisedPlan.activitiesSchedule;
         if (start) setDataWyjazdu(start);
         if (end) setDataPowrotu(end);
 
@@ -802,7 +830,7 @@ export const PreConfigure = (
         }
         console.log("TETS2", nazwaWyjazduSource);
         if (nazwaWyjazduSource) setNazwaWyjazdu(nazwaWyjazduSource);
-
+        if(activitiesScheduleSource)setActivitiesSchedule(activitiesScheduleSource);
         // === NOWA CZĘŚĆ: generowanie linku z join-code ===
         let aborted = false;
         (async () => {
@@ -1207,7 +1235,7 @@ export const PreConfigure = (
                     </div>
 
                     <div className="preConfigureButtons">
-                        {shareTripUrl &&
+                        {shareTripUrl && <>
                             <a
                                 className={`preConfigureButton${canGoToConfigurator && !synchronisingPlan ? '' : ' disabled'}`}
                                 href={canGoToConfigurator && !synchronisingPlan ? konfiguratorUrl : undefined}
@@ -1221,19 +1249,19 @@ export const PreConfigure = (
                                 <Settings size={20} />
                                 Konfigurator
                             </a>
-                        }
-                        {shareTripUrl &&
+
                             <a className={publicPlan ? "preConfigureButton b" : "preConfigureButton b privatePlan"} onClick={() => setSharePopupOpened(!sharePopupOpened)}>
                                 <Share2 />
                                 Zaproś uczestników
                             </a>
 
-                        }
 
-                        <a className={publicPlan ? "preConfigureButton b" : "preConfigureButton b privatePlan"} onClick={() => setPublicPlan(!publicPlan)}>
-                            <EyeCheckbox ifChecked={publicPlan} />
-                            Plan publiczny
-                        </a>
+
+                            <a className={publicPlan ? "preConfigureButton b" : "preConfigureButton b privatePlan"} onClick={() => setPublicPlan(!publicPlan)}>
+                                <EyeCheckbox ifChecked={publicPlan} />
+                                Plan publiczny
+                            </a>
+                        </>}
                     </div>
                 </PreConfigureHeaderWrapper>
             </PreConfigureHeader>
@@ -1245,6 +1273,7 @@ export const PreConfigure = (
             </TabsContainer>
 
             {selectedMenu === 0 && (
+                <>
                 <PreConfigureSketch
                     miejsceDocelowe={miejsceDocelowe}
                     miejsceStartowe={miejsceStartowe}
@@ -1263,6 +1292,9 @@ export const PreConfigure = (
                     setStandardHotelu={setStandardHotelu}
                     setStandardTransportu={setStandardTransportu}
                 />
+                <TripSchedulePreview activitiesSchedule={activitiesSchedule}/>
+                </>
+
             )}
             {selectedMenu === 1 && (
                 <ParticipantsTable users={synchronisedPlan?.participants ?? ["err_loading"]} authors={synchronisedPlan?.authors ?? ["err_loading"]} />
@@ -1275,6 +1307,11 @@ export const PreConfigure = (
             )}
             {sharePopupOpened && <PreConfigureSharePopupWrapper onClick={() => setSharePopupOpened(false)}>
                 <PreConfigureSharePopup onClick={(e) => { e.stopPropagation() }}>
+                    <div className='sharePopupCloseBar'>
+                        <div className='sharePopupCloseButton' onClick={()=>setSharePopupOpened(false)}>
+                            <X/>
+                        </div>
+                    </div>
                     <div className='sharePopupTitle'>
                         Zapraszanie uczestników
                     </div>
