@@ -41,7 +41,6 @@ import { FeaturesSection } from "./brandTiles";
 const port = process.env.REACT_APP__SERVER_API_SOURCE || "https://wycieczkzklasa.onrender.com";
 const portacc = process.env.REACT_APP_API_SOURCE || "https://api.draftngo.com";
 
-
 const testResults = [
     { nazwa: "Poznań", region: "Wielkopolska", kraj: "Polska" },
     { nazwa: "Luboń koło Poznania", region: "Wielkopolska", kraj: "Polska" },

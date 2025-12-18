@@ -1354,7 +1354,7 @@ app.get("/api/trip-plans/by-author/:userId", requireAuth, async (req, res) => {
                 : [];
 
             const authorsArr = Array.isArray(d.authors) ? d.authors : [];
-            const usersArr   = Array.isArray(d.users) ? d.users : [];
+            const usersArr = Array.isArray(d.users) ? d.users : [];
 
             // 🔹 Wyznaczenie roli użytkownika w danym planie
             const userIdStr = String(userId);
@@ -2424,6 +2424,204 @@ app.post("/highlighted-plans/swap", async (req, res) => {
         return res.status(500).json({ error: "ServerError" });
     }
 });
+
+const MessageSchema = new mongoose.Schema(
+    {
+        tripId: { type: mongoose.Schema.Types.ObjectId, ref: "TripPlan", required: true, index: true },
+        userId: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true, index: true },
+        content: { type: String, trim: true, default: "" },
+    },
+    { timestamps: true, versionKey: false }
+);
+
+// Szybkie pobieranie rozmów per tripId po czasie
+MessageSchema.index({ tripId: 1, createdAt: 1 });
+
+const Message = mongoose.model("Message", MessageSchema);
+// typingState: Map<tripIdStr, Map<userIdStr, expiresAtMs>>
+const typingState = new Map();
+
+function setTyping(tripId, userId, ttlMs = 1000) {
+    const tripKey = String(tripId);
+    const userKey = String(userId);
+    const expiresAt = Date.now() + ttlMs;
+
+    let tripMap = typingState.get(tripKey);
+    if (!tripMap) {
+        tripMap = new Map();
+        typingState.set(tripKey, tripMap);
+    }
+    tripMap.set(userKey, expiresAt);
+}
+
+function getActiveTypingUserIds(tripId) {
+    const tripKey = String(tripId);
+    const tripMap = typingState.get(tripKey);
+    if (!tripMap) return [];
+
+    const now = Date.now();
+    for (const [uid, exp] of tripMap.entries()) {
+        if (exp <= now) tripMap.delete(uid);
+    }
+    if (tripMap.size === 0) typingState.delete(tripKey);
+
+    return Array.from(tripMap.keys());
+}
+
+
+app.post("/api/trip-plans/:tripId/messages", requireAuth, async (req, res) => {
+    try {
+        const { tripId } = req.params;
+        const { content } = req.body || {};
+
+        if (!mongoose.Types.ObjectId.isValid(tripId)) {
+            return res.status(400).json({ error: "InvalidObjectId", which: "tripId" });
+        }
+
+        if (typeof content !== "string" || !content.trim()) {
+            return res.status(400).json({ error: "BadPayload", message: "content jest wymagany." });
+        }
+
+        const requesterId = req.user?._id;
+        if (!requesterId) {
+            return res.status(401).json({ error: "Unauthenticated" });
+        }
+
+        // sprawdzamy czy requester jest w users
+        const plan = await TripPlan.findById(tripId).select("_id users").lean();
+        if (!plan) return res.status(404).json({ error: "NotFound" });
+
+        const isInUsers = Array.isArray(plan.users)
+            ? plan.users.some((u) => idEquals(u, requesterId))
+            : false;
+
+        if (!isInUsers) {
+            return res.status(403).json({ error: "Forbidden", message: "Brak dostępu do czatu tego planu." });
+        }
+
+        const msg = await Message.create({
+            tripId: new mongoose.Types.ObjectId(tripId),
+            userId: new mongoose.Types.ObjectId(requesterId),
+            content: content.trim(),
+        });
+
+        return res.status(201).json({
+            ok: true,
+            messageId: msg._id,
+            tripId: msg.tripId,
+            userId: msg.userId,
+            dateTime: msg.createdAt,
+            content: msg.content,
+        });
+    } catch (err) {
+        console.error("POST /api/trip-plans/:tripId/messages error:", err);
+        return res.status(500).json({ error: "ServerError" });
+    }
+});
+app.get("/api/trip-plans/:tripId/messages/sync", requireAuth, async (req, res) => {
+    try {
+        const { tripId } = req.params;
+
+        const typingRaw = req.query.typing;
+        const typing =
+            typingRaw === "true" || typingRaw === "1" || typingRaw === true;
+
+        const sinceRaw = req.query.since; // opcjonalnie: ISO string albo timestamp ms
+        let sinceDate = null;
+        if (typeof sinceRaw === "string" && sinceRaw.trim()) {
+            const ms = Number(sinceRaw);
+            const d = Number.isFinite(ms) ? new Date(ms) : new Date(sinceRaw);
+            if (!Number.isNaN(d.getTime())) sinceDate = d;
+        }
+
+        if (!mongoose.Types.ObjectId.isValid(tripId)) {
+            return res.status(400).json({ error: "InvalidObjectId", which: "tripId" });
+        }
+
+        const requesterId = req.user?._id;
+        if (!requesterId) {
+            return res.status(401).json({ error: "Unauthenticated" });
+        }
+
+        // sprawdzamy czy requester jest w users
+        const plan = await TripPlan.findById(tripId).select("_id users").lean();
+        if (!plan) return res.status(404).json({ error: "NotFound" });
+
+        const isInUsers = Array.isArray(plan.users)
+            ? plan.users.some((u) => idEquals(u, requesterId))
+            : false;
+
+        if (!isInUsers) {
+            return res.status(403).json({ error: "Forbidden", message: "Brak dostępu do czatu tego planu." });
+        }
+
+        // aktualizacja typing (TTL 1s)
+        if (typing) {
+            setTyping(tripId, requesterId, 1000);
+        }
+
+        // pobranie wiadomości
+        const findQuery = { tripId: new mongoose.Types.ObjectId(tripId) };
+        if (sinceDate) {
+            findQuery.createdAt = { $gt: sinceDate };
+        }
+
+        const messages = await Message.find(findQuery)
+            .sort({ createdAt: 1 })
+            .populate("userId", "username profilePic email") // email opcjonalnie; możesz usunąć
+            .lean();
+
+        const outMessages = messages.map((m) => ({
+            role: "user",
+            userId: String(m.userId?._id || m.userId),
+            dateTime: m.createdAt, // DateTime
+            userPic: m.userId?.profilePic ?? null,
+            username: m.userId?.username ?? null,
+            content: m.content ?? "",
+        }));
+
+        // aktywni “typing”
+        const activeTypingIds = getActiveTypingUserIds(tripId)
+            // zwykle sensowniej NIE pokazywać “pending” samego siebie
+            .filter((uid) => uid !== String(requesterId));
+
+        let pending = [];
+        if (activeTypingIds.length > 0) {
+            const typingUsers = await User.find(
+                { _id: { $in: activeTypingIds.map((x) => new mongoose.Types.ObjectId(x)) } },
+                { username: 1, profilePic: 1 }
+            ).lean();
+
+            const byId = new Map(typingUsers.map((u) => [String(u._id), u]));
+
+            pending = activeTypingIds.map((uid) => {
+                const u = byId.get(String(uid));
+                return {
+                    role: "pending",
+                    userId: String(uid),
+                    dateTime: new Date(), // “teraz”
+                    userPic: u?.profilePic ?? null,
+                    username: u?.username ?? null,
+                    content: "",
+                };
+            });
+        }
+
+        return res.json({
+            ok: true,
+            tripId,
+            items: [...outMessages, ...pending],
+            // pomocniczo możesz zwracać serverTime do synchronizacji
+            serverTime: new Date(),
+        });
+    } catch (err) {
+        console.error("GET /api/trip-plans/:tripId/messages/sync error:", err);
+        return res.status(500).json({ error: "ServerError" });
+    }
+});
+
+
+
 const port = process.env.PORT || 5007;
 
 app.listen(port, () => {

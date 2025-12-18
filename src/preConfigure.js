@@ -2,16 +2,18 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import styled from 'styled-components';
 import { Tab, TabsContainer } from './profilePage';
 import { PreConfigureSketch } from './preConfSketch';
-import { Check, Copy, Edit2, Settings, Share, Share2, X } from 'lucide-react';
+import { Check, Copy, Edit2, MessageCircle, Settings, Share, Share2, X } from 'lucide-react';
 import useUserStore, { fetchMe } from './usercontent.js';
 import EyeCheckbox from './eyeCheckbox.js';
 import { PreConfigureParticipants } from './preConfigureParticipants.js';
 import { ParticipantsTable } from './participantsTable.js';
 import { TripSchedulePreview } from './activitiesSchedulePreview.js';
+import { UsersChatbox } from './usersChatBox.js';
 
 const portacc = process.env.REACT_APP_API_SOURCE || "https://api.draftngo.com";
 
 const port = process.env.REACT_APP__SERVER_API_SOURCE || "https://wycieczkzklasa.onrender.com";
+console.log(port)
 /* ===================== LAYOUT ===================== */
 const PreConfigureMainbox = styled.div`
   width: 100%;
@@ -765,7 +767,7 @@ export const PreConfigure = (
                 if (Number.isFinite(sh)) setStandardHotelu(sh);
                 if (Number.isFinite(st)) setStandardTransportu(st);
                 if (typeof photoLink === "string" && photoLink.trim()) setPhotoWallpaper(photoLink);
-                if(AS)setActivitiesSchedule(AS)
+                if (AS) setActivitiesSchedule(AS)
             } catch (e) {
                 if (e?.name !== "AbortError") {
                     setDownloadedError(e?.message || "Fetch error");
@@ -830,7 +832,7 @@ export const PreConfigure = (
         }
         console.log("TETS2", nazwaWyjazduSource);
         if (nazwaWyjazduSource) setNazwaWyjazdu(nazwaWyjazduSource);
-        if(activitiesScheduleSource)setActivitiesSchedule(activitiesScheduleSource);
+        if (activitiesScheduleSource) setActivitiesSchedule(activitiesScheduleSource);
         // === NOWA CZĘŚĆ: generowanie linku z join-code ===
         let aborted = false;
         (async () => {
@@ -1235,21 +1237,21 @@ export const PreConfigure = (
                     </div>
 
                     <div className="preConfigureButtons">
-                        {shareTripUrl && <>
-                            <a
-                                className={`preConfigureButton${canGoToConfigurator && !synchronisingPlan ? '' : ' disabled'}`}
-                                href={canGoToConfigurator && !synchronisingPlan ? konfiguratorUrl : undefined}
-                                onClick={(e) => {
-                                    if (!canGoToConfigurator || synchronisingPlan) {
-                                        e.preventDefault();
-                                        e.stopPropagation();
-                                    }
-                                }}
-                            >
-                                <Settings size={20} />
-                                Konfigurator
-                            </a>
 
+                        <a
+                            className={`preConfigureButton${canGoToConfigurator && !synchronisingPlan ? '' : ' disabled'}`}
+                            href={canGoToConfigurator && !synchronisingPlan ? konfiguratorUrl : undefined}
+                            onClick={(e) => {
+                                if (!canGoToConfigurator || synchronisingPlan) {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                }
+                            }}
+                        >
+                            <Settings size={20} />
+                            Konfigurator
+                        </a>
+                        {shareTripUrl && <>
                             <a className={publicPlan ? "preConfigureButton b" : "preConfigureButton b privatePlan"} onClick={() => setSharePopupOpened(!sharePopupOpened)}>
                                 <Share2 />
                                 Zaproś uczestników
@@ -1270,29 +1272,31 @@ export const PreConfigure = (
                 <Tab $active={selectedMenu === 0} onClick={() => setSelectedMenu(0)}>Podstawowe</Tab>
                 <Tab $active={selectedMenu === 1} onClick={() => setSelectedMenu(1)}>Uczestnicy</Tab>
                 <Tab $active={selectedMenu === 2} onClick={() => setSelectedMenu(2)}>Płatności</Tab>
+
+                <Tab $active={selectedMenu ===3} onClick={() => setSelectedMenu(3)}>Czat</Tab>
             </TabsContainer>
 
             {selectedMenu === 0 && (
                 <>
-                <PreConfigureSketch
-                    miejsceDocelowe={miejsceDocelowe}
-                    miejsceStartowe={miejsceStartowe}
-                    dataWyjazdu={dataWyjazdu}
-                    dataPowrotu={dataPowrotu}
-                    liczbaUczestnikow={liczbaUczestnikow}
-                    liczbaOpiekunow={liczbaOpiekunow}
-                    standardHotelu={standardHotelu}
-                    standardTransportu={standardTransportu}
-                    setMiejsceDocelowe={setMiejsceDocelowe}
-                    setMiejsceStartowe={setMiejsceStartowe}
-                    setDataWyjazdu={setDataWyjazdu}
-                    setDataPowrotu={setDataPowrotu}
-                    setLiczbaUczestnikow={setLiczbaUczestnikow}
-                    setLiczbaOpiekunow={setLiczbaOpiekunow}
-                    setStandardHotelu={setStandardHotelu}
-                    setStandardTransportu={setStandardTransportu}
-                />
-                <TripSchedulePreview activitiesSchedule={activitiesSchedule}/>
+                    <PreConfigureSketch
+                        miejsceDocelowe={miejsceDocelowe}
+                        miejsceStartowe={miejsceStartowe}
+                        dataWyjazdu={dataWyjazdu}
+                        dataPowrotu={dataPowrotu}
+                        liczbaUczestnikow={liczbaUczestnikow}
+                        liczbaOpiekunow={liczbaOpiekunow}
+                        standardHotelu={standardHotelu}
+                        standardTransportu={standardTransportu}
+                        setMiejsceDocelowe={setMiejsceDocelowe}
+                        setMiejsceStartowe={setMiejsceStartowe}
+                        setDataWyjazdu={setDataWyjazdu}
+                        setDataPowrotu={setDataPowrotu}
+                        setLiczbaUczestnikow={setLiczbaUczestnikow}
+                        setLiczbaOpiekunow={setLiczbaOpiekunow}
+                        setStandardHotelu={setStandardHotelu}
+                        setStandardTransportu={setStandardTransportu}
+                    />
+                    <TripSchedulePreview activitiesSchedule={activitiesSchedule} />
                 </>
 
             )}
@@ -1305,11 +1309,12 @@ export const PreConfigure = (
                     Sekcja płatności jest w trakcie implementacji.
                 </div>
             )}
+            {selectedMenu == 3 && <UsersChatbox tripId={tripId}/>} 
             {sharePopupOpened && <PreConfigureSharePopupWrapper onClick={() => setSharePopupOpened(false)}>
                 <PreConfigureSharePopup onClick={(e) => { e.stopPropagation() }}>
                     <div className='sharePopupCloseBar'>
-                        <div className='sharePopupCloseButton' onClick={()=>setSharePopupOpened(false)}>
-                            <X/>
+                        <div className='sharePopupCloseButton' onClick={() => setSharePopupOpened(false)}>
+                            <X />
                         </div>
                     </div>
                     <div className='sharePopupTitle'>
