@@ -24,44 +24,59 @@ const UsersChatboxMainbox = styled.div`
   justify-content: flex-start;
   margin-bottom: 100px;
 `;
-
+// Animacja wjazdu wiadomości
+const fadeInUp = keyframes`
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+`
 const MessageWrapper = styled.div`
-  margin-top: 10px;
-  padding-right: 30px;
-  box-sizing: border-box;
-  display: flex;
-  align-items: flex-end;
-  justify-content: flex-start;
-  &.own {
-    padding-right: 0;
-    padding-left: 30px;
-    justify-content: flex-end;
-  }
-  gap: 5px;
-
-  .profilePic {
+    margin-top: 10px;
+    padding-right: 30px;
+    box-sizing: border-box;
     display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 12px;
-    padding: 5px;
-    border-radius: 999px;
-    background-color: black;
-    color: white;
-    width: 20px;
-    height: 20px;
-    flex-shrink: 0;
-    overflow: hidden;
-  }
+    align-items: flex-end;
+    justify-content: flex-start;
+    
+    /* --- NOWE: Dodajemy animację --- */
+    animation: ${fadeInUp} 0.3s ease-out forwards;
+    /* ------------------------------ */
 
-  .profileImg {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    border-radius: 999px;
-    display: block;
-  }
-`;
+    &.own{
+        padding-right: 0;
+        padding-left: 30px;
+        justify-content: flex-end;
+    }
+    gap: 5px;
+
+    .profilePic {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 12px;
+        padding: 5px;
+        border-radius: 999px;
+        background-color: black;
+        color: white;
+        width: 20px;
+        height: 20px;
+        flex-shrink: 0;
+        overflow: hidden;
+    }
+
+    .profileImg {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        border-radius: 999px;
+        display: block;
+    }
+`
 
 const MessageBox = styled.div`
   width: fit-content;
@@ -257,6 +272,37 @@ function makeOptimisticMessage({ user, content }) {
     };
 }
 
+function mergeServerWithOptimistic(prev, server) {
+    const prevOptimistic = (Array.isArray(prev) ? prev : []).filter((m) => m?.__optimistic);
+
+    // Jeżeli serwer już zwrócił tę wiadomość (po treści+userId+bliskim czasie),
+    // to optimistic można wyrzucić. Robimy tolerancję czasową.
+    const mergedOptimistic = prevOptimistic.filter((o) => {
+        const oUser = String(o?.userId || "");
+        const oText = String(o?.content || "").trim();
+        const oTime = o?.dateTime ? new Date(o.dateTime).getTime() : 0;
+
+        const matched = (Array.isArray(server) ? server : []).some((s) => {
+            const sUser = String(s?.userId || "");
+            const sText = String(s?.content || "").trim();
+            const sTime = s?.dateTime ? new Date(s.dateTime).getTime() : 0;
+
+            // warunek „prawdopodobnie ta sama wiadomość”
+            const sameUser = sUser && oUser && sUser === oUser;
+            const sameText = sText && oText && sText === oText;
+
+            // tolerancja czasu 10s (możesz zmniejszyć)
+            const closeTime = Math.abs(sTime - oTime) <= 10_000;
+
+            return sameUser && sameText && closeTime;
+        });
+
+        return !matched;
+    });
+
+    // Zwracamy: server + pozostałe optimistic (żeby nie znikały)
+    return [...(Array.isArray(server) ? server : []), ...mergedOptimistic];
+}
 
 
 export const UsersChatbox = ({ tripId }) => {
@@ -317,7 +363,8 @@ export const UsersChatbox = ({ tripId }) => {
 
             const json = await resp.json().catch(() => null);
             const next = coerceItems(json);
-            setItems(next);
+            setItems((prev) => mergeServerWithOptimistic(prev, next));
+
         },
         [tripId, loggedUserId]
     );
@@ -370,7 +417,8 @@ export const UsersChatbox = ({ tripId }) => {
                     method: "POST",
                     credentials: "include",
                     headers: { "Content-Type": "application/json", Accept: "application/json" },
-                    body: JSON.stringify({ content }),
+                    body: JSON.stringify({ content, clientId: optimistic.__clientId }),
+
                 }
             );
 
@@ -380,7 +428,7 @@ export const UsersChatbox = ({ tripId }) => {
             }
 
             // ✅ po sukcesie: odśwież z serwera (zastąpi optimistic prawdziwą wiadomością)
-            await fetchSync({ typing: false });
+            setTimeout(() => fetchSync({ typing: false }).catch(() => null), 250);
         } catch (e) {
             console.error("Send message error:", e);
 

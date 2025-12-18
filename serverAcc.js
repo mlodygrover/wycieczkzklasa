@@ -2557,7 +2557,7 @@ app.get("/api/trip-plans/:tripId/messages/sync", requireAuth, async (req, res) =
 
         // aktualizacja typing (TTL 1s)
         if (typing) {
-            setTyping(tripId, requesterId, 1000);
+            setTyping(tripId, requesterId, 3000);
         }
 
         // pobranie wiadomości
