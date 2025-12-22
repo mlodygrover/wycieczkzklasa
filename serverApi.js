@@ -108,9 +108,9 @@ async function computePrice({
         aktywnosciPerUczestnik,
         przejazdyPerUczestnik,
         perPerson(hotelPrice),
-        Math.ceil(Math.min(Math.max(50 + (dni - 1) * 35, nettoResult * 1 / 10), nettoResult * 2 / 10) * 123 / 100)
+        Math.ceil(Math.min(Math.max(50 + (dni - 1) * 35, nettoResult * 1 / 20), nettoResult * 1 / 10) * 123 / 100)
     )
-    const bruttoResult = Math.ceil(Math.min(Math.max(50 + (dni - 1) * 35, nettoResult * 1 / 10), nettoResult * 2 / 10) * 123 / 100) + nettoResult;
+    const bruttoResult = Math.ceil(Math.min(Math.max(50 + (dni - 1) * 35, nettoResult * 1 / 20), nettoResult * 1 / 10) * 123 / 100) + nettoResult;
     // 5) wynik per osoba
     return bruttoResult
 }
@@ -407,6 +407,7 @@ const AttractionSchema = new mongoose.Schema({
     typy: [String],
     ikona: String,
     stronaInternetowa: String,
+    wallpaper: String,
     photos: [String],
 
     // 🔹 NOWE: źródło lokalizacji
@@ -691,6 +692,307 @@ app.get('/attractions/nearby', async (req, res) => {
         return res.status(500).json({ error: 'ServerError' });
     }
 });
+/**
+ * Fetches a representative image URL for a given attraction name from Wikipedia.
+ *
+ * Strategy:
+ * 1) Use Wikipedia REST "page/summary" via search result (best-effort, simple).
+ * 2) If summary has no image, fallback to MediaWiki API (pageimages).
+ *
+ * Notes:
+ * - This returns a single best-effort image URL (often the infobox lead image).
+ * - For production, you should also fetch license/attribution from MediaWiki/Commons if you plan to display the image publicly.
+ *
+ * Requirements:
+ * - Node.js 18+ (global fetch available). For Node <18, install node-fetch and replace fetch import accordingly.
+ */
+
+/**
+ * Express endpoint that calls getWikipediaImageUrl(...)
+ *
+ * GET /api/wiki-image?name=BMW%20Museum%20Munich&lang=en&thumbWidth=1200
+ * Response:
+ * 200 { name, lang, thumbWidth, imageUrl }
+ * 404 { name, lang, thumbWidth, imageUrl: null, error }
+ */
+// ---- Your function (unchanged) ----
+async function getWikipediaImageUrl(attractionName, options = {}) {
+    const {
+        lang = "pl",
+        thumbWidth = 1200,
+        userAgent = "MyApp/1.0 (contact: your-email@example.com)",
+        timeoutMs = 12_000,
+    } = options;
+
+    if (!attractionName || typeof attractionName !== "string") {
+        throw new TypeError("attractionName must be a non-empty string");
+    }
+
+    const baseWiki = `https://${lang}.wikipedia.org`;
+    const api = `${baseWiki}/w/api.php`;
+
+    // Small helper: fetch with timeout
+    const fetchWithTimeout = async (url) => {
+        const ctrl = new AbortController();
+        const t = setTimeout(() => ctrl.abort(), timeoutMs);
+        try {
+            const res = await fetch(url, {
+                signal: ctrl.signal,
+                headers: {
+                    "User-Agent": userAgent,
+                    Accept: "application/json",
+                },
+            });
+            if (!res.ok) {
+                const text = await res.text().catch(() => "");
+                throw new Error(
+                    `HTTP ${res.status} from ${url}${text ? `: ${text.slice(0, 200)}` : ""}`
+                );
+            }
+            return res.json();
+        } finally {
+            clearTimeout(t);
+        }
+    };
+
+    // 1) Search the best matching page title
+    const searchUrl =
+        `${api}?action=query&format=json&origin=*` +
+        `&list=search&srsearch=${encodeURIComponent(attractionName)}` +
+        `&srlimit=1&srprop=`;
+
+    const searchJson = await fetchWithTimeout(searchUrl);
+    const hit = searchJson?.query?.search?.[0];
+    if (!hit?.title) return null;
+
+    const title = hit.title; // e.g., "BMW Museum"
+
+    // 2) Try REST summary (often includes thumbnail/originalimage)
+    const summaryUrl = `${baseWiki}/api/rest_v1/page/summary/${encodeURIComponent(
+        title.replace(/ /g, "_")
+    )}`;
+
+    try {
+        const summaryJson = await fetchWithTimeout(summaryUrl);
+
+        const urlFromSummary =
+            summaryJson?.originalimage?.source ||
+            summaryJson?.thumbnail?.source ||
+            null;
+
+        if (urlFromSummary) return urlFromSummary;
+    } catch {
+        // Ignore REST errors and fallback to MediaWiki API
+    }
+
+    // 3) Fallback: MediaWiki pageimages (lets you request a specific thumb size)
+    const pageImagesUrl =
+        `${api}?action=query&format=json&origin=*` +
+        `&prop=pageimages&piprop=thumbnail|original` +
+        `&pithumbsize=${encodeURIComponent(String(thumbWidth))}` +
+        `&titles=${encodeURIComponent(title)}`;
+
+    const pageJson = await fetchWithTimeout(pageImagesUrl);
+    const pages = pageJson?.query?.pages;
+    if (!pages) return null;
+
+    const firstPage = pages[Object.keys(pages)[0]];
+    const urlFromPageImages =
+        firstPage?.original?.source || firstPage?.thumbnail?.source || null;
+
+    return urlFromPageImages;
+}
+// Async function (backend) – given place name + location, returns exact Wikipedia title using Perplexity
+// Usage: const title = await getWikipediaExactTitle({ name, location: { lat, lng }, city, address });
+
+async function getWikipediaExactTitle(nameWithCity) {
+    const PERPLEXITY_API_KEY = process.env.PERPLEXITY_API_KEY;
+    if (!PERPLEXITY_API_KEY) throw new Error("Missing PERPLEXITY_API_KEY");
+
+    if (!nameWithCity || typeof nameWithCity !== "string" || !nameWithCity.trim()) {
+        throw new Error("Missing 'name'");
+    }
+
+    const prompt =
+        `Podaj dokładny tytuł artykułu Wikipedii dla: ${nameWithCity.trim()}.\n` +
+        `Zwróć wyłącznie JSON w formacie: {"title":"...","lang":"pl"}.\n` +
+        `Lang to skrót języka Wikipedii (np. pl, en, de).
+         Zwroc nazwe z wikipedii w ktorej jest dany obiekt, jak cos jest z niemiec to zwroc po niemiecku, jak z polski to polska nazwe na wikipedii itp`;
+
+    const body = {
+        model: "sonar-pro",
+        temperature: 0,
+        messages: [
+            {
+                role: "system",
+                content:
+                    "Zwracaj WYŁĄCZNIE poprawny JSON zgodny ze schematem. Bez komentarzy, bez Markdowna.",
+            },
+            { role: "user", content: prompt },
+        ],
+        response_format: {
+            type: "json_schema",
+            json_schema: {
+                name: "wiki_title_lang",
+                schema: {
+                    type: "object",
+                    additionalProperties: false,
+                    properties: {
+                        title: { type: "string" },
+                        lang: { type: "string" },
+                    },
+                    required: ["title", "lang"],
+                },
+            },
+        },
+    };
+
+    const resp = await fetch("https://api.perplexity.ai/chat/completions", {
+        method: "POST",
+        headers: {
+            Authorization: `Bearer ${PERPLEXITY_API_KEY}`,
+            "Content-Type": "application/json",
+            Accept: "application/json",
+        },
+        body: JSON.stringify(body),
+    });
+
+    const data = await resp.json().catch(() => null);
+    if (!resp.ok) {
+        throw new Error(
+            data?.error?.message ||
+            data?.error ||
+            `Perplexity request failed (${resp.status})`
+        );
+    }
+
+    const content = data?.choices?.[0]?.message?.content;
+
+    const normalize = (t) => {
+        if (!t) return "";
+        let s = String(t).trim();
+        s = s.replace(/^["'„”]+|["'„”]+$/g, "").trim();
+        s = s.split("\n").map((x) => x.trim()).filter(Boolean)[0] || "";
+        return s;
+    };
+
+    let title = "";
+    let lang = "";
+
+    if (typeof content === "string") {
+        const parsed = JSON.parse(content);
+        title = normalize(parsed?.title);
+        lang = normalize(parsed?.lang).toLowerCase();
+    } else if (content && typeof content === "object") {
+        title = normalize(content?.title);
+        lang = normalize(content?.lang).toLowerCase();
+    }
+
+    if (!title) throw new Error("Empty title returned from Perplexity");
+    if (!lang) lang = "pl";
+
+    // sanity: lang jak "pl", "en", "de", "pt-br"
+    if (!/^[a-z]{2,3}(-[a-z]{2,3})?$/i.test(lang)) lang = "pl";
+
+    return { title, lang };
+}
+
+
+// ---- Endpoint ----
+// zakładam, że masz model Attraction w tym pliku:
+// const Attraction = mongoose.model("Attraction", AttractionSchema);
+
+app.get("/api/wiki-image", async (req, res) => {
+    try {
+        let name = String(req.query.name || "").trim();
+        let lang = String(req.query.lang || "pl").trim();
+        const googleId = String(req.query.googleId || "").trim(); // ✅ nowy parametr
+
+        if (!name) {
+            return res.status(400).json({
+                error: "Missing required query param: name",
+                example:
+                    "/api/wiki-image?name=Smok%20Wawelski%20w%20Krakow&lang=pl&thumbWidth=1200&googleId=YOUR_GOOGLE_ID",
+            });
+        }
+
+        const thumbWidth = req.query.thumbWidth ? Number(req.query.thumbWidth) : 1200;
+        if (!Number.isFinite(thumbWidth) || thumbWidth <= 0) {
+            return res.status(400).json({ error: "thumbWidth must be a positive number" });
+        }
+
+        // ✅ Perplexity -> dokładny tytuł wiki + wykryty język
+        const { title, lang: detectedLang } = await getWikipediaExactTitle(name);
+        name = title;
+        lang = detectedLang || lang;
+
+        if (!name) {
+            return res.status(404).json({
+                name: null,
+                lang,
+                thumbWidth,
+                imageUrl: null,
+                error: "No Wikipedia title found",
+            });
+        }
+
+        const imageUrl = await getWikipediaImageUrl(name, {
+            lang,
+            thumbWidth,
+            userAgent: process.env.WIKI_UA || "MyApp/1.0 (contact: your-email@example.com)",
+            timeoutMs: process.env.WIKI_TIMEOUT_MS ? Number(process.env.WIKI_TIMEOUT_MS) : 12_000,
+        });
+
+        if (!imageUrl) {
+            return res.status(404).json({
+                name,
+                lang,
+                thumbWidth,
+                imageUrl: null,
+                error: "No image found for given attraction name",
+            });
+        }
+
+        // ✅ jeśli podano googleId -> zapisz wallpaper w bazie
+        let saved = false;
+        if (googleId) {
+            const updated = await Attraction.findOneAndUpdate(
+                { googleId },
+                {
+                    $set: {
+                        wallpaper: imageUrl,
+                        updatedAt: new Date(),
+                        // opcjonalnie, jeśli chcesz oznaczać źródło danych:
+                        // dataSource: "Bot",
+                    },
+                },
+                { new: true, projection: { _id: 0, googleId: 1, wallpaper: 1 } }
+            ).lean();
+
+            saved = Boolean(updated);
+        }
+
+        return res.json({ name, lang, thumbWidth, imageUrl, googleId: googleId || null, saved });
+    } catch (err) {
+        const msg = err?.message || String(err);
+        const isBadRequest =
+            msg.includes("Missing 'name'") ||
+            msg.includes("Missing") ||
+            msg.includes("invalid");
+
+        if (isBadRequest) {
+            return res.status(400).json({ error: msg });
+        }
+
+        return res.status(500).json({
+            error: "Failed to fetch Wikipedia image",
+            details: msg,
+        });
+    }
+});
+
+
+
 
 
 
@@ -2487,7 +2789,7 @@ async function getHotels({
         "x-rapidapi-host": "booking-com15.p.rapidapi.com",
         "x-rapidapi-key":
             process.env.RAPIDAPI_KEY ||
-            "a7f6e3af723msh46ab5643b63deacp1ab5b6jsn428825fe714d",
+            "5678365077msh7ef633b67e5a401p1ffa1fjsnd1d3fbe26a25",
     };
 
     const allHotels = [];
@@ -2596,7 +2898,7 @@ app.get("/findHotel", async (req, res) => {
                     "x-rapidapi-host": "booking-com15.p.rapidapi.com",
                     "x-rapidapi-key":
                         process.env.RAPIDAPI_KEY ||
-                        "a7f6e3af723msh46ab5643b63deacp1ab5b6jsn428825fe714d",
+                        "5678365077msh7ef633b67e5a401p1ffa1fjsnd1d3fbe26a25",
                 },
                 timeout: 10000,
             }

@@ -1061,7 +1061,31 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
         }
         return "";
     })
-    const [liczbaDni, setLiczbaDni] = useState(0)
+    const [liczbaDni, setLiczbaDni] = useState(() => {
+        if (!(dataPrzyjazdu instanceof Date) || isNaN(dataPrzyjazdu)) return 0;
+        if (!(dataWyjazdu instanceof Date) || isNaN(dataWyjazdu)) return 0;
+
+        // liczymy dni kalendarzowe (inkl. start i koniec), ignorując godzinę
+        const start = new Date(
+            dataPrzyjazdu.getFullYear(),
+            dataPrzyjazdu.getMonth(),
+            dataPrzyjazdu.getDate()
+        );
+        const end = new Date(
+            dataWyjazdu.getFullYear(),
+            dataWyjazdu.getMonth(),
+            dataWyjazdu.getDate()
+        );
+
+        if (end < start) return 0;
+
+        const MS_PER_DAY = 24 * 60 * 60 * 1000;
+        const diffDays = Math.round((end.getTime() - start.getTime()) / MS_PER_DAY);
+
+        return diffDays + 1;
+    });
+
+
     // ===== EFEKTY: zapis do URL + regularny zapis do localStorage =====
 
 
@@ -1137,7 +1161,7 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
     useEffect(() => {
         const lat = miejsceDocelowe?.location?.lat;
         const lng = miejsceDocelowe?.location?.lng;
-        console.log("Rozpoczynam probe")
+        //console.log("Rozpoczynam probe")
         if (
             tripId ||
             downloadPlan ||
@@ -1145,14 +1169,14 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
             lat == null ||
             lng == null
         ) {
-            console.log("Nie pobieram")
+            //console.log("Nie pobieram")
             return;
         }
         if (!nazwaWyjazdu) setNazwaWyjazdu(`Wyjazd do ${miejsceDocelowe.nazwa}`)
         const controller = new AbortController();
 
         const fetchPhoto = async () => {
-            console.log("Rozpoczynam probe 2")
+            //console.log("Rozpoczynam probe 2")
             try {
                 const url =
                     `${portacc}/getPhotoOfCity` +
@@ -1308,7 +1332,7 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
 
         (async () => {
             try {
-                console.log("Probuje pobrac z nearby");
+                //console.log("Probuje pobrac z nearby");
                 const url = `${port}/attractions/nearby?lat=${encodeURIComponent(
                     lat
                 )}&lng=${encodeURIComponent(lng)}&radiusKm=70`;
@@ -1325,7 +1349,7 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
                 }
 
                 const data = await resp.json();
-                console.log("wynik z nearby", data)
+                //console.log("wynik z nearby", data)
                 setAtrakcje(data);
             } catch (err) {
                 if (err.name !== "AbortError") {
@@ -1337,7 +1361,7 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
         return () => controller.abort();
     }, [miejsceDocelowe?.location?.lat, miejsceDocelowe?.location?.lng]);
 
-    const [wybranyHotel, setWybranyHotel] = useState({ stars: 3, nazwa: "Hotel w Mieście", adres: "", checkIn: '14:00', checkOut: '11:00', cena: 100 * liczbaDni * (liczbaOpiekunow + liczbaUczestnikow) * (standardHotelu + 1) % 4 })
+    const [wybranyHotel, setWybranyHotel] = useState({ stars: 3, nazwa: "Hotel w Mieście", adres: "", checkIn: '14:00', checkOut: '11:00', cena: 100 * liczbaDni * (liczbaOpiekunow + liczbaUczestnikow) * ((standardHotelu + 1) % 4) })
 
     const [routeSchedule, setRouteSchedule] = useState([])
     const [timeSchedule, setTimeSchedule] = useState([])
@@ -2905,6 +2929,9 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
         wybranyHotel,
     ]);
 
+    useEffect(() => {
+        console.log("wybrany hotel", wybranyHotel, dataWyjazdu, dataPrzyjazdu, liczbaDni, (liczbaOpiekunow + liczbaUczestnikow), ((standardHotelu + 1) % 4))
+    }, [wybranyHotel, liczbaDni])
     const pokojeOpiekunowie = 2;
     useEffect(() => {
         if (
@@ -2919,7 +2946,7 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
             location: { lat, lng },
         } = miejsceDocelowe;
 
-        const key = `Hotel-${nazwa}-${dataPrzyjazdu}-${dataWyjazdu}-${standardHotelu}-${liczbaUczestnikow}-${liczbaOpiekunow}-${pokojeOpiekunowie}`;
+        const key = `Hotel-${nazwa}-${formatDate(dataPrzyjazdu)}-${formatDate(dataWyjazdu)}-${standardHotelu}-${liczbaUczestnikow}-${liczbaOpiekunow}-${pokojeOpiekunowie}`;
 
         const cachedHotel = localStorage.getItem(key);
         if (cachedHotel) {
@@ -3023,24 +3050,118 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
         pokojeOpiekunowie
     ]);
 
-    const setOffOthers = (s) => {
-        if (s != 0) {
-            setMiejsceStartowePopupOpened(false)
-        }
-        if (s != 1) {
-            setWyborDatyOpened(false)
-        }
-        if (s !== 2) {
-            setWyborGosciOpened(false)
-        }
-        if (s != 3) {
-            setWyborStandardHoteluOpened(false)
-        }
-        if (s != 4) {
-            setWyborStandardTransportuOpened(false)
-        }
-    }
+    // UPEWNIJ SIĘ, ŻE MASZ: const [atrakcje, setAtrakcje] = useState([]);
 
+    const wallpaperFillRunningRef = useRef(false);
+    const wallpaperDoneRef = useRef(new Set()); // żeby nie odpalać ponownie dla tych samych googleId w trakcie sesji
+
+    useEffect(() => {
+        if (!Array.isArray(atrakcje) || atrakcje.length === 0) return;
+        if (wallpaperFillRunningRef.current) return;
+
+        const first50 = atrakcje.slice(0, 50);
+
+        // bierzemy tylko te bez wallpaper oraz takie, których jeszcze nie próbowaliśmy w tej sesji
+        const missing = first50.filter((a) => {
+            const gid = a?.googleId;
+            const hasWallpaper = !!a?.wallpaper && String(a.wallpaper).trim().length > 0;
+            const alreadyTried = gid ? wallpaperDoneRef.current.has(gid) : true;
+            return !hasWallpaper && !alreadyTried;
+        });
+
+        if (missing.length === 0) return;
+
+        wallpaperFillRunningRef.current = true;
+        const controller = new AbortController();
+
+        const fetchWallpaper = async (a) => {
+            const nazwa = (a?.nazwa || "").trim();
+
+            // Miasto: bierzemy ostatnią część po przecinku, a jeśli brak przecinka – cały adres
+            // Przykłady:
+            // "Gaudeegasse 1, Wien" -> "Wien"
+            // "Rynek Główny, Kraków" -> "Kraków"
+            // "Wiedeń" -> "Wiedeń"
+            const city = (() => {
+                const raw = (a?.adres || "").trim();
+                if (!raw) return "";
+                const parts = raw.split(",").map(s => s.trim()).filter(Boolean);
+                return parts.length ? parts[parts.length - 1] : "";
+            })();
+
+            // Format: "Smok Wawelski w Krakow"
+            const nameWithCity = city ? `${nazwa} w ${city}` : nazwa;
+
+            const params = new URLSearchParams({
+                name: nameWithCity,
+                googleId: a.googleId,
+                lang: "pl",
+                thumbWidth: "1200",
+            });
+            console.log(nameWithCity)
+            const res = await fetch(`${port}/api/wiki-image?${params.toString()}`, {
+                method: "GET",
+                headers: { Accept: "application/json" },
+                signal: controller.signal,
+            });
+
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok) return { googleId: a?.googleId, imageUrl: null };
+
+            return { googleId: a?.googleId, imageUrl: data?.imageUrl || null };
+        };
+
+
+        const run = async () => {
+            try {
+                const concurrency = 5; // limit równoległych requestów
+                const queue = [...missing];
+
+                const workers = Array.from({ length: concurrency }, async () => {
+                    while (queue.length) {
+                        const a = queue.shift();
+                        if (!a) return;
+
+                        const gid = a?.googleId;
+                        if (!gid) continue;
+
+                        // oznacz jako "próbowane" (żeby nie zapętlać requestów przy kolejnych renderach)
+                        wallpaperDoneRef.current.add(gid);
+
+                        // jeżeli w międzyczasie już dostało wallpaper, pomiń
+                        const current = atrakcje.find((x) => x?.googleId === gid);
+                        if (current?.wallpaper) continue;
+
+                        const { imageUrl } = await fetchWallpaper(a);
+
+                        if (imageUrl) {
+                            setAtrakcje((prev) =>
+                                prev.map((x) =>
+                                    x?.googleId === gid ? { ...x, wallpaper: imageUrl } : x
+                                )
+                            );
+
+                            // Jeśli chcesz też persist do DB:
+                            // await fetch(`${port}/api/attractions/${encodeURIComponent(gid)}`, { method:"PATCH", ... })
+                        }
+                    }
+                });
+
+                await Promise.all(workers);
+            } catch (err) {
+                if (err?.name !== "AbortError") console.error("Wallpaper fill error:", err);
+            } finally {
+                wallpaperFillRunningRef.current = false;
+            }
+        };
+
+        run();
+
+        return () => {
+            controller.abort();
+            wallpaperFillRunningRef.current = false;
+        };
+    }, [atrakcje, port]);
     useEffect(() => {
         function handleClickOutside(event) {
             if (settingsRef.current && !settingsRef.current.contains(event.target)) {
@@ -3202,7 +3323,6 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
                 }
 
                 const data = await res.json();
-                console.log("Ticketmaster events (API):", data);
 
                 const events = data.events || [];
 
@@ -3210,7 +3330,6 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
                 try {
                     localStorage.setItem(key, JSON.stringify(events));
                 } catch (e) {
-                    console.warn("Nie udało się zapisać do localStorage:", e);
                 }
 
                 setEvents(events);
@@ -3225,7 +3344,6 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
             const raw = localStorage.getItem(key);
             if (raw) {
                 const cachedEvents = JSON.parse(raw);
-                console.log("Ticketmaster events (cache):", cachedEvents);
                 setEvents(Array.isArray(cachedEvents) ? cachedEvents : []);
                 return; // nie wywołujemy API
             }
@@ -3293,7 +3411,7 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
                         <SaveButton
                             className="c"
 
-                        onClick={() => redirectToSettings()}
+                            onClick={() => redirectToSettings()}
                         >
 
                             <ChevronLeft size={16} />Ustawienia wyjazdu
@@ -3499,7 +3617,7 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
                 </SettingsButton>
             </KonfiguratorMainSettings>*/}
                 <MobileNavButtons>
-                    <div className="mobileNavButton" 
+                    <div className="mobileNavButton"
                         onClick={() => redirectToSettings()}>
                         <ChevronLeft size={16} />Ustawienia wyjazdu
                     </div>
@@ -3579,7 +3697,7 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
                                 .toSorted((a, b) => (b.liczbaOpinie * b.ocena || 0) - (a.liczbaOpinie * a.ocena || 0))
                                 .map((atrakcja, idx) => (
                                     <AttractionResultMediumVerifiedComponent
-                                        key={`${atrakcja.googleId}${idx}`}
+                                        key={`${atrakcja.googleId}${idx}${atrakcja?.wallpaper}`}
                                         atrakcja={atrakcja}
                                         wybranyDzien={wybranyDzien}
                                         addActivity={addActivity}
@@ -3601,7 +3719,7 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
                                 .toSorted((a, b) => (b.liczbaOpinie * b.ocena || 0) - (a.liczbaOpinie * a.ocena || 0))
                                 .map((atrakcja, idx) => (
                                     <AttractionResultMediumVerifiedComponent
-                                        key={`${atrakcja.googleId}${idx}`}
+                                        key={`${atrakcja.googleId}${idx}${atrakcja?.wallpaper}`}
                                         atrakcja={atrakcja}
                                         wybranyDzien={wybranyDzien}
                                         addActivity={addActivity}
@@ -3636,7 +3754,7 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
                             {Array.isArray(events) && events
                                 .map((atrakcja, idx) => (
                                     <AttractionResultMediumVerifiedComponent
-                                        key={`${atrakcja.googleId}${idx}`}
+                                        key={`${atrakcja.googleId}${idx}${atrakcja?.wallpaper}`}
                                         atrakcja={atrakcja}
                                         wybranyDzien={wybranyDzien}
                                         addActivity={addActivity}

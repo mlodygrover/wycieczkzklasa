@@ -331,10 +331,14 @@ export const TabsContainer = styled.div`
   margin-bottom: 20px;
   margin-top: 10px;
   overflow-x: auto;
+  overflow-y: hidden;               /* ✅ nie pozwól na pionowe przewijanie kontenera */
   -webkit-overflow-scrolling: touch;
   scroll-behavior: smooth;
 
-  /* scrollbar cosmetics */
+  touch-action: pan-x;              /* ✅ gest dotykowy ma iść w poziomie */
+  overscroll-behavior-x: contain;   /* ✅ nie „przebijaj” scrolla do rodzica */
+  overscroll-behavior-y: none;      /* ✅ mniej bounce w pionie */
+
   &::-webkit-scrollbar { height: 3px; }
   &::-webkit-scrollbar-track { background: transparent; }
 
@@ -351,6 +355,7 @@ export const TabsContainer = styled.div`
     margin: 16px auto 24px;
   }
 `;
+
 
 export const Tab = styled.button`
   /* Stała „szuflada” na tab – zwęża się na mniejszych ekranach */

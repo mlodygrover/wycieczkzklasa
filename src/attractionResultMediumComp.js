@@ -580,7 +580,7 @@ export const AttractionResultMediumVerifiedComponent = ({
     // Tło używane dla typ 1 i 2
     let backgroundUrl = FALLBACK_WALLPAPER;
 
-    if (typ === 1) {
+    if (atrakcja?.wallpaper) {
         backgroundUrl = atrakcja?.wallpaper || FALLBACK_WALLPAPER;
     } else if (typ === 2 && hasCoords) {
         // statyczny kafelek OSM zamiast Leafleta
@@ -617,13 +617,13 @@ export const AttractionResultMediumVerifiedComponent = ({
         <AttractionResultMediumVerifiedComponentMainbox
             style={
                 // typ 1 i 2 – tło jako backgroundImage (zdjęcie lub statyczny kafelek)
-                typ === 1 || typ === 2
+                typ === 1 || typ === 2 || typ === 3
                     ? { backgroundImage: `url(${backgroundUrl})` }
                     : undefined
             }
         >
             {/* typ 3 – pełny Leaflet jako tło */}
-            {typ === 3 && hasCoords && (
+            {typ === 3 && hasCoords && backgroundUrl == FALLBACK_WALLPAPER && (
                 <div
                     style={{
                         position: 'absolute',

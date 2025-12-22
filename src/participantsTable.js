@@ -6,7 +6,8 @@ import useUserStore, { fetchMe } from "./usercontent"
 const ParticipantsTableMainbox = styled.div`
     width: 90%;
     max-width: 1600px;
-    min-height: 300px;
+    min-height: 100px;
+    margin-bottom: 50px;
 `
 
 const StyledTable = styled.table`

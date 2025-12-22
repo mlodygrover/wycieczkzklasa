@@ -1,22 +1,26 @@
-
-
-
-
-
-import styled, { keyframes } from "styled-components";
+import styled, { keyframes, css } from "styled-components";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Image, Landmark, Send } from "lucide-react";
+import { Image, Landmark, MessageCircleIcon, Send } from "lucide-react";
 import useUserStore, { initAuth } from "./usercontent";
+import Loader from "./roots/loader";
 
 const portacc = process.env.REACT_APP_API_SOURCE || "https://api.draftngo.com";
 
-/* --- styled components: zostawiam jak u Ciebie (skrócone tu dla czytelności) --- */
-// ... (Twoje style bez zmian)
+/* --- STYLES --- */
+
+const UsersChatboxMainboxWrapper = styled.div`
+    width: 90%;
+    max-width: 1600px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+`
 
 const UsersChatboxMainbox = styled.div`
   width: 90%;
   max-width: 800px;
-  min-height: 100px;
+  min-height: 200px;
   border-radius: 20px;
   display: flex;
   flex-direction: column;
@@ -24,17 +28,12 @@ const UsersChatboxMainbox = styled.div`
   justify-content: flex-start;
   margin-bottom: 100px;
 `;
-// Animacja wjazdu wiadomości
+
 const fadeInUp = keyframes`
-  from {
-    opacity: 0;
-    transform: translateY(10px) scale(0.98);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
+  from { opacity: 0; transform: translateY(10px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
 `
+
 const MessageWrapper = styled.div`
     margin-top: 10px;
     padding-right: 30px;
@@ -43,10 +42,16 @@ const MessageWrapper = styled.div`
     align-items: flex-end;
     justify-content: flex-start;
     
-    /* --- NOWE: Dodajemy animację --- */
-    animation: ${fadeInUp} 0.3s ease-out forwards;
-    /* ------------------------------ */
-
+    /* LOGIKA ANIMACJI: 
+       Używamy propsa transient ($shouldAnimate), aby nie przekazywać go do DOM.
+       Jeśli true -> animujemy. Jeśli false -> brak animacji (dla starych wiadomości).
+    */
+    ${({ $shouldAnimate }) => $shouldAnimate && css`
+        animation: ${fadeInUp} 0.3s ease-out forwards;
+    `}
+    
+    /* Domyślnie element jest widoczny, chyba że ma animację, wtedy startuje z opacity 0 (w keyframes) */
+    
     &.own{
         padding-right: 0;
         padding-left: 30px;
@@ -59,12 +64,11 @@ const MessageWrapper = styled.div`
         align-items: center;
         justify-content: center;
         font-size: 12px;
-        padding: 5px;
         border-radius: 999px;
         background-color: black;
         color: white;
-        width: 20px;
-        height: 20px;
+        width: 25px;
+        height: 25px;
         flex-shrink: 0;
         overflow: hidden;
     }
@@ -233,7 +237,36 @@ const TypingDot = styled.div`
   &:nth-child(2) { animation-delay: 0.2s; }
   &:nth-child(3) { animation-delay: 0.4s; }
 `;
-/* helpers */
+
+const UsersChatboxTitle = styled.div`
+    font-family: 'Inter';
+    width: 100%;
+    text-align: left;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: flex-start;
+    .tripTitle{
+        font-size: 22px;
+        font-weight: 700;
+        display: flex;
+        flex-direction: row;
+        justify-content: flex-start;
+        align-items: center;
+        gap: 5px;
+
+    }
+    .tripSubtitle{
+        font-size: 12px;
+        color: #606060;
+        font-weight: 600;
+    }
+    border-bottom: 1px solid lightgray;
+    padding-bottom: 5px;
+`
+
+/* --- HELPERS --- */
+
 function initialsFromName(name = "") {
     const s = String(name || "").trim();
     if (!s) return "U";
@@ -251,6 +284,7 @@ function coerceItems(json) {
     const items = Array.isArray(json?.items) ? json.items : [];
     return items.map((m) => ({
         role: m?.role === "pending" ? "pending" : "user",
+        _id: normId(m?._id), // Zachowujemy oryginalne ID z bazy
         userId: normId(m?.userId),
         content: typeof m?.content === "string" ? m.content : "",
         dateTime: m?.dateTime ?? null,
@@ -258,64 +292,119 @@ function coerceItems(json) {
         username: m?.username ?? "Użytkownik",
     }));
 }
+
 function makeOptimisticMessage({ user, content }) {
     const nowIso = new Date().toISOString();
     return {
         role: "user",
         userId: user?._id ? String(user._id) : null,
         content: String(content || ""),
-        dateTime: nowIso,                 // zgodnie z Twoim formatem field-name
+        dateTime: nowIso,
         userPic: user?.profilePic ?? null,
         username: user?.username ?? (user?.email ? user.email.split("@")[0] : "Ty"),
         __optimistic: true,
-        __clientId: `c_${Date.now()}_${Math.random().toString(16).slice(2)}`
+        __clientId: `c_${Date.now()}_${Math.random().toString(16).slice(2)}`,
+        __forceAnimate: true // Flaga: to jest nowa wiadomość od nas, na pewno animuj
     };
 }
 
-function mergeServerWithOptimistic(prev, server) {
-    const prevOptimistic = (Array.isArray(prev) ? prev : []).filter((m) => m?.__optimistic);
+/**
+ * Logika łączenia wiadomości:
+ * 1. Wykrywa duplikaty (Optimistic vs Server) i łączy je zachowując ClientID (żeby React nie przebudował DOM).
+ * 2. Zarządza flagą __noAnimate. Jeśli wiadomość była już w `prev`, dziedziczy jej stan animacji.
+ * 3. Jeśli to `firstLoad`, wszystkie nowe wiadomości dostają __noAnimate = true.
+ */
+function mergeServerWithOptimistic(prev, server, isFirstLoad) {
+    const prevItems = Array.isArray(prev) ? prev : [];
+    const serverItems = Array.isArray(server) ? server : [];
 
-    // Jeżeli serwer już zwrócił tę wiadomość (po treści+userId+bliskim czasie),
-    // to optimistic można wyrzucić. Robimy tolerancję czasową.
-    const mergedOptimistic = prevOptimistic.filter((o) => {
-        const oUser = String(o?.userId || "");
-        const oText = String(o?.content || "").trim();
-        const oTime = o?.dateTime ? new Date(o.dateTime).getTime() : 0;
+    // Mapa istniejących wiadomości dla szybkiego dostępu: klucz -> item
+    // Używamy unikalnych identyfikatorów
+    const prevMap = new Map();
+    prevItems.forEach(item => {
+        // Kluczem może być clientId (jeśli optimistic) lub _id (jeśli z serwera)
+        if (item.__clientId) prevMap.set(item.__clientId, item);
+        if (item._id) prevMap.set(item._id, item);
 
-        const matched = (Array.isArray(server) ? server : []).some((s) => {
-            const sUser = String(s?.userId || "");
-            const sText = String(s?.content || "").trim();
-            const sTime = s?.dateTime ? new Date(s.dateTime).getTime() : 0;
-
-            // warunek „prawdopodobnie ta sama wiadomość”
-            const sameUser = sUser && oUser && sUser === oUser;
-            const sameText = sText && oText && sText === oText;
-
-            // tolerancja czasu 10s (możesz zmniejszyć)
-            const closeTime = Math.abs(sTime - oTime) <= 10_000;
-
-            return sameUser && sameText && closeTime;
-        });
-
-        return !matched;
+        // Dodatkowo dla wiadomości "pending" używamy klucza opartego na userId
+        if (item.role === 'pending' && item.userId) {
+            prevMap.set(`pending_${item.userId}`, item);
+        }
     });
 
-    // Zwracamy: server + pozostałe optimistic (żeby nie znikały)
-    return [...(Array.isArray(server) ? server : []), ...mergedOptimistic];
+    const consumedOptimisticIds = new Set();
+
+    const merged = serverItems.map((serverItem) => {
+        // Generujemy potencjalne klucze do szukania w poprzednim stanie
+        let match = null;
+
+        // 1. Próba znalezienia po _id (jeśli już mieliśmy to z serwera)
+        if (serverItem._id && prevMap.has(serverItem._id)) {
+            match = prevMap.get(serverItem._id);
+        }
+        // 2. Jeśli to pending, szukamy po userId (żeby nie skakało przy poll-ingu)
+        else if (serverItem.role === 'pending' && serverItem.userId && prevMap.has(`pending_${serverItem.userId}`)) {
+            match = prevMap.get(`pending_${serverItem.userId}`);
+        }
+        // 3. Heurystyka dla Optimistic Messages (szukamy pasującej treści/usera/czasu)
+        else if (!match) {
+            const sTime = serverItem.dateTime ? new Date(serverItem.dateTime).getTime() : 0;
+            const possibleOptimistic = prevItems.find(p =>
+                p.__optimistic &&
+                !consumedOptimisticIds.has(p.__clientId) &&
+                String(p.userId) === String(serverItem.userId) &&
+                String(p.content) === String(serverItem.content) &&
+                Math.abs((p.dateTime ? new Date(p.dateTime).getTime() : 0) - sTime) < 10000
+            );
+
+            if (possibleOptimistic) {
+                match = possibleOptimistic;
+                consumedOptimisticIds.add(match.__clientId);
+            }
+        }
+
+        // --- BUDOWANIE OBIEKTU WYNIKOWEGO ---
+
+        // Czy animować?
+        // Jeśli to firstLoad -> NIE animuj niczego z serwera.
+        // Jeśli znaleźliśmy match -> bierzemy stan z match (czyli pewnie już po animacji lub bez).
+        // Jeśli to nowa wiadomość i nie firstLoad -> animuj (domyślnie false w styled component, więc musimy to obsłużyć w renderze).
+
+        let finalItem = { ...serverItem };
+
+        if (match) {
+            // Zachowujemy clientId, żeby React wiedział że to ten sam element (BRAK RE-RENDERU = BRAK PODWÓJNEJ ANIMACJI)
+            if (match.__clientId) finalItem.__clientId = match.__clientId;
+
+            // Zachowujemy flagę o wyłączonej animacji, jeśli stara wiadomość ją miała
+            if (match.__noAnimate) finalItem.__noAnimate = true;
+
+            // Jeśli stara wiadomość była optimistic, a teraz mamy z serwera, to już nie jest optimistic
+            // ale klucz zostaje.
+        } else {
+            // Nowa wiadomość, której nie było lokalnie.
+            if (isFirstLoad) {
+                finalItem.__noAnimate = true; // Pierwszy wjazd - nie animuj, pokaż od razu
+            }
+        }
+
+        return finalItem;
+    });
+
+    // Dodajemy te wiadomości optimistic, które nie znalazły pary na serwerze (jeszcze się wysyłają)
+    const remainingOptimistic = prevItems.filter(p => p.__optimistic && !consumedOptimisticIds.has(p.__clientId));
+
+    return [...merged, ...remainingOptimistic];
 }
 
+/* --- COMPONENT --- */
 
 export const UsersChatbox = ({ tripId }) => {
-    // ✅ bierzemy usera + informację czy init został wykonany
-
-    // ✅ pobieraj pola osobno (stabilniej niż zwracanie obiektu)
     const user = useUserStore((s) => s.user);
     const hydrated = useUserStore((s) => s.hydrated);
-
     const initStartedRef = useRef(false);
 
     useEffect(() => {
-        // ✅ gwarancja: initAuth tylko raz, nawet jeśli store aktualizuje się wielokrotnie w trakcie fetchMe()
         if (!hydrated && !initStartedRef.current) {
             initStartedRef.current = true;
             initAuth().catch(() => null);
@@ -327,83 +416,93 @@ export const UsersChatbox = ({ tripId }) => {
     const [text, setText] = useState("");
     const [items, setItems] = useState([]);
     const [sending, setSending] = useState(false);
+    const [loadingMessages, setLoadingMessages] = useState(true);
+
+    // ✅ Ref do śledzenia czy to pierwsze ładowanie (żeby nie animować historii)
+    const isFirstLoadRef = useRef(true);
 
     const acRef = useRef(null);
-    const pollTimerRef = useRef(null);
     const lastTypingSentAtRef = useRef(0);
+    const inFlightRef = useRef(false);
+    const pollStopRef = useRef(false);
 
     const canSend = useMemo(() => {
         return !!tripId && !!loggedUserId && !sending && String(text).trim().length > 0;
     }, [tripId, loggedUserId, sending, text]);
 
-    const fetchSync = useCallback(
-        async ({ typing = false } = {}) => {
-            if (!tripId || !loggedUserId) return;
+    const fetchSync = useCallback(async ({ typing = false } = {}) => {
+        if (!tripId || !loggedUserId) return;
+        if (inFlightRef.current) return;
 
-            // abort poprzedniego requestu (żeby nie piętrzyć)
-            if (acRef.current) acRef.current.abort();
-            const ac = new AbortController();
-            acRef.current = ac;
+        inFlightRef.current = true;
 
+        try {
             const qs = new URLSearchParams();
             if (typing) qs.set("typing", "true");
 
-            const url = `${portacc}/api/trip-plans/${encodeURIComponent(
-                tripId
-            )}/messages/sync?${qs.toString()}`;
+            const url = `${portacc}/api/trip-plans/${encodeURIComponent(tripId)}/messages/sync?${qs}`;
 
             const resp = await fetch(url, {
                 method: "GET",
                 credentials: "include",
                 headers: { Accept: "application/json" },
-                signal: ac.signal,
             });
 
             if (!resp.ok) return;
 
             const json = await resp.json().catch(() => null);
             const next = coerceItems(json);
-            setItems((prev) => mergeServerWithOptimistic(prev, next));
 
-        },
-        [tripId, loggedUserId]
-    );
+            setItems((prev) => {
+                // Przekazujemy true/false czy to pierwszy load
+                const merged = mergeServerWithOptimistic(prev, next, isFirstLoadRef.current);
+                return merged;
+            });
 
-    // ✅ polling uruchamiamy dopiero gdy user jest znany
+            // Po pierwszym udanym pobraniu, wyłączamy flagę "first load"
+            if (isFirstLoadRef.current) {
+                isFirstLoadRef.current = false;
+                setLoadingMessages(false);
+            }
+
+        } catch (e) {
+            console.warn("sync error:", e);
+        } finally {
+            inFlightRef.current = false;
+        }
+    }, [tripId, loggedUserId]);
+
+    // Polling loop
     useEffect(() => {
         if (!tripId || !loggedUserId) return;
+        pollStopRef.current = false;
+        isFirstLoadRef.current = true; // Reset przy zmianie roomu/usera
 
-        fetchSync({ typing: false }).catch(() => null);
-
-        pollTimerRef.current = setInterval(() => {
-            fetchSync({ typing: false }).catch(() => null);
-        }, 500);
-
-        return () => {
-            if (pollTimerRef.current) clearInterval(pollTimerRef.current);
-            pollTimerRef.current = null;
-
-            if (acRef.current) acRef.current.abort();
-            acRef.current = null;
+        const loop = async () => {
+            if (pollStopRef.current) return;
+            await fetchSync({ typing: false });
+            if (pollStopRef.current) return;
+            setTimeout(loop, 500);
         };
+
+        loop();
+        return () => { pollStopRef.current = true; };
     }, [tripId, loggedUserId, fetchSync]);
+
 
     const maybeSendTyping = useCallback(() => {
         if (!tripId || !loggedUserId) return;
-
         const now = Date.now();
         if (now - lastTypingSentAtRef.current < 400) return;
         lastTypingSentAtRef.current = now;
-
         fetchSync({ typing: true }).catch(() => null);
     }, [tripId, loggedUserId, fetchSync]);
 
     const handleSend = useCallback(async () => {
         if (!canSend) return;
-
         const content = String(text).trim();
 
-        // ✅ optimistic: dodaj od razu do listy
+        // Dodajemy wiadomość optimistic - ona MA flagę __forceAnimate
         const optimistic = makeOptimisticMessage({ user, content });
         setItems((prev) => [...prev, optimistic]);
 
@@ -418,139 +517,120 @@ export const UsersChatbox = ({ tripId }) => {
                     credentials: "include",
                     headers: { "Content-Type": "application/json", Accept: "application/json" },
                     body: JSON.stringify({ content, clientId: optimistic.__clientId }),
-
                 }
             );
 
-            if (!resp.ok) {
-                const t = await resp.text().catch(() => "");
-                throw new Error(t || `HTTP ${resp.status}`);
-            }
+            if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
 
-            // ✅ po sukcesie: odśwież z serwera (zastąpi optimistic prawdziwą wiadomością)
+            // Sync po wysłaniu (potwierdzenie z serwera)
             setTimeout(() => fetchSync({ typing: false }).catch(() => null), 250);
         } catch (e) {
             console.error("Send message error:", e);
-
-            // ❌ jeśli błąd: usuń optimistic z listy (żeby nie została „fejkowa”)
             setItems((prev) => prev.filter((m) => m.__clientId !== optimistic.__clientId));
-
-            // opcjonalnie: przywróć tekst do inputa
             setText(content);
         } finally {
             setSending(false);
         }
     }, [canSend, text, tripId, fetchSync, user]);
 
-    const onKeyDown = useCallback(
-        (e) => {
-            if (e.key === "Enter" && !e.shiftKey) {
-                e.preventDefault();
-                handleSend();
-            }
-        },
-        [handleSend]
-    );
+    const onKeyDown = useCallback((e) => {
+        if (e.key === "Enter" && !e.shiftKey) {
+            e.preventDefault();
+            handleSend();
+        }
+    }, [handleSend]);
 
     return (
-        <UsersChatboxMainbox>
-            {items.map((message, idx) => {
-                const msgUserId = normId(message.userId);
-                const isOwn = loggedUserId && msgUserId && msgUserId === loggedUserId;
+        <UsersChatboxMainboxWrapper>
+            <UsersChatboxTitle>
+                <div className="tripTitle">
+                    Wyjazd do Poznania<MessageCircleIcon size={20} />
+                </div>
+                <div className="tripSubtitle">
+                    3 uczestników, 29.11 - 02.12
+                </div>
+            </UsersChatboxTitle>
 
-                const avatar = message.userPic ? (
-                    <img className="profileImg" src={message.userPic} alt="" />
-                ) : (
-                    initialsFromName(message.username)
-                );
+            {loadingMessages ? <Loader /> : ""}
 
-                if (isOwn) {
-                    return (
-                        <React.Fragment key={message.__clientId || `${msgUserId || "x"}_${message.dateTime || idx}`}>
+            <UsersChatboxMainbox>
+                {items.map((message, idx) => {
+                    const msgUserId = normId(message.userId);
+                    const isOwn = loggedUserId && msgUserId && msgUserId === loggedUserId;
 
-                            <MessageWrapper className="own">
-                                <MessageRow className="own">
-                                    {message.username}
-                                    <MessageBox className="own">{message.content}</MessageBox>
-                                </MessageRow>
-                                <div className="profilePic">{avatar}</div>
-                            </MessageWrapper>
-                        </React.Fragment>
+                    // --- STABILNY KLUCZ (CRUCIAL) ---
+                    // 1. Jeśli wiadomość ma clientId (optimistic lub zmatchowana) -> użyj go.
+                    // 2. Jeśli to pending -> użyj stałego klucza per user.
+                    // 3. W ostateczności _id z bazy.
+                    let uniqueKey = message._id || `${msgUserId}_${idx}`;
+                    if (message.__clientId) uniqueKey = message.__clientId;
+                    if (message.role === 'pending') uniqueKey = `pending_${msgUserId}`;
+
+                    // --- DECYZJA O ANIMACJI ---
+                    // Animujemy TYLKO jeśli NIE ma flagi __noAnimate.
+                    // Wiadomości ładowane na starcie mają __noAnimate = true.
+                    // Nowe wiadomości (z serwera podczas pollowania lub optimistic) nie mają tej flagi -> animują się.
+                    const shouldAnimate = !message.__noAnimate;
+
+                    const avatar = message.userPic ? (
+                        <img className="profileImg" src={message.userPic} alt="" />
+                    ) : (
+                        initialsFromName(message.username)
                     );
-                }
 
-                if (message.role === "pending") {
-                    return (
-                        <React.Fragment key={message.__clientId || `${msgUserId || "x"}_${message.dateTime || idx}`}>
+                    // Renderowanie
+                    const content = (
+                        <React.Fragment key={uniqueKey}>
+                            <MessageWrapper
+                                className={isOwn ? "own" : ""}
+                                $shouldAnimate={shouldAnimate} // Przekazujemy transient prop
+                            >
+                                {!isOwn && <div className="profilePic">{avatar}</div>}
 
-                            <MessageWrapper>
-                                <div className="profilePic">{avatar}</div>
-                                <MessageRow>
+                                <MessageRow className={isOwn ? "own" : ""}>
                                     {message.username}
-                                    <MessageBox>
-                                        <TypingContainer>
-                                            <TypingDot />
-                                            <TypingDot />
-                                            <TypingDot />
-                                        </TypingContainer>
+                                    <MessageBox className={isOwn ? "own" : ""}>
+                                        {message.role === 'pending' ? (
+                                            <TypingContainer>
+                                                <TypingDot /><TypingDot /><TypingDot />
+                                            </TypingContainer>
+                                        ) : (
+                                            message.content
+                                        )}
                                     </MessageBox>
                                 </MessageRow>
+
+                                {isOwn && <div className="profilePic">{avatar}</div>}
                             </MessageWrapper>
                         </React.Fragment>
                     );
-                }
 
-                return (
-                    <React.Fragment key={message.__clientId || `${msgUserId || "x"}_${message.dateTime || idx}`}>
+                    return content;
+                })}
 
-                        <MessageWrapper>
-                            <div className="profilePic">{avatar}</div>
-                            <MessageRow>
-                                {message.username}
-                                <MessageBox>{message.content}</MessageBox>
-                            </MessageRow>
-                        </MessageWrapper>
-                    </React.Fragment>
-                );
-            })}
-
-            <InputWrapper>
-                <StyledTextArea
-                    placeholder={loggedUserId ? "Napisz wiadomość..." : "Zaloguj się, aby pisać na czacie"}
-                    rows={2}
-                    value={text}
-                    disabled={!loggedUserId}
-                    onChange={(e) => {
-                        setText(e.target.value);
-                        if (e.target.value.trim().length > 0) {
-                            maybeSendTyping();
-                        }
-                    }}
-                    onKeyDown={onKeyDown}
-                />
-
-                <InputToolbar>
-                    <ToolsGroup>
-                        <IconButton type="button" title="Dodaj zdjęcie" disabled={!loggedUserId}>
-                            <Landmark size={16} />
+                <InputWrapper>
+                    <StyledTextArea
+                        placeholder={loggedUserId ? "Napisz wiadomość..." : "Zaloguj się, aby pisać na czacie"}
+                        rows={2}
+                        value={text}
+                        disabled={!loggedUserId}
+                        onChange={(e) => {
+                            setText(e.target.value);
+                            if (e.target.value.trim().length > 0) maybeSendTyping();
+                        }}
+                        onKeyDown={onKeyDown}
+                    />
+                    <InputToolbar>
+                        <ToolsGroup>
+                            <IconButton type="button" disabled={!loggedUserId}><Landmark size={16} /></IconButton>
+                            <IconButton type="button" disabled={!loggedUserId}><Image size={16} /></IconButton>
+                        </ToolsGroup>
+                        <IconButton type="button" className="send-btn" onClick={handleSend} disabled={!canSend}>
+                            <Send size={16} />
                         </IconButton>
-
-                        <IconButton type="button" title="Udostępnij lokalizację" disabled={!loggedUserId}>
-                            <Image size={16} />
-                        </IconButton>
-                    </ToolsGroup>
-
-                    <IconButton
-                        type="button"
-                        className="send-btn"
-                        title="Wyślij"
-                        onClick={handleSend}
-                        disabled={!canSend}
-                    >
-                        <Send size={16} />
-                    </IconButton>
-                </InputToolbar>
-            </InputWrapper>
-        </UsersChatboxMainbox>
+                    </InputToolbar>
+                </InputWrapper>
+            </UsersChatboxMainbox>
+        </UsersChatboxMainboxWrapper>
     );
 };

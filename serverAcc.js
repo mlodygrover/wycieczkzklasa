@@ -2521,7 +2521,6 @@ app.post("/api/trip-plans/:tripId/messages", requireAuth, async (req, res) => {
 app.get("/api/trip-plans/:tripId/messages/sync", requireAuth, async (req, res) => {
     try {
         const { tripId } = req.params;
-
         const typingRaw = req.query.typing;
         const typing =
             typingRaw === "true" || typingRaw === "1" || typingRaw === true;

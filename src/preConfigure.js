@@ -1205,6 +1205,7 @@ export const PreConfigure = (
     useEffect(() => {
         console.log(synchronisingPlan)
     }, [synchronisingPlan])
+    const isParticipantsTab = selectedMenu === 1;
     return (
         <PreConfigureMainbox>
             <PreConfigureHeader>
@@ -1270,10 +1271,15 @@ export const PreConfigure = (
 
             <TabsContainer>
                 <Tab $active={selectedMenu === 0} onClick={() => setSelectedMenu(0)}>Podstawowe</Tab>
-                <Tab $active={selectedMenu === 1} onClick={() => setSelectedMenu(1)}>Uczestnicy</Tab>
-                <Tab $active={selectedMenu === 2} onClick={() => setSelectedMenu(2)}>Płatności</Tab>
+                {
+                    2==2 && <>
+                        <Tab $active={selectedMenu === 1} onClick={() => setSelectedMenu(1)}>Uczestnicy</Tab>
+                        <Tab $active={selectedMenu === 2} onClick={() => setSelectedMenu(2)}>Płatności</Tab>
 
-                <Tab $active={selectedMenu ===3} onClick={() => setSelectedMenu(3)}>Czat</Tab>
+                        {/* <Tab $active={selectedMenu === 3} onClick={() => setSelectedMenu(3)}>Czat</Tab> */}
+                    </>
+                }
+
             </TabsContainer>
 
             {selectedMenu === 0 && (
@@ -1300,16 +1306,20 @@ export const PreConfigure = (
                 </>
 
             )}
-            {selectedMenu === 1 && (
-                <ParticipantsTable users={synchronisedPlan?.participants ?? ["err_loading"]} authors={synchronisedPlan?.authors ?? ["err_loading"]} />
-            )}
+            <div style={{ display: isParticipantsTab ? "flex" : "none", margin: 'auto', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-start' }}>
+                <ParticipantsTable
+                    users={synchronisedPlan?.participants ?? ["err_loading"]}
+                    authors={synchronisedPlan?.authors ?? ["err_loading"]}
+                />
+                <UsersChatbox tripId={tripId} />
+            </div>
             {selectedMenu === 2 && (
                 // Zakładka płatności (obecnie pusta)
                 <div style={{ padding: '20px', textAlign: 'center' }}>
                     Sekcja płatności jest w trakcie implementacji.
                 </div>
             )}
-            {selectedMenu == 3 && <UsersChatbox tripId={tripId}/>} 
+            {selectedMenu == 3 && <UsersChatbox tripId={tripId} />}
             {sharePopupOpened && <PreConfigureSharePopupWrapper onClick={() => setSharePopupOpened(false)}>
                 <PreConfigureSharePopup onClick={(e) => { e.stopPropagation() }}>
                     <div className='sharePopupCloseBar'>
