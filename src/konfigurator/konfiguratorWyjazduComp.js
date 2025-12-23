@@ -127,6 +127,14 @@ export const SaveButton = styled.button`
     cursor: not-allowed; 
     border: 1px solid #f0f0f0; 
   }
+    &.d{
+        width: 90%;
+        height: 35px;
+        color: #d5ffe2ff;
+        background:  #008d73ff;
+        margin: 10px auto;
+        
+    }
 `;
 
 const KonfiguratorNavBar = styled.div`
@@ -266,7 +274,7 @@ export const KonfiguratorWyjazduComp = ({
      * Zapisuje plan wraz z computedPrice.
      * Wymaga: activitiesSchedule (array-of-arrays), miejsceDocelowe (obiekt), computedPrice (number).
      */
-    async function saveActivitiesSchedule( activitiesSchedule, miejsceDocelowe, miejsceStartowe, dataPrzyjazdu, dataWyjazdu, liczbaUczestnikow, liczbaOpiekunow, standardHotelu, standardTransportu, computedPrice) {
+    async function saveActivitiesSchedule(activitiesSchedule, miejsceDocelowe, miejsceStartowe, dataPrzyjazdu, dataWyjazdu, liczbaUczestnikow, liczbaOpiekunow, standardHotelu, standardTransportu, computedPrice) {
         if (!Array.isArray(activitiesSchedule)) {
             throw new Error('Parametr "activitiesSchedule" musi być tablicą.');
         }
@@ -375,7 +383,7 @@ export const KonfiguratorWyjazduComp = ({
                                     ? 'Ładowanie…'
                                     : <><Save size={20} /></>}
                     </SaveButton>
-                  
+
                 </div>
             </div>
 

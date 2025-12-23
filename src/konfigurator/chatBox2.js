@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import styled from 'styled-components';
 import axios from 'axios';
+import { minutesToTime } from './konfiguratorWyjazduComp';
 
 const port = process.env.REACT_APP__SERVER_API_SOURCE || "https://wycieczkzklasa.onrender.com";
 const ChatBoxMainbox = styled.div`
@@ -366,8 +367,34 @@ function parseArguments(command) {
 
     return [functionName, ...parsedArgs];
 }
+const extractActivitiesSchedule = (schedule, timeSchedule) => {
+    console.log()
+    if (!Array.isArray(schedule)) return [];
+    return schedule.map((day, dayIdx) =>
+        Array.isArray(day)
+            ? day.map((a, aIdx) => ({
+                googleId: a?.googleId || null,
+                nazwa: a?.nazwa || null,
+                czasZwiedzania: a?.czasZwiedzania || null,
+                godzinaRozpoczecia: timeSchedule?.[dayIdx]?.[aIdx] ? minutesToTime(timeSchedule?.[dayIdx]?.[aIdx]) : null
+            }))
+            : []
+    );
+};
 
-export const ChatBox2 = ({ basicActivities, activitiesSchedule, attractions, miejsceDocelowe, addActivity, deleteActivity, swapActivities, changeActivity }) => {
+const extractAttractions = (attractions) => {
+    if (!Array.isArray(attractions)) return [];
+
+    return attractions
+        .filter(a => a && typeof a === "object")
+        .sort((a, b) => (b.liczbaOpinie || 0) - (a.liczbaOpinie || 0)) // 🔹 sortowanie malejąco
+        .slice(0, 50)
+        .map(a => ({
+            googleId: a?.googleId || null,
+            nazwa: a?.nazwa || null
+        }));
+};
+export const ChatBox2 = ({ basicActivities, activitiesSchedule, attractions, miejsceDocelowe, addActivity, deleteActivity, swapActivities, changeActivity, timeSchedule }) => {
     const [messages, setMessages] = useState([
         {
             id: '1',
@@ -411,31 +438,7 @@ export const ChatBox2 = ({ basicActivities, activitiesSchedule, attractions, mie
 
         try {
             // 🧠 Przygotowanie uproszczonych danych do wysyłki:
-            const extractActivitiesSchedule = (schedule) => {
-                console.log()
-                if (!Array.isArray(schedule)) return [];
-                return schedule.map((day) =>
-                    Array.isArray(day)
-                        ? day.map((a) => ({
-                            googleId: a?.googleId || null,
-                            nazwa: a?.nazwa || null,
-                        }))
-                        : []
-                );
-            };
 
-            const extractAttractions = (attractions) => {
-                if (!Array.isArray(attractions)) return [];
-
-                return attractions
-                    .filter(a => a && typeof a === "object")
-                    .sort((a, b) => (b.liczbaOpinie || 0) - (a.liczbaOpinie || 0)) // 🔹 sortowanie malejąco
-                    .slice(0, 50)
-                    .map(a => ({
-                        googleId: a?.googleId || null,
-                        nazwa: a?.nazwa || null
-                    }));
-            };
 
             // 🧩 Zminimalizowany payload dla endpointu
             const payload = {
@@ -444,7 +447,7 @@ export const ChatBox2 = ({ basicActivities, activitiesSchedule, attractions, mie
                     role: m.sender === "ai" ? "assistant" : "user",
                     content: m.text,
                 })),
-                activitiesSchedule: extractActivitiesSchedule(activitiesSchedule),
+                activitiesSchedule: extractActivitiesSchedule(activitiesSchedule, timeSchedule),
                 attractions: extractAttractions(attractions),
                 miejsceDocelowe,
                 basicActivities
@@ -603,7 +606,9 @@ export const ChatBox2 = ({ basicActivities, activitiesSchedule, attractions, mie
             handleSendMessage(inputValue);
         }
     };
-
+    useEffect(() => {
+        console.log(extractActivitiesSchedule(activitiesSchedule, timeSchedule))
+    }, [activitiesSchedule])
     return (
         <ChatBoxMainbox>
             <div className="headerBox">

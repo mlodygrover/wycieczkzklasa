@@ -329,7 +329,6 @@ export const TabsContainer = styled.div`
   gap: 0.5rem;
   border-bottom: 1px solid #e5e7eb;
   margin-bottom: 20px;
-  margin-top: 10px;
   overflow-x: auto;
   overflow-y: hidden;               /* ✅ nie pozwól na pionowe przewijanie kontenera */
   -webkit-overflow-scrolling: touch;

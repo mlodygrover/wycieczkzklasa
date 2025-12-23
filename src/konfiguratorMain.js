@@ -1218,7 +1218,6 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
         miejsceDocelowe?.location?.lng,
         portacc,
     ]);
-
     //dane lokalne
     const [settingsOpened, setSettingsOpened] = useState(false);
     const [leftOpened, setLeftOpened] = useState(false)
@@ -3098,7 +3097,6 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
                 lang: "pl",
                 thumbWidth: "1200",
             });
-            console.log(nameWithCity)
             const res = await fetch(`${port}/api/wiki-image?${params.toString()}`, {
                 method: "GET",
                 headers: { Accept: "application/json" },
@@ -3420,7 +3418,7 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
                             className="b c"
 
                         >
-                            Zarezerwuj wyjazd<Rocket size={16} />
+                            Realizacja wyjazdu<Rocket size={16} />
                         </SaveButton>
                     </div>
 
@@ -3793,7 +3791,7 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
 
                     <KonfiguratorMainMainboxLeft ref={rightRef} className="right">
                         <section style={{ margin: '0 auto', display: 'flex', justifyContent: 'center' }} id="chatbox">
-                            <ChatBox2 activitiesSchedule={activitiesSchedule} basicActivities={basicActivities} miejsceDocelowe={miejsceDocelowe} attractions={atrakcje} addActivity={addActivity} swapActivities={swapActivities} changeActivity={changeActivity} deleteActivity={deleteActivity} />
+                            <ChatBox2 timeSchedule={timeSchedule} activitiesSchedule={activitiesSchedule} basicActivities={basicActivities} miejsceDocelowe={miejsceDocelowe} attractions={atrakcje} addActivity={addActivity} swapActivities={swapActivities} changeActivity={changeActivity} deleteActivity={deleteActivity} />
 
 
                         </section><div className="mainboxLeftTitle">
@@ -3891,6 +3889,7 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
                         </SummaryInfoBox>
 
                         <CostSummary tripPrice={tripPrice} insurancePrice={insurancePrice} liczbaOpiekunow={liczbaOpiekunow} liczbaUczestnikow={liczbaUczestnikow} />
+               
                         <div className="mainboxLeftTitle" style={{ paddingTop: '10px', marginTop: '20px', borderTop: '1px solid #ccc' }}>
                             Podsumowanie dnia
                         </div>

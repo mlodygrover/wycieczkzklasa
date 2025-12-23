@@ -1,6 +1,7 @@
 import React from "react"
 import styled from "styled-components"
-import { Users, Plane, Shield } from 'lucide-react';
+import { Users, Plane, Shield, Rocket } from 'lucide-react';
+import { SaveButton } from "./konfiguratorWyjazduComp";
 
 const CostSummaryMainbox = styled.div`
     width: 90%;
@@ -185,6 +186,12 @@ export const CostSummary = ({ miejsceDocelowe = "Poznań", tripPrice, insuranceP
                 <TotalLabel>Suma całkowita</TotalLabel>
                 <TotalPrice>{(insurancePrice + tripPrice).toLocaleString('pl-PL')} zł</TotalPrice>
             </TotalSection>
+            <SaveButton
+                className="b c d"
+
+            >
+                Realizacja wyjazdu<Rocket size={16} />
+            </SaveButton>
         </CostSummaryMainbox>
     )
 }

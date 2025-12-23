@@ -906,7 +906,7 @@ app.get("/api/wiki-image", async (req, res) => {
     try {
         let name = String(req.query.name || "").trim();
         let lang = String(req.query.lang || "pl").trim();
-        const googleId = String(req.query.googleId || "").trim(); // ✅ nowy parametr
+        const googleId = String(req.query.googleId || "").trim();
 
         if (!name) {
             return res.status(400).json({
@@ -921,21 +921,25 @@ app.get("/api/wiki-image", async (req, res) => {
             return res.status(400).json({ error: "thumbWidth must be a positive number" });
         }
 
-        // ✅ Perplexity -> dokładny tytuł wiki + wykryty język
+        // 1) Perplexity -> tytuł + język
         const { title, lang: detectedLang } = await getWikipediaExactTitle(name);
-        name = title;
-        lang = detectedLang || lang;
+        name = String(title || "").trim();
+        lang = (detectedLang || lang || "pl").trim();
 
+        // ✅ Ciche zakończenie: brak tytułu
         if (!name) {
-            return res.status(404).json({
+            return res.status(200).json({
+                ok: true,
                 name: null,
                 lang,
                 thumbWidth,
                 imageUrl: null,
-                error: "No Wikipedia title found",
+                googleId: googleId || null,
+                saved: false,
             });
         }
 
+        // 2) Wikipedia -> obrazek
         const imageUrl = await getWikipediaImageUrl(name, {
             lang,
             thumbWidth,
@@ -943,17 +947,20 @@ app.get("/api/wiki-image", async (req, res) => {
             timeoutMs: process.env.WIKI_TIMEOUT_MS ? Number(process.env.WIKI_TIMEOUT_MS) : 12_000,
         });
 
+        // ✅ Ciche zakończenie: brak obrazka
         if (!imageUrl) {
-            return res.status(404).json({
+            return res.status(200).json({
+                ok: true,
                 name,
                 lang,
                 thumbWidth,
                 imageUrl: null,
-                error: "No image found for given attraction name",
+                googleId: googleId || null,
+                saved: false,
             });
         }
 
-        // ✅ jeśli podano googleId -> zapisz wallpaper w bazie
+        // 3) (Opcjonalnie) zapis do bazy
         let saved = false;
         if (googleId) {
             const updated = await Attraction.findOneAndUpdate(
@@ -962,35 +969,44 @@ app.get("/api/wiki-image", async (req, res) => {
                     $set: {
                         wallpaper: imageUrl,
                         updatedAt: new Date(),
-                        // opcjonalnie, jeśli chcesz oznaczać źródło danych:
-                        // dataSource: "Bot",
                     },
                 },
                 { new: true, projection: { _id: 0, googleId: 1, wallpaper: 1 } }
-            ).lean();
+            )
+                .lean()
+                .catch(() => null);
 
             saved = Boolean(updated);
         }
 
-        return res.json({ name, lang, thumbWidth, imageUrl, googleId: googleId || null, saved });
+        return res.status(200).json({
+            ok: true,
+            name,
+            lang,
+            thumbWidth,
+            imageUrl,
+            googleId: googleId || null,
+            saved,
+        });
     } catch (err) {
         const msg = err?.message || String(err);
+
+        // Błędy walidacji -> 400
         const isBadRequest =
-            msg.includes("Missing 'name'") ||
-            msg.includes("Missing") ||
-            msg.includes("invalid");
+            msg.includes("Missing 'name'") || msg.includes("Missing") || msg.includes("invalid");
 
         if (isBadRequest) {
-            return res.status(400).json({ error: msg });
+            return res.status(400).json({ ok: false, error: msg });
         }
 
+        // Pozostałe -> 500 (tu już realny błąd serwera / integracji)
         return res.status(500).json({
+            ok: false,
             error: "Failed to fetch Wikipedia image",
             details: msg,
         });
     }
 });
-
 
 
 
@@ -2809,9 +2825,9 @@ async function getHotels({
                 categories_filter: `${stars},${property_types}`,
                 units: "metric",
                 temperature_unit: "c",
-                languagecode: "en-us",
+                languagecode: "pl",
                 currency_code: "PLN",
-                location: "US",
+                location: "PL",
             };
 
             console.log(`🌍 Pobieram stronę ${page} z Booking.com API...`);
@@ -2891,9 +2907,9 @@ app.get("/findHotel", async (req, res) => {
 
         // 1️⃣ Pobranie dest_id
         const destResponse = await axios.get(
-            "https://booking-com15.p.rapidapi.com/api/v1/hotels/searchDestination",
+            "https://booking-com15.p.rapidapi.com/api/v1/hotels/getNearbyCities",
             {
-                params: { query: city },
+                params: { latitude: centerLat, longitude: centerLng },
                 headers: {
                     "x-rapidapi-host": "booking-com15.p.rapidapi.com",
                     "x-rapidapi-key":
@@ -2982,7 +2998,9 @@ app.post("/chat-planner", async (req, res) => {
             Array.isArray(day)
                 ? day.map(act => ({
                     googleId: act?.googleId || null,
-                    nazwa: act?.nazwa || null
+                    nazwa: act?.nazwa || null,
+                    czasZwiedzania: act?.czasZwiedzania || 0,
+                    godzinaRozpoczecia: act?.godzinaRozpoczecia || null,
                 }))
                 : []
         );
@@ -2991,7 +3009,7 @@ app.post("/chat-planner", async (req, res) => {
         const systemPrompt = `
 Jesteś inteligentnym asystentem planowania szkolnego wyjazdu do miejsca "${miejsceDocelowe?.nazwa || "?"}".
 Masz dostęp do:
-- "activitiesSchedule": obecny plan dni i atrakcji (googleId + nazwa), aktywnosci baseHotelIn, baseHotelOut, baseRouteTo, baseRouteFrom sa sztywno ustawione na poczatku i koncu dnia, baseBookIn oraz baseBookOut moga byc przesuwane w ciagu dnia uwzgledniajac dobe hotelowa
+- "activitiesSchedule": obecny plan dni i atrakcji (googleId + nazwa + ustawiony czas zwiedzania + godzinaRozpoczecia, ktora jest niemodyfikowalna przez usera - jest obliczana na bazie calego planu, dodana pogladowo), aktywnosci baseHotelIn, baseHotelOut, baseRouteTo, baseRouteFrom sa sztywno ustawione na poczatku i koncu dnia, baseBookIn oraz baseBookOut moga byc przesuwane w ciagu dnia uwzgledniajac dobe hotelowa
 - "attractions": dostępne atrakcje w miejscu docelowym (googleId + nazwa),
 - "basicActivities": aktywnosci podstawowe, pojawiajace sie w ciagu dnia wyjazdu turystycznego - obslugiwane podobnie do attractions
 - funkcji, które możesz zaproponować w odpowiedzi:
@@ -3004,6 +3022,7 @@ Masz dostęp do:
 ZASADY:
 -Zwracaj wielką uwage na googleId - jest to zdecydowanie najwazniejsze pole i nie moga pojawic sie w nim bledy!!
 - Odpowiadaj po polsku, zwięźle (2–4 zdania), naturalnie i profesjonalnie.
+-Nie podawaj w odpowiedziach w czacie googleId, jest to informacja wzglednie poufna.
 - W odpowiedzi podaj:
    1️⃣ Krótką wiadomość tekstową.
    2️⃣ NOWĄ LINIĘ i linijkę w formacie:
@@ -3011,8 +3030,7 @@ ZASADY:
 - Jeśli nie masz komend, zwróć: **commands** (pusta lista).
 - W komendach:
    • Jeśli atrakcja pochodzi z bazy (jest w "attractions" lub "basicActivities"), zwracaj tylko { googleId, nazwa, czasZwiedzania }.
-   • Jeśli AI wymyśla nową atrakcję, użyj { googleId:"aiGenerated", nazwa, adres, czasZwiedzania }.
-- Jesli chcesz dodac jakas atrakcje, !!koniecznie sprawdz czy znajduje sie w tablicy atrakcji i przepisz jego id!!. Wymyslaj wlasne tylko w przypadku nieuniknionej koniecznosci.
+   • Nie wolno ci wymyslac wlasnych aktywnosci lub atrakcji spoza bazy.
 - Jeśli użytkownik pisze coś niezwiązanego z planowaniem wyjazdu lub używa wulgaryzmów — nie podawaj żadnych komend i odpowiedz stosownym komunikatem.
 
 PRZYKŁAD WYJŚCIA (w komendach nie uzywaj spacji):
@@ -3121,7 +3139,6 @@ app.get("/photo", async (req, res) => {
 
         // posortuj po likes malejąco
         results.sort((a, b) => (b.likes || 0) - (a.likes || 0));
-        console.log(results)
         const photo = results[0];
         if (!photo) return res.status(404).json({ error: "Brak wyników dla podanej frazy." });
 

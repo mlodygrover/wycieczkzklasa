@@ -22,7 +22,9 @@ app.set('trust proxy', 1);
    ========================= */
 mongoose
     .connect(process.env.MONGODB_URI)
-    .then(() => console.log('MongoDB connected'))
+    .then(async () => {
+        console.log("MongoDB connected");
+    })
     .catch((err) => console.error('Mongo error:', err));
 
 /* =========================
@@ -467,8 +469,8 @@ const TripPlanSchema = new mongoose.Schema(
 
         activitiesSchedule: { type: [DaySchema], default: [] },
         photoLink: { type: String, default: null },
-
         public: { type: Boolean, default: true },
+        realizationStatus: { type: Number, default: 0, min: 0 },
         startHours: {
             type: [Number],
             default: [],
@@ -862,7 +864,8 @@ app.get("/download/trip-plan", async (req, res) => {
             photoLink: doc.photoLink ?? null,
             nazwa: doc.nazwa ?? null,
             startHours: Array.isArray(doc.startHours) ? doc.startHours : [],
-            authors: firstAuthor ? [firstAuthor] : []
+            authors: firstAuthor ? [firstAuthor] : [],
+            realizationStatus: doc?.realizationStatus ? doc.realizationStatus : 0,
         });
     } catch (err) {
         console.error("GET /download/trip-plan error:", err);
@@ -1103,6 +1106,7 @@ app.get("/api/trip-plans", async (_req, res) => {
                 public: typeof d.public === "boolean" ? d.public : true,
                 nazwa: d.nazwa ?? null,
                 startHours, // <-- NOWE POLE W ODPOWIEDZI
+                realizationStatus: d?.realizationStatus ? d.realizationStatus : 0,
             };
         });
 
@@ -1252,6 +1256,7 @@ app.get("/api/trip-plans/:id", requireAuth, async (req, res) => {
             public: typeof doc.public === "boolean" ? doc.public : true,
             nazwa: doc.nazwa ?? null,
             startHours,
+            realizationStatus: doc?.realizationStatus ? doc.realizationStatus : 0,
         };
 
         if (!extended) {
@@ -1383,6 +1388,7 @@ app.get("/api/trip-plans/by-author/:userId", requireAuth, async (req, res) => {
                 public: typeof d.public === "boolean" ? d.public : true,
                 nazwa: d.nazwa ?? null,
                 startHours,
+                realizationStatus: d?.realizationStatus ? d.realizationStatus : 0,
             };
         });
 
@@ -1532,6 +1538,7 @@ app.get("/api/trip-plans/:tripId/by-author/:userId", async (req, res) => {
             public: typeof doc.public === "boolean" ? doc.public : true,
             nazwa: doc.nazwa ?? null,
             startHours,
+            realizationStatus: doc?.realizationStatus ? doc.realizationStatus : 0,
         });
     } catch (err) {
         console.error("GET /api/trip-plans/:tripId/by-author/:userId error:", err);
@@ -1831,6 +1838,7 @@ app.put("/api/trip-plans/:tripId", requireAuth, async (req, res) => {
             publicUrl: updated.publicUrl ?? undefined,
             nazwa: updated.nazwa ?? null,
             startHours: startHoursOut,
+            realizationStatus: updated?.realizationStatus ? updated.realizationStatus : 0,
         });
 
     } catch (err) {
@@ -2619,6 +2627,19 @@ app.get("/api/trip-plans/:tripId/messages/sync", requireAuth, async (req, res) =
     }
 });
 
+async function backfillRealizationStatus() {
+    try {
+        const result = await TripPlan.updateMany(
+            { realizationStatus: { $exists: false } },
+            { $set: { realizationStatus: 0 } }
+        );
+        console.log(
+            `[MIGRATION] TripPlan realizationStatus backfill done. matched=${result.matchedCount ?? result.n} modified=${result.modifiedCount ?? result.nModified}`
+        );
+    } catch (e) {
+        console.error("[MIGRATION] TripPlan realizationStatus backfill error:", e?.message || e);
+    }
+}
 
 
 const port = process.env.PORT || 5007;

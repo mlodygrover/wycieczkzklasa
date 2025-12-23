@@ -9,6 +9,7 @@ import { PreConfigureParticipants } from './preConfigureParticipants.js';
 import { ParticipantsTable } from './participantsTable.js';
 import { TripSchedulePreview } from './activitiesSchedulePreview.js';
 import { UsersChatbox } from './usersChatBox.js';
+import { TripStatusCard } from './realizationPage.js';
 
 const portacc = process.env.REACT_APP_API_SOURCE || "https://api.draftngo.com";
 
@@ -595,6 +596,7 @@ export const PreConfigure = (
     const [standardTransportu, setStandardTransportu] = useState(
         hasTripIdInUrl ? standardTransportuInit : (urlDefaults.standardTransportu ?? standardTransportuInit)
     );
+    const [realizationStatus, setRealizationStatus] = useState(0)
     const [activitiesSchedule, setActivitiesSchedule] = useState([[]])
 
     const [photoWallpaper, setPhotoWallpaper] = useState(
@@ -833,6 +835,8 @@ export const PreConfigure = (
         console.log("TETS2", nazwaWyjazduSource);
         if (nazwaWyjazduSource) setNazwaWyjazdu(nazwaWyjazduSource);
         if (activitiesScheduleSource) setActivitiesSchedule(activitiesScheduleSource);
+
+        setRealizationStatus(synchronisedPlan.realizationStatus)
         // === NOWA CZĘŚĆ: generowanie linku z join-code ===
         let aborted = false;
         (async () => {
@@ -1269,10 +1273,11 @@ export const PreConfigure = (
                 </PreConfigureHeaderWrapper>
             </PreConfigureHeader>
 
+            <TripStatusCard status={realizationStatus}/>
             <TabsContainer>
                 <Tab $active={selectedMenu === 0} onClick={() => setSelectedMenu(0)}>Podstawowe</Tab>
                 {
-                    2==2 && <>
+                    2 == 2 && <>
                         <Tab $active={selectedMenu === 1} onClick={() => setSelectedMenu(1)}>Uczestnicy</Tab>
                         <Tab $active={selectedMenu === 2} onClick={() => setSelectedMenu(2)}>Płatności</Tab>
 
