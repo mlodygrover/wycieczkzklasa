@@ -399,7 +399,7 @@ function mergeServerWithOptimistic(prev, server, isFirstLoad) {
 
 /* --- COMPONENT --- */
 
-export const UsersChatbox = ({ tripId }) => {
+export const UsersChatbox = ({ tripId, nazwaWyjazdu = "Twój wyjazd", liczbaUczestnikow=1 }) => {
     const user = useUserStore((s) => s.user);
     const hydrated = useUserStore((s) => s.hydrated);
     const initStartedRef = useRef(false);

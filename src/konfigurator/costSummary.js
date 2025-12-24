@@ -2,6 +2,7 @@ import React from "react"
 import styled from "styled-components"
 import { Users, Plane, Shield, Rocket } from 'lucide-react';
 import { SaveButton } from "./konfiguratorWyjazduComp";
+import { Navigate } from "react-router-dom";
 
 const CostSummaryMainbox = styled.div`
     width: 90%;
@@ -139,9 +140,25 @@ const TotalPrice = styled.div`
 
 `
 
-export const CostSummary = ({ miejsceDocelowe = "Poznań", tripPrice, insurancePrice, liczbaUczestnikow, liczbaOpiekunow }) => {
+export const CostSummary = ({ tripId="", setRedirecting, handleSaveClick, hasPendingAutoSave, miejsceDocelowe = "Poznań", tripPrice, insurancePrice, liczbaUczestnikow, liczbaOpiekunow }) => {
 
+    const redirectToRealization = async () => {
+        try {
+            if (hasPendingAutoSave) {
+                setRedirecting(true);
+                // 🔽 zakładamy, że handleSaveClick zwraca Promise
+                await handleSaveClick();
+            }
 
+            const url = new URL(window.location.href);
+            const params = url.search || ""; // np. "?tripId=123&arr=2025-05-01..."
+
+            const redirectLink = `/realizacja/?tripId=${tripId || ""}`;
+            Navigate(redirectLink);
+        } finally {
+            setRedirecting(false);
+        }
+    };
     return (
         <CostSummaryMainbox>
             <div className="costSummaryTitle">
@@ -188,6 +205,7 @@ export const CostSummary = ({ miejsceDocelowe = "Poznań", tripPrice, insuranceP
             </TotalSection>
             <SaveButton
                 className="b c d"
+                onClick={() => redirectToRealization()}
 
             >
                 Realizacja wyjazdu<Rocket size={16} />

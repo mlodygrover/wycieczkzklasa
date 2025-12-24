@@ -1,259 +1,143 @@
-import React from 'react';
-import styled, { keyframes } from 'styled-components';
-import { 
-  Sparkles, 
-  ArrowRight, 
-  MapPinCheck, 
-  FileSearch, 
-  CreditCard, 
-  Stamp, 
-  CalendarCheck 
-} from 'lucide-react';
+import { useDebugValue, useEffect, useState } from "react";
+import styled from "styled-components"
+import { getStr, readURL } from "./konfiguratorMain";
+import { fetchTripPlanById, PreConfigureHeader } from "./preConfigure";
+import { TripTimeline } from "./activitiesTable";
+import { RealizationInfoCard } from "./stepsInfo";
+import { FileX } from "lucide-react";
+import { RealizationActionCard } from "./confirmationPopup";
+import { TermsAndConditionsCard } from "./regulaminTile";
+import { useNavigate } from "react-router-dom";
 
-// --- ANIMACJE (Monochromatyczne) ---
-
-const rotate = keyframes`
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
-`;
-
-const grayscalePulse = keyframes`
-  0% { box-shadow: 0 0 0 0 rgba(0, 0, 0, 0.1); }
-  70% { box-shadow: 0 0 0 10px rgba(0, 0, 0, 0); }
-  100% { box-shadow: 0 0 0 0 rgba(0, 0, 0, 0); }
-`;
-
-// --- STYLES ---
-
-const CardWrapper = styled.div`
-  width: 90%;
-  max-width: 1600px;
-  background: white;
-  border-radius: 20px;
-  padding: 24px 30px;
-  box-sizing: border-box;
-  border: 1px solid #e5e5e5;
-  margin: 10px auto;
-  display: flex;
-  align-items: center;
-  gap: 25px;
-  transition: all 0.3s ease;
-  
-  /* Subtelny hover */
-  &:hover {
-    box-shadow: 0 4px 20px rgba(0,0,0,0.05);
-    border-color: #d4d4d4;
-  }
-
-  @media (max-width: 600px) {
-    flex-direction: column;
-    text-align: center;
-    padding: 20px;
-  }
-`;
-
-const LoaderContainer = styled.div`
-  position: relative;
-  width: 64px;
-  height: 64px;
-  flex-shrink: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-`;
-
-const LoaderRing = styled.div`
-  position: absolute;
-  inset: -4px;
-  border-radius: 50%;
-  border: 3px solid transparent;
-  border-top-color: #000000;
-  border-right-color: #e5e5e5;
-  
-  /* Jeśli status == 4 (Zakończono), zatrzymujemy animację lub zmieniamy styl */
-  animation: ${props => props.$isDone ? 'none' : rotate} 2s linear infinite;
-  border-color: ${props => props.$isDone ? '#000' : ''}; /* Pełne kółko dla statusu 4 */
-`;
-
-const IconBackground = styled.div`
-  width: 100%;
-  height: 100%;
-  background: #000000;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: white;
-  
-  animation: ${props => props.$isDone ? 'none' : grayscalePulse} 3s infinite;
-`;
-
-const ContentBox = styled.div`
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 10px;
-
-  @media (max-width: 600px) {
+const RealizationPageMainbox = styled.div`
+    width: 100%;
+    min-height: 100vw;
+    margin-top: 100px;
+    display: flex;
     align-items: center;
-  }
-`;
+    justify-content: flex-start;
+    flex-direction: column;
+    gap: 10px;
+    
+`
+export const TilesRowWrapper = styled.div`
+    display: flex;
+    flex-direction: row;
+    align-items: flex-start;
+    justify-content: center;
+    width: 90%;
+    gap: 10px;
+    flex-wrap: wrap; /* To sprawi, że jeśli się nie zmieszczą, to spadną */
+    max-width: 1600px;
 
-const StatusTitle = styled.div`
-  font-family: 'Inter', sans-serif;
-  font-size: 12px;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  font-weight: 700;
-  color: #000;
-  background-color: #f4f4f4;
-  border: 1px solid #e5e5e5;
-  padding: 6px 12px;
-  border-radius: 6px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
+    /* ✅ Tutaj media query zadziała poprawnie */
+    &.b{
+        padding: 0 16px;
+        box-sizing: border-box;
+        gap: 20px;
+    }
+    @media screen and (max-width: 800px){
+        flex-direction: column;
+        align-items: stretch; /* W kolumnie zazwyczaj chcemy centrować elementy */
+    }
+`
+export const RealizationPage = () => {
 
-  svg {
-    stroke-width: 2px;
-  }
-`;
+    const navigate = useNavigate();
 
-const MainText = styled.div`
-  font-family: 'Inter', sans-serif;
-  font-size: 16px;
-  color: #111;
-  line-height: 1.6;
-  font-weight: 500;
-  
-  span.highlight {
-    color: #6366f1; /* Fioletowy akcent */
-    font-weight: 700;
-  }
-`;
+    const [tripId, setTripId] = useState(() => {
+        const fromURL = getStr(readURL().searchParams.get("tripId"));
+        if (fromURL != null) return fromURL;
+        return "";
+    });
+    const [photoWallpaper, setPhotoWallpaper] = useState(
+        "https://images.unsplash.com/photo-1633268456308-72d1c728943c?auto=format&fit=crop&w=1600&q=80"
+    );
+    const [nazwaWyjazdu, setNazwaWyjazdu] = useState("Twój wyjazd")
+    const [synchronisedPlan, setSynchronisedPlan] = useState(null);
+    const [planLoading, setPlanLoading] = useState(false);
+    const [planReady, setPlanReady] = useState(false);
+    const [planError, setPlanError] = useState(null);
+    const [activitiesSchedule, setActivitiesSchedule] = useState(null)
+    useEffect(() => {
+        const id = String(tripId || "").trim();
 
-const ActionLink = styled.button`
-  background: none;
-  border: none;
-  padding: 0;
-  margin-top: 8px;
-  
-  font-family: 'Inter', sans-serif;
-  font-size: 14px;
-  font-weight: 700;
-  color: #000;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  
-  border-bottom: 2px solid #000;
-  padding-bottom: 2px;
-  transition: all 0.3s ease;
+        if (!id) {
+            setSynchronisedPlan(null);
+            setPlanLoading(false);
+            setPlanError(null);
+            setPlanReady(true);
+            return;
+        }
 
-  &:hover {
-    opacity: 0.7;
-    gap: 12px;
-  }
-`;
+        const ac = new AbortController();
+        setPlanLoading(true);
+        setPlanError(null);
+        setPlanReady(false);
 
-// --- KONFIGURACJA STATUSÓW ---
+        (async () => {
+            try {
+                const plan = await fetchTripPlanById(id, { signal: ac.signal });
+                setSynchronisedPlan(plan); // plan albo null (gdy 404)
+            } catch (e) {
+                if (e?.name !== "AbortError") {
+                    setPlanError(e?.message || "Fetch error");
+                }
+            } finally {
+                if (!ac.signal.aborted) {
+                    setPlanLoading(false);
+                    setPlanReady(true);
+                }
+            }
+        })();
 
-const getStatusConfig = (status) => {
-  switch (status) {
-    case 1:
-      return {
-        title: "W trakcie weryfikacji",
-        icon: FileSearch,
-        content: (
-          <>
-            Administrator zweryfikuje wyjazd w przeciągu paru minut, następnym krokiem będzie <span className="highlight">realizacja płatności</span>.
-          </>
-        ),
-        linkText: "Aby poznać szczegóły procesu realizacji kliknij tutaj"
-      };
-    case 2:
-      return {
-        title: "W trakcie płatności",
-        icon: CreditCard,
-        content: (
-          <>
-            Uczestnicy wyjazdu mogą realizować płatności w <span className="highlight">zakładce płatności</span>.
-          </>
-        ),
-        linkText: "Aby poznać szczegóły procesu realizacji kliknij tutaj"
-      };
-    case 3:
-      return {
-        title: "W trakcie akceptacji",
-        icon: Stamp,
-        content: (
-          <>
-            Jesteśmy bardzo blisko! <span className="highlight">Administrator</span> musi zatwierdzić wyjazd.
-          </>
-        ),
-        linkText: null // Brak linku w tym etapie
-      };
-    case 4:
-      return {
-        title: "Wyjazd zaplanowany!",
-        icon: CalendarCheck,
-        content: (
-          <>
-            Wszystkie formalności zostały dopełnione, oczekujemy <span className="highlight">dnia wyjazdu</span>!
-          </>
-        ),
-        linkText: null // Brak linku w tym etapie
-      };
-    case 0:
-    default:
-      return {
-        title: "W trakcie projektowania",
-        icon: MapPinCheck,
-        content: (
-          <>
-            Skorzystaj z konfiguratora aby zaplanować wyjazd – z pomocą służy nasz <span className="highlight">Asystent AI</span>.
-          </>
-        ),
-        linkText: "Aby zrealizować wyjazd kliknij tutaj"
-      };
-  }
-};
+        return () => ac.abort();
+    }, [tripId]);
 
-// --- KOMPONENT ---
+    useEffect(() => {
+        if (synchronisedPlan?.realizationStatus) {
+            navigate(`/konfigurator-lounge/?tripId=${tripId}`);
+            return; // opcjonalnie, żeby nie ustawiać state po redirect
+        }
+        console.log(synchronisedPlan)
+        setNazwaWyjazdu(synchronisedPlan?.nazwa || "Twój wyjazd")
+        setPhotoWallpaper(synchronisedPlan?.photoLink || "https://images.unsplash.com/photo-1633268456308-72d1c728943c?auto=format&fit=crop&w=1600&q=80")
+        setActivitiesSchedule(synchronisedPlan?.activitiesSchedule || null)
+    }, [synchronisedPlan])
+    return (
 
-export const TripStatusCard = ({ onRealizeClick, status = 0 }) => {
-  const config = getStatusConfig(status);
-  const IconComponent = config.icon;
-  const isDone = status === 4; // status 4 to "done", wyłączamy animacje loadera
+        <RealizationPageMainbox>
+            <PreConfigureHeader>
+                <div
+                    className="preConfigureHeaderImage"
+                    style={{ backgroundImage: `url(${photoWallpaper})` }}
+                >
+                    <div className="wyjazdNazwa">
+                        <div
+                            className="wyjazdNazwaInput"
 
-  return (
-    <CardWrapper>
-      {/* Sekcja Loadera */}
-      <LoaderContainer>
-        <LoaderRing $isDone={isDone} />
-        <IconBackground $isDone={isDone}>
-          <IconComponent size={28} strokeWidth={1.5} />
-        </IconBackground>
-      </LoaderContainer>
+                        >
+                            {nazwaWyjazdu ?? ""}
+                        </div>
+                    </div>
+                </div>
 
-      {/* Sekcja Tekstowa */}
-      <ContentBox>
-        <StatusTitle>
-           <Sparkles size={14} color="black" /> {config.title}
-        </StatusTitle>
-        
-        <MainText>
-          {config.content}
-        </MainText>
+            </PreConfigureHeader>
+            <TilesRowWrapper>
+                <RealizationInfoCard />
+                {activitiesSchedule && <TripTimeline activitiesSchedule={activitiesSchedule} />}
+            </TilesRowWrapper>
+            <TilesRowWrapper>
+                <RealizationActionCard
+                    tripName={nazwaWyjazdu}
+                    dates="29.11 - 02.12.2025" // Podepnij dane z synchronisedPlan
+                    participantsCount={3}      // Podepnij dane z synchronisedPlan
+                    estimatedCost={450}        // Podepnij dane z synchronisedPlan
+                    tripId={tripId}
+                />
+                <TermsAndConditionsCard />
+            </TilesRowWrapper>
 
-        {config.linkText && (
-          <ActionLink onClick={onRealizeClick}>
-            {config.linkText}
-            <ArrowRight size={18} />
-          </ActionLink>
-        )}
-      </ContentBox>
-    </CardWrapper>
-  );
-};
+        </RealizationPageMainbox>
+    )
+}

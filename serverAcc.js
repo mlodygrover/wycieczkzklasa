@@ -1847,6 +1847,55 @@ app.put("/api/trip-plans/:tripId", requireAuth, async (req, res) => {
     }
 });
 
+// PUT /api/trip-plans/:tripId/realization-status/start
+// Ustawia realizationStatus=1 tylko jeśli requester jest autorem planu
+app.put("/api/trip-plans/:tripId/realization-status/start", requireAuth, async (req, res) => {
+    try {
+        const { tripId } = req.params;
+
+        if (!mongoose.Types.ObjectId.isValid(tripId)) {
+            return res.status(400).json({ error: "InvalidObjectId", which: "tripId" });
+        }
+
+        const requesterId = req.user?._id;
+        if (!requesterId) {
+            return res.status(401).json({ error: "Unauthenticated" });
+        }
+
+        // Aktualizacja atomowa: tylko jeśli requester jest w authors
+        const updated = await TripPlan.findOneAndUpdate(
+            {
+                _id: new mongoose.Types.ObjectId(tripId),
+                authors: new mongoose.Types.ObjectId(requesterId),
+            },
+            { $set: { realizationStatus: 1 } },
+            {
+                new: true,
+                projection: { _id: 1, realizationStatus: 1 },
+            }
+        ).lean();
+
+        if (!updated) {
+            // albo nie istnieje, albo requester nie jest autorem
+            // rozróżnijmy przypadki:
+            const exists = await TripPlan.exists({ _id: new mongoose.Types.ObjectId(tripId) });
+            if (!exists) {
+                return res.status(404).json({ error: "NotFound" });
+            }
+            return res.status(403).json({ error: "Forbidden", message: "Tylko autor może rozpocząć realizację planu." });
+        }
+
+        return res.status(200).json({
+            ok: true,
+            tripId: updated._id,
+            realizationStatus: updated.realizationStatus,
+        });
+    } catch (err) {
+        console.error("PUT /api/trip-plans/:tripId/realization-status/start error:", err);
+        return res.status(500).json({ error: "ServerError" });
+    }
+});
+
 app.post("/api/trip-plans/:tripId/users/:userId", requireAuth, async (req, res) => {
     try {
         const { tripId, userId } = req.params;

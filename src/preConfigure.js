@@ -9,7 +9,11 @@ import { PreConfigureParticipants } from './preConfigureParticipants.js';
 import { ParticipantsTable } from './participantsTable.js';
 import { TripSchedulePreview } from './activitiesSchedulePreview.js';
 import { UsersChatbox } from './usersChatBox.js';
-import { TripStatusCard } from './realizationPage.js';
+import { TripStatusCard } from './tripStatusCard.js';
+import { TilesRowWrapper } from './realizationPage.js';
+import { TripTimeline } from './activitiesTable.js';
+import { RealizationInfoCard } from './stepsInfo.js';
+import { ConfiguratorEntryTile } from './configuratorEntryTile.js';
 
 const portacc = process.env.REACT_APP_API_SOURCE || "https://api.draftngo.com";
 
@@ -129,7 +133,7 @@ const PreConfigureHeaderWrapper = styled.div`
   }
 `;
 
-const PreConfigureHeader = styled.div`
+export const PreConfigureHeader = styled.div`
   width: 90%;
   max-width: 1600px;
   display: flex;
@@ -542,7 +546,6 @@ export const PreConfigure = (
     // 2) Sterujące: tripId i downloadPlan jako STAN
     const [downloadPlan, setDownloadPlan] = useState(urlDefaults.downloadPlan || null);
     const [tripId, setTripId] = useState(urlDefaults.tripId || null);
-
     // 2.1) Flaga gotowości (blokuje sync do URL do czasu pobrania planu, jeśli jest tripId)
     const [planReady, setPlanReady] = useState(!tripId);
 
@@ -1243,7 +1246,7 @@ export const PreConfigure = (
 
                     <div className="preConfigureButtons">
 
-                        <a
+                        {realizationStatus == 0 && <a
                             className={`preConfigureButton${canGoToConfigurator && !synchronisingPlan ? '' : ' disabled'}`}
                             href={canGoToConfigurator && !synchronisingPlan ? konfiguratorUrl : undefined}
                             onClick={(e) => {
@@ -1255,7 +1258,7 @@ export const PreConfigure = (
                         >
                             <Settings size={20} />
                             Konfigurator
-                        </a>
+                        </a>}
                         {shareTripUrl && <>
                             <a className={publicPlan ? "preConfigureButton b" : "preConfigureButton b privatePlan"} onClick={() => setSharePopupOpened(!sharePopupOpened)}>
                                 <Share2 />
@@ -1273,7 +1276,7 @@ export const PreConfigure = (
                 </PreConfigureHeaderWrapper>
             </PreConfigureHeader>
 
-            <TripStatusCard status={realizationStatus}/>
+            <TripStatusCard status={realizationStatus} />
             <TabsContainer>
                 <Tab $active={selectedMenu === 0} onClick={() => setSelectedMenu(0)}>Podstawowe</Tab>
                 {
@@ -1307,7 +1310,12 @@ export const PreConfigure = (
                         setStandardHotelu={setStandardHotelu}
                         setStandardTransportu={setStandardTransportu}
                     />
-                    <TripSchedulePreview activitiesSchedule={activitiesSchedule} />
+                    <ConfiguratorEntryTile ready={canGoToConfigurator && !synchronisingPlan} tripId={tripId}/>
+                    <TilesRowWrapper className='b'>
+
+                        {activitiesSchedule && <TripTimeline activitiesSchedule={activitiesSchedule} loungeVersion={true} tripId={tripId} />} 
+                        <RealizationInfoCard />
+                    </TilesRowWrapper>
                 </>
 
             )}

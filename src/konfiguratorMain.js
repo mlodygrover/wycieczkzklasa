@@ -799,7 +799,7 @@ export function toBookingDateFormat(dateInput) {
 }
 
 // ===== URL PARAM HELPERS (no libs) =====
-const readURL = () => new URL(window.location.href);
+export const readURL = () => new URL(window.location.href);
 const commitURL = (url) => window.history.replaceState({}, "", url.toString());
 
 const getNum = (v, def = null) => {
@@ -918,7 +918,7 @@ const makeTripKey = (prefix, miejsceDocelowe, dataPrzyjazdu, dataWyjazdu) => {
     const arr = toKeyDate(dataWyjazdu);
     return `${prefix}__${destId}__${arr}__${dep}`;
 };
-const getStr = (v, def = null) => {
+export const getStr = (v, def = null) => {
     return (v == null || v === "") ? def : String(v);
 };
 const writeStringParam = (key, val) => {
@@ -1552,7 +1552,10 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
                     const resp = await fetch(url, { credentials: "include" });
                     if (!aborted && resp.ok) {
                         const data = await resp.json();
-
+                        if (data?.realizationStatus) {
+                            navigate(`/konfigurator-lounge/?tripId=${tripId}`);
+                            return; // opcjonalnie, żeby nie ustawiać state po redirect
+                        }
                         // 1) Harmonogram – TYLKO jeśli NIE mamy już go z downloadPlan
                         if (!hasActivitiesFromDownloadPlan) {
                             if (
@@ -3381,6 +3384,23 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
             setRedirecting(false);
         }
     };
+    const redirectToRealization = async () => {
+        try {
+            if (hasPendingAutoSave) {
+                setRedirecting(true);
+                // 🔽 zakładamy, że handleSaveClick zwraca Promise
+                await handleSaveClick();
+            }
+
+            const url = new URL(window.location.href);
+            const params = url.search || ""; // np. "?tripId=123&arr=2025-05-01..."
+
+            const redirectLink = `/realizacja/?tripId=${tripId || ""}`;
+            navigate(redirectLink);
+        } finally {
+            setRedirecting(false);
+        }
+    };
     return (
         redirecting ? <div style={{ height: '100vh', width: '100vw', postion: 'fixed', left: '0', top: '0', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Loader /></div> :
             <>
@@ -3416,7 +3436,7 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
                         </SaveButton>
                         <SaveButton
                             className="b c"
-
+                            onClick={() => redirectToRealization()}
                         >
                             Realizacja wyjazdu<Rocket size={16} />
                         </SaveButton>
@@ -3888,8 +3908,8 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
                             }
                         </SummaryInfoBox>
 
-                        <CostSummary tripPrice={tripPrice} insurancePrice={insurancePrice} liczbaOpiekunow={liczbaOpiekunow} liczbaUczestnikow={liczbaUczestnikow} />
-               
+                        <CostSummary tripPrice={tripPrice} insurancePrice={insurancePrice} liczbaOpiekunow={liczbaOpiekunow} liczbaUczestnikow={liczbaUczestnikow} setRedirecting={setRedirecting} handleSaveClick={handleSaveClick} hasPendingAutoSave={hasPendingAutoSave} />
+
                         <div className="mainboxLeftTitle" style={{ paddingTop: '10px', marginTop: '20px', borderTop: '1px solid #ccc' }}>
                             Podsumowanie dnia
                         </div>

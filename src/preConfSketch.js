@@ -20,16 +20,17 @@ const shimmer = keyframes`
 
 /* ===================== STYLED ===================== */
 const MainContainer = styled.div`
-  width: 100%; min-height: 100vh; display: flex; flex-direction: column;
+  width: 90%; display: flex; flex-direction: column;
   align-items: center; justify-content: flex-start; background: #fff; padding: 0 16px;
-  box-sizing: border-box;
+  box-sizing: border-box; margin-bottom: 20px; max-width: 1600px;
+  
 `;
 const ContentWrapper = styled.div`
-  width: 90%; max-width: 1600px; display: flex; flex-direction: column; align-items: center;
+  width: 100%; max-width: 1600px; display: flex; flex-direction: column; align-items: center; box-sizing: border-box;
 `;
 const GridContainer = styled.div`
   width: 100%; max-width: 1600px; display: grid; grid-template-columns: repeat(2,1fr);
-  gap: 20px; margin-bottom: 32px;
+  gap: 20px; box-sizing: border-box;
   @media (max-width: 768px){ grid-template-columns: 1fr; }
 `;
 const ConfigBox = styled.div`
@@ -626,7 +627,7 @@ export const PreConfigureSketch = ({
                             <BoxTitle>Standard transportu</BoxTitle>
                             <TransportSelector value={standardTransportu} onChange={setStandardTransportu} />
                         </ConfigBox>
-
+                        
                     </GridContainer>
 
                 )}

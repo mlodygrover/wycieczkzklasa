@@ -1,0 +1,210 @@
+import React from 'react';
+import styled, { css } from 'styled-components';
+import { ArrowRight, Check, X } from 'lucide-react';
+
+/* ===================== STYLES ===================== */
+
+// Zewnętrzny kontener pozycjonujący (bez zmian)
+const OuterWrapper = styled.div`
+  width: 90%;
+  max-width: 1600px;
+  padding: 0 16px;
+  box-sizing: border-box;
+  margin: 20px auto;
+  display: flex;
+  justify-content: center;
+`;
+
+const TileCard = styled.div`
+  width: 100%;
+  min-height: 140px;
+  display: flex;
+  /* ZMIANA: Układ w rzędzie na desktopie */
+  flex-direction: row;
+  align-items: center; // Wyśrodkowanie w pionie
+  justify-content: flex-start;
+  gap: 24px; // Odstęp między ikoną a treścią
+  
+  padding: 32px;
+  box-sizing: border-box;
+  border-radius: 16px;
+  font-family: 'Inter', sans-serif;
+  transition: all 0.3s ease-in-out;
+  background-color: #fff;
+  text-align: left; // Tekst do lewej
+
+  /* Logika stylów obramowania i tła */
+  ${p => p.$ready ? css`
+    /* Styl GOTOWY - Czarna ramka, cień */
+    border: 2px solid #111;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.04);
+    cursor: pointer;
+
+    &:hover {
+      box-shadow: 0 12px 30px rgba(0,0,0,0.08);
+      transform: translateY(-2px);
+      border-color: #000;
+    }
+  ` : css`
+    /* Styl NIEGOTOWY - Przerywana ramka */
+    border: 2px dashed #e5e5e5;
+    background-color: #fafafa;
+    cursor: not-allowed;
+    
+    &:hover {
+      background-color: #f5f5f5;
+    }
+  `}
+
+  /* Responsywność: na mobile wracamy do kolumny */
+  @media (max-width: 768px) {
+    flex-direction: column;
+    text-align: center;
+    gap: 16px;
+    padding: 24px;
+  }
+`;
+
+// Kontener na animowaną ikonę (kółko tła)
+const AnimatedIconContainer = styled.div`
+  position: relative;
+  width: 56px;
+  height: 56px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  /* Zmiana tła w zależności od stanu */
+  background-color: ${p => p.$ready ? '#dcfce7' : '#fee2e2'}; // Jasnozielony / Jasnoczerwony
+  transition: background-color 0.5s ease;
+`;
+
+// Bazowy styl dla nakładających się ikon SVG
+const IconBase = styled.div`
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  // Sprężysta animacja
+  transition: all 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+`;
+
+const XIconStyled = styled(IconBase)`
+  color: #ef4444; // Czerwony
+  // Jeśli ready: obróć, zmniejsz i ukryj. Jeśli nie ready: pokaż.
+  opacity: ${p => p.$ready ? 0 : 1};
+  transform: translate(-50%, -50%) rotate(${p => p.$ready ? '-90deg' : '0deg'}) scale(${p => p.$ready ? 0.5 : 1});
+`;
+
+const CheckIconStyled = styled(IconBase)`
+  color: #16a34a; // Zielony
+  // Jeśli ready: pokaż. Jeśli nie ready: obróć, zmniejsz i ukryj.
+  opacity: ${p => p.$ready ? 1 : 0};
+  transform: translate(-50%, -50%) rotate(${p => p.$ready ? '0deg' : '90deg'}) scale(${p => p.$ready ? 1 : 0.5});
+`;
+
+// Kolumna na tekst i przycisk po prawej
+const ContentColumn = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex: 1; // Zajmij resztę miejsca
+`;
+
+const Title = styled.h3`
+  margin: 0;
+  font-size: 20px;
+  font-weight: 700;
+  // Kolor tytułu zmienia się nieznacznie
+  color: ${p => p.$ready ? '#111' : '#6b7280'};
+  transition: color 0.3s ease;
+`;
+
+const Description = styled.p`
+  margin: 0;
+  font-size: 15px;
+  color: #6b7280;
+  line-height: 1.5;
+  max-width: 600px;
+`;
+
+const BlackButton = styled.button`
+  margin-top: 12px;
+  background-color: #000;
+  color: #fff;
+  border: none;
+  padding: 12px 24px;
+  font-size: 14px;
+  font-weight: 600;
+  border-radius: 10px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  transition: background-color 0.2s, transform 0.2s;
+  font-family: 'Inter', sans-serif;
+  align-self: flex-start; // Przycisk do lewej w kolumnie
+
+  &:hover {
+    background-color: #222;
+    transform: translateY(-1px);
+  }
+
+  &:active {
+    transform: scale(0.98);
+  }
+
+  @media (max-width: 768px) {
+    align-self: center; // Na mobile wyśrodkuj przycisk
+  }
+`;
+
+/* ===================== COMPONENT ===================== */
+
+export const ConfiguratorEntryTile = ({ ready, tripId }) => {
+  
+  const handleClick = () => {
+    if (ready && tripId) {
+        window.location.href = `/konfigurator?tripId=${tripId}`;
+    }
+  };
+
+  return (
+    <OuterWrapper>
+      <TileCard $ready={ready} onClick={ready ? handleClick : undefined}>
+        
+        {/* Lewa strona - Animowana ikona */}
+        <AnimatedIconContainer $ready={ready}>
+           {/* Oba ikony są zawsze w DOM, animujemy ich opacity/transform */}
+           <XIconStyled $ready={ready}>
+             <X size={28} strokeWidth={2.5} />
+           </XIconStyled>
+           <CheckIconStyled $ready={ready}>
+             <Check size={28} strokeWidth={2.5} />
+           </CheckIconStyled>
+        </AnimatedIconContainer>
+
+        {/* Prawa strona - Treść */}
+        <ContentColumn>
+          <Title $ready={ready}>
+            {ready ? 'Planer podróży gotowy!' : 'Uzupełnij dane wyjazdu'}
+          </Title>
+
+          <Description>
+            {ready 
+              ? 'Wszystkie niezbędne informacje zostały wprowadzone. Możesz teraz przejść do szczegółowego planera, aby ustalić harmonogram i atrakcje.' 
+              : 'Aby odblokować konfigurator, musisz uzupełnić wszystkie wymagane pola powyżej (miejsca, daty oraz liczbę uczestników).'
+            }
+          </Description>
+
+          {ready && (
+            <BlackButton onClick={(e) => {
+              e.stopPropagation(); 
+              handleClick();
+            }}>
+              Przejdź do konfiguratora <ArrowRight size={18} />
+            </BlackButton>
+          )}
+        </ContentColumn>
+
+      </TileCard>
+    </OuterWrapper>
+  );
+};

@@ -52,6 +52,7 @@ import UnsplashPhotoTest from './unsplashPhotoTest.js';
 import AttractionsMap from './attractionMap.js';
 import { Privacy } from './privacy.js';
 import { JoiningToTrip } from './joiningToTrip.js';
+import { RealizationPage } from './realizationPage.js';
 
 const teksty = [
   { tyt: "Połącz twój pomysł z naszym doświadczeniem", tekst: "Dzięki konfiguratorowi wycieczek WycieczkaZKlasą, zrealizuj swój pomysł na wyjazd, nie martwiąc się niczym poza pasjonującym programem wyjazdu!" },
@@ -193,6 +194,13 @@ function App() {
               path="privacy"
               element={
                 <Privacy/>
+                
+              }
+            />
+             <Route
+              path="realizacja"
+              element={
+                <RealizationPage/>
                 
               }
             />
