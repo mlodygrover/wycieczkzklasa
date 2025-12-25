@@ -1,12 +1,11 @@
 import { useState, useRef, useEffect } from 'react';
 import styled, { keyframes } from 'styled-components';
 import { Menu, X, Compass, User, ChevronDown, Settings, Heart, LogOut, Bell } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import useUserStore, { fetchMe, clearUser } from './usercontent';
 
 const portacc = process.env.REACT_APP_API_SOURCE || "https://api.draftngo.com";
 
-console.log("TEST PORT", portacc, process.env.REACT_APP_API_SOURCE)
 const slideDown = keyframes`
   from { opacity: 0; transform: translateY(-10px); }
   to { opacity: 1; transform: translateY(0); }
@@ -30,8 +29,6 @@ const Nav = styled.nav`
   opacity: ${props => (props.$hidden ? 0 : 1)};
   transition: transform .32s ease, opacity .32s ease, background .2s ease;
   will-change: transform, opacity, background;
-
-  
 `;
 
 const Container = styled.div`
@@ -151,11 +148,6 @@ const UserAvatar = styled.div`
 const UserInfo = styled.div` display: flex; flex-direction: column; align-items: flex-start;`;
 const UserName = styled.span` font-size: 0.875rem; font-weight: 500; text-shadow: 0 1px 2px rgba(0,0,0,0.1);`;
 const UserBadge = styled.span` font-size: 0.65rem; color: rgba(255,255,255,0.8); text-transform: uppercase; letter-spacing: 0.05em;`;
-const NotificationBadge = styled.div`
-  width: 1.25rem; height: 1.25rem; background: linear-gradient(135deg, #ff6b6b 0%, #ee5a6f 100%);
-  border-radius: 50%; display: flex; align-items: center; justify-content: center;
-  font-size: 0.65rem; font-weight: 600; box-shadow: 0 2px 4px rgba(0,0,0,0.2);
-`;
 
 const DropdownMenu = styled.div`
   position: absolute; top: calc(100% + 0.5rem); right: 0;
@@ -293,15 +285,28 @@ export function TravelMenuUnified({ variant = 'white' }) {
     const { user, loading } = useUserStore();
     const isLoggedIn = !!user;
 
-    // ewentualny lazy fetch profilu (opcjonalnie — jeżeli nie robisz tego wyżej w drzewie)
+    const navigate = useNavigate();
+    const location = useLocation();
+
+    // ============================================
+    // ZMIANA NA ŻYCZENIE: JAWNY USESTATE DLA ŚCIEŻKI
+    // ============================================
+    const [fullPath, setFullPath] = useState(location.pathname + location.search);
+
+    // Aktualizujemy state przy każdej zmianie location
     useEffect(() => {
-        // Jeżeli jeszcze nie pobieraliśmy i nie ma usera, spróbuj pobrać
+        setFullPath(location.pathname + location.search);
+        console.log(fullPath)
+        // Debug (opcjonalny, możesz usunąć)
+        // console.log("Menu - updated return path:", location.pathname + location.search);
+    }, [location]);
+
+    useEffect(() => {
         if (!user && !loading) {
             fetchMe().catch(() => { });
         }
     }, [user, loading]);
 
-    // klik poza dropdownem profilu
     useEffect(() => {
         function handleClickOutside(event) {
             if (profileRef.current && !profileRef.current.contains(event.target)) {
@@ -312,7 +317,6 @@ export function TravelMenuUnified({ variant = 'white' }) {
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, [isProfileOpen]);
 
-    // hide-on-scroll
     const lastYRef = useRef(0);
     const tickingRef = useRef(false);
     const downAccumRef = useRef(0);
@@ -361,13 +365,12 @@ export function TravelMenuUnified({ variant = 'white' }) {
         return () => window.removeEventListener('scroll', onScroll);
     }, [isMenuOpen, isProfileOpen]);
 
-    // pokaż pasek, gdy otwieramy menu
     useEffect(() => {
         if (isMenuOpen || isProfileOpen) setHiddenByScroll(false);
     }, [isMenuOpen, isProfileOpen]);
 
     const barHidden = hiddenByScroll;
-    const navigate = useNavigate();
+    
     const goHome = () => navigate('/', { replace: false });
 
     const displayName =
@@ -381,7 +384,6 @@ export function TravelMenuUnified({ variant = 'white' }) {
                 credentials: 'include',
             });
         } catch (_) {
-            // nawet jeśli request się nie powiedzie, czyścimy front
         } finally {
             clearUser();
             navigate('/login', { replace: true });
@@ -411,7 +413,6 @@ export function TravelMenuUnified({ variant = 'white' }) {
 
                     <DesktopMenu>
                         <MenuLink href="#odkrywaj" $variant={variant}>Odkrywaj</MenuLink>
-
                         <MenuLink href="/konfigurator-lounge" $variant={variant}>Konfigurator</MenuLink>
                         <MenuLink href="#destynacje" $variant={variant}>Dla szkół</MenuLink>
                         <MenuLink href="#wycieczki" $variant={variant}>Dla przedsiębiorców</MenuLink>
@@ -441,8 +442,6 @@ export function TravelMenuUnified({ variant = 'white' }) {
                                         <UserName>{displayName}</UserName>
                                         <UserBadge>Użytkownik</UserBadge>
                                     </UserInfo>
-                                    {/* Przykładowy badge powiadomień – schowaj, jeśli go nie używasz */}
-                                    {/* <NotificationBadge>3</NotificationBadge> */}
                                     <ChevronDown
                                         size={16}
                                         style={{ transform: isProfileOpen ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform .3s' }}
@@ -475,7 +474,6 @@ export function TravelMenuUnified({ variant = 'white' }) {
                                         <DropdownItem $variant={variant}><Heart size={18} />Ulubione</DropdownItem>
                                         <DropdownItem $variant={variant}>
                                             <Bell size={18} />Powiadomienia
-                                            {/* <NotificationBadge style={{ marginLeft: 'auto' }}>3</NotificationBadge> */}
                                         </DropdownItem>
                                         <DropdownItem $variant={variant}><Settings size={18} />Ustawienia</DropdownItem>
                                         <DropdownDivider />
@@ -487,7 +485,13 @@ export function TravelMenuUnified({ variant = 'white' }) {
                             </>
                         ) : (
                             <>
-                                <AuthButton $variant={variant} onClick={() => navigate('/login')}>Logowanie</AuthButton>
+                                {/* ZMIANA: Używamy wartości ze stanu 'fullPath' */}
+                                <AuthButton 
+                                    $variant={variant} 
+                                    onClick={() => navigate('/login', { state: { from: fullPath } })}
+                                >
+                                    Logowanie
+                                </AuthButton>
                                 <AuthButtonPrimary onClick={() => navigate('/register')}>Rejestracja</AuthButtonPrimary>
                             </>
                         )}
@@ -512,7 +516,6 @@ export function TravelMenuUnified({ variant = 'white' }) {
                         {isLoggedIn ? (
                             <MobileUserCard $variant={variant}>
                                 <MobileUserHeader>
-
                                     <MobileUserAvatar>
                                         {user?.profilePic ? (
                                             <AvatarImg
@@ -530,7 +533,6 @@ export function TravelMenuUnified({ variant = 'white' }) {
                                         <MobileUserName>{displayName}</MobileUserName>
                                         {displayEmail && <MobileUserEmail>{displayEmail}</MobileUserEmail>}
                                     </MobileUserInfo>
-                                    {/* <NotificationBadge>3</NotificationBadge> */}
                                 </MobileUserHeader>
 
                                 <MobileUserActions>
@@ -550,7 +552,14 @@ export function TravelMenuUnified({ variant = 'white' }) {
                             </MobileUserCard>
                         ) : (
                             <MobileAuthButtons>
-                                <MobileAuthButton $variant={variant} onClick={() => { setIsMenuOpen(false); navigate('/login'); }}>
+                                {/* ZMIANA: Używamy wartości ze stanu 'fullPath' również na mobile */}
+                                <MobileAuthButton 
+                                    $variant={variant} 
+                                    onClick={() => { 
+                                        setIsMenuOpen(false); 
+                                        navigate('/login', { state: { from: fullPath } }); 
+                                    }}
+                                >
                                     Logowanie
                                 </MobileAuthButton>
                                 <MobileAuthButtonPrimary onClick={() => { setIsMenuOpen(false); navigate('/register'); }}>

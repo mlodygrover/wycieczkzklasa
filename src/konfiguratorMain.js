@@ -3253,11 +3253,12 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
 
     useEffect(() => {
         if (!titleRef.current) return;
-
-        // Nie nadpisuj, gdy użytkownik aktualnie edytuje tytuł
+        // Nie nadpisuj, jeśli użytkownik właśnie edytuje (chyba że nazwa przyszła z zewnątrz i jest inna)
         if (document.activeElement === titleRef.current) return;
 
-        titleRef.current.textContent = nazwaWyjazdu ?? "";
+        if (nazwaWyjazdu && titleRef.current.textContent !== nazwaWyjazdu) {
+            titleRef.current.textContent = nazwaWyjazdu;
+        }
     }, [nazwaWyjazdu]);
 
 
@@ -3413,16 +3414,13 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
                             suppressContentEditableWarning
                             ref={titleRef}
                             onInput={(e) => {
+                                // Aktualizujemy stan, ale NIE wymuszamy re-renderowania zawartości diva przez props
+                                // React nie będzie próbował nadpisać children, bo ich nie przekazujemy wprost
                                 setNazwaWyjazdu(e.currentTarget.textContent);
                             }}
-                            onKeyDown={(e) => {
-                                if (e.key === "Enter") {
-                                    e.preventDefault();       // brak nowej linii
-                                    e.stopPropagation();      // opcjonalnie: nie puszczamy dalej
-                                    e.currentTarget.blur();   // „zamknięcie” pola
-                                    handleSaveClick();        // zapis
-                                }
-                            }}
+                        // Usuwamy {nazwaWyjazdu} z children, żeby React nie nadpisywał
+                        // zawartości przy każdym renderze, co psuje kursor.
+                        // Zawartość inicjalna jest ustawiana przez useEffect powyżej.
                         />
                         <Edit2 size={40} />
                         <div style={{ flex: '1' }} />

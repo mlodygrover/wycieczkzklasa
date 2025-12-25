@@ -269,7 +269,19 @@ export const TripTimeline = ({ activitiesSchedule = [[]], timesSchedule = [], lo
     };
 
     if (!activitiesSchedule || activitiesSchedule.length === 0) {
-        return null;
+        return(
+            <CardWrapper>
+            <HeaderSection>
+                <CalendarRange size={20} color="#333" />
+                <Title>{loungeVersion && tripId ? <span>Podsumowanie wyjazdu, aby zmodyfikować plan <a href={`/konfigurator?tripId=${tripId}`}>przejdź do konfiguratora</a></span> : "Podsumowanie dni"}</Title>
+            </HeaderSection>
+
+            <ContentSection>
+                
+            </ContentSection>
+        </CardWrapper>
+        )
+        
     }
 
     return (

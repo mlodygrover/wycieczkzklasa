@@ -184,22 +184,73 @@ app.get('/testEndpoint', (req, res) => {
 });
 
 // Start flow Facebook
-app.get('/auth/facebook', passport.authenticate('facebook', { scope: ['public_profile', 'email'] }));
+// Start flow Facebook
+// Start flow Facebook
+app.get('/auth/facebook', (req, res, next) => {
+    const { redirect } = req.query;
 
-// Callback Facebook
-app.get(
-    '/auth/facebook/callback',
+    // Kodujemy adres powrotu do base64, aby bezpiecznie przeszedł przez URL Facebooka
+    // Jeśli brak redirect, state jest undefined (Passport wygeneruje własny domyślny)
+    const state = redirect
+        ? Buffer.from(redirect).toString('base64')
+        : undefined;
+
+    console.log("Wywolane z (zakodowane w state): ", redirect);
+
+    // Przekazujemy 'state' w opcjach autentykacji
     passport.authenticate('facebook', {
-        failureRedirect: `${process.env.CLIENT_URL}/login?error=facebook`,
-        session: true,
+        scope: ['public_profile', 'email'],
+        state: state
+    })(req, res, next);
+});
+// Callback Facebook
+// Callback Facebook
+// Callback Facebook
+app.get('/auth/facebook/callback',
+    passport.authenticate('facebook', {
+        failureRedirect: `${process.env.CLIENT_URL}/login?error=facebook_failed`
     }),
     (req, res) => {
-        // Po sukcesie – przekieruj na front (np. /)
-        console.log("ZALOGOWANO")
-        res.redirect(`${process.env.CLIENT_URL}/`);
+        // === LOGIN SUCCESS ===
+        const CLIENT_URL = process.env.CLIENT_URL || "http://localhost:3000";
+
+        // 1. Pobieramy i dekodujemy parametr state zwrócony przez Facebooka
+        let returnToPath = '/';
+        const { state } = req.query;
+
+        if (state) {
+            try {
+                // Odkodowanie z Base64
+                const decodedState = Buffer.from(state, 'base64').toString('utf-8');
+                // Proste zabezpieczenie: akceptujemy tylko ścieżki wewnątrz serwisu (zaczynające się od /)
+                // Ignorujemy, jeśli ktoś próbuje wstrzyknąć pełny URL (np. http://zla-strona.com)
+                if (decodedState.startsWith('/')) {
+                    returnToPath = decodedState;
+                }
+            } catch (e) {
+                console.error('Błąd dekodowania state:', e);
+            }
+        }
+
+        console.log("W callbacku (z parametru state): ", returnToPath);
+
+        // 2. Logujemy użytkownika w sesji (req.login robi to automatycznie w Passporcie, ale warto upewnić się że sesja jest zapisana)
+        req.session.save((err) => {
+            if (err) {
+                console.error('Session save error in callback:', err);
+                return res.redirect(`${CLIENT_URL}/`);
+            }
+
+            // 3. Budujemy finalny URL
+            // Upewniamy się, że nie ma podwójnych slashy
+            const safePath = returnToPath.startsWith('/') ? returnToPath : `/${returnToPath}`;
+            const finalRedirectUrl = `${CLIENT_URL}${safePath === '/' ? '' : safePath}`;
+
+            console.log(`[Auth] Redirecting facebook user to: ${finalRedirectUrl}`);
+            res.redirect(finalRedirectUrl);
+        });
     }
 );
-
 // Informacja o zalogowanym użytkowniku (sesja)
 app.get('/api/me', (req, res) => {
     if (!req.user) {

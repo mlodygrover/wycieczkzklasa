@@ -620,9 +620,9 @@ export const PreConfigure = (
     const [shareTripUrl, setShareTripUrl] = useState("");
     const userFromStore = useUserStore((state) => state.user);
     const [sharePopupOpened, setSharePopupOpened] = useState(false);
+
     // 🆕 NOWY STAN: status przycisku kopiowania
     const [copyStatus, setCopyStatus] = useState("Kopiuj");
-
     // 5) Sync stanu → URL (bez przeładowania), dopiero gdy planReady
     useEffect(() => {
         if (!planReady) return;
@@ -1133,11 +1133,12 @@ export const PreConfigure = (
 
     useEffect(() => {
         if (!titleRef.current) return;
-        // Nie nadpisuj, jeśli użytkownik edytuje
+        // Nie nadpisuj, jeśli użytkownik właśnie edytuje (chyba że nazwa przyszła z zewnątrz i jest inna)
         if (document.activeElement === titleRef.current) return;
-        if (nazwaWyjazdu == null) return; // nie czyść na null/undefined
 
-        titleRef.current.textContent = nazwaWyjazdu;
+        if (nazwaWyjazdu && titleRef.current.textContent !== nazwaWyjazdu) {
+            titleRef.current.textContent = nazwaWyjazdu;
+        }
     }, [nazwaWyjazdu]);
     const canGoToConfigurator = planReady && isValidPreconfigureState({
         miejsceDocelowe,
@@ -1229,9 +1230,14 @@ export const PreConfigure = (
                             onInput={(e) => {
                                 setNazwaWyjazdu(e.currentTarget.textContent);
                             }}
-                        >
-                            {nazwaWyjazdu ?? ""}
-                        </div>
+                            // 👇 DODAJ TĘ CZĘŚĆ 👇
+                            onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                    e.preventDefault(); // Blokuje wstawienie nowej linii
+                                    e.currentTarget.blur();    // Usuwa focus (kończy edycję)
+                                }
+                            }}
+                        />
                         <Edit2 size={40} />
                     </div>
                 </div>
@@ -1310,10 +1316,10 @@ export const PreConfigure = (
                         setStandardHotelu={setStandardHotelu}
                         setStandardTransportu={setStandardTransportu}
                     />
-                    <ConfiguratorEntryTile ready={canGoToConfigurator && !synchronisingPlan} tripId={tripId}/>
+                    <ConfiguratorEntryTile isLogged={userFromStore ? true : false} ready={canGoToConfigurator && !synchronisingPlan} tripId={tripId} konfiguratorUrl={konfiguratorUrl} />
                     <TilesRowWrapper className='b'>
 
-                        {activitiesSchedule && <TripTimeline activitiesSchedule={activitiesSchedule} loungeVersion={true} tripId={tripId} />} 
+                        {activitiesSchedule ? <TripTimeline activitiesSchedule={activitiesSchedule} loungeVersion={true} tripId={tripId} /> : <TripTimeline activitiesSchedule={[[]]} loungeVersion={true} tripId={tripId} />}
                         <RealizationInfoCard />
                     </TilesRowWrapper>
                 </>

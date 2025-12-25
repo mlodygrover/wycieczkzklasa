@@ -158,53 +158,54 @@ const BlackButton = styled.button`
 
 /* ===================== COMPONENT ===================== */
 
-export const ConfiguratorEntryTile = ({ ready, tripId }) => {
-  
-  const handleClick = () => {
-    if (ready && tripId) {
-        window.location.href = `/konfigurator?tripId=${tripId}`;
-    }
-  };
+export const ConfiguratorEntryTile = ({ isLogged=false, ready, tripId, konfiguratorUrl }) => {
+    
+    const handleClick = () => {
+    
+        if (ready && (tripId || !isLogged)) {
+            window.location.href = `${konfiguratorUrl}`;
+        }
+    };
 
-  return (
-    <OuterWrapper>
-      <TileCard $ready={ready} onClick={ready ? handleClick : undefined}>
-        
-        {/* Lewa strona - Animowana ikona */}
-        <AnimatedIconContainer $ready={ready}>
-           {/* Oba ikony są zawsze w DOM, animujemy ich opacity/transform */}
-           <XIconStyled $ready={ready}>
-             <X size={28} strokeWidth={2.5} />
-           </XIconStyled>
-           <CheckIconStyled $ready={ready}>
-             <Check size={28} strokeWidth={2.5} />
-           </CheckIconStyled>
-        </AnimatedIconContainer>
+    return (
+        <OuterWrapper>
+            <TileCard $ready={ready} onClick={ready ? handleClick : undefined}>
 
-        {/* Prawa strona - Treść */}
-        <ContentColumn>
-          <Title $ready={ready}>
-            {ready ? 'Planer podróży gotowy!' : 'Uzupełnij dane wyjazdu'}
-          </Title>
+                {/* Lewa strona - Animowana ikona */}
+                <AnimatedIconContainer $ready={ready}>
+                    {/* Oba ikony są zawsze w DOM, animujemy ich opacity/transform */}
+                    <XIconStyled $ready={ready}>
+                        <X size={28} strokeWidth={2.5} />
+                    </XIconStyled>
+                    <CheckIconStyled $ready={ready}>
+                        <Check size={28} strokeWidth={2.5} />
+                    </CheckIconStyled>
+                </AnimatedIconContainer>
 
-          <Description>
-            {ready 
-              ? 'Wszystkie niezbędne informacje zostały wprowadzone. Możesz teraz przejść do szczegółowego planera, aby ustalić harmonogram i atrakcje.' 
-              : 'Aby odblokować konfigurator, musisz uzupełnić wszystkie wymagane pola powyżej (miejsca, daty oraz liczbę uczestników).'
-            }
-          </Description>
+                {/* Prawa strona - Treść */}
+                <ContentColumn>
+                    <Title $ready={ready}>
+                        {ready ? 'Planer podróży gotowy!' : 'Uzupełnij dane wyjazdu'}
+                    </Title>
 
-          {ready && (
-            <BlackButton onClick={(e) => {
-              e.stopPropagation(); 
-              handleClick();
-            }}>
-              Przejdź do konfiguratora <ArrowRight size={18} />
-            </BlackButton>
-          )}
-        </ContentColumn>
+                    <Description>
+                        {ready
+                            ? 'Wszystkie niezbędne informacje zostały wprowadzone. Możesz teraz przejść do szczegółowego planera, aby ustalić harmonogram i atrakcje.'
+                            : 'Aby odblokować konfigurator, musisz uzupełnić wszystkie wymagane pola powyżej (miejsca, daty oraz liczbę uczestników).'
+                        }
+                    </Description>
 
-      </TileCard>
-    </OuterWrapper>
-  );
+                    {ready && (
+                        <BlackButton onClick={(e) => {
+                            e.stopPropagation();
+                            handleClick();
+                        }}>
+                            Przejdź do konfiguratora <ArrowRight size={18} />
+                        </BlackButton>
+                    )}
+                </ContentColumn>
+
+            </TileCard>
+        </OuterWrapper>
+    );
 };
