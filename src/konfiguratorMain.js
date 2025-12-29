@@ -1252,7 +1252,7 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
                     )}`
                 );
                 const data = await response.json();
-
+                console.log("TEST3", data)
                 if (data?.length > 0) {
                     const resultsWithPlaceId = await Promise.all(
                         data.map(async (item) => {

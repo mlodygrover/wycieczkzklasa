@@ -1252,7 +1252,7 @@ export const PreConfigure = (
 
                     <div className="preConfigureButtons">
 
-                        {realizationStatus == 0 && <a
+                        {realizationStatus == 0 || !realizationStatus && <a
                             className={`preConfigureButton${canGoToConfigurator && !synchronisingPlan ? '' : ' disabled'}`}
                             href={canGoToConfigurator && !synchronisingPlan ? konfiguratorUrl : undefined}
                             onClick={(e) => {

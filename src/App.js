@@ -53,6 +53,7 @@ import AttractionsMap from './attractionMap.js';
 import { Privacy } from './privacy.js';
 import { JoiningToTrip } from './joiningToTrip.js';
 import { RealizationPage } from './realizationPage.js';
+import AdminPanel from './admin.js';
 
 const teksty = [
   { tyt: "Połącz twój pomysł z naszym doświadczeniem", tekst: "Dzięki konfiguratorowi wycieczek WycieczkaZKlasą, zrealizuj swój pomysł na wyjazd, nie martwiąc się niczym poza pasjonującym programem wyjazdu!" },
@@ -131,7 +132,7 @@ const miasta = [
 function Menus() {
   const location = useLocation();
   const isHome = location.pathname === '/' || location.pathname === '';
-  const isLogin = location.pathname === "/login";
+  const isLogin = location.pathname === "/login" || location.pathname === "/admin";
   const variant = isHome ? 'glass' : 'white';
 
   return (
@@ -148,12 +149,12 @@ function Menus() {
 }
 function IfFooter() {
   const location = useLocation();
-  const isHome = location.pathname === '/login' ;
+  const isHome = location.pathname === '/login';
 
   return (
     <>
       {
-        isHome ? null: <PageFooter /> 
+        isHome ? null : <PageFooter />
       }</>
   )
 }
@@ -168,47 +169,54 @@ function App() {
     <>
       <div className="App">
         <Router>
-          
+
           <Menus />
           <Routes>
 
             <Route path="/" element={<><HomePage trips={exampleTrips} /></>} />
-            <Route path="/profil" element={<ProfilePage/>} />
-            <Route path="/konfigurator-lounge" element={<PreConfigure/>} />
+            <Route path="/profil" element={<ProfilePage />} />
+            <Route path="/konfigurator-lounge" element={<PreConfigure />} />
             <Route path="/login" element={<LoginPage />} />
             <Route
               path="/konfigurator"
               element={
-                <KonfiguratorLoader/>
-                
+                <KonfiguratorLoader />
+
               }
             />
             <Route
               path="/konfigurator/old"
               element={
-                <KreatorWyjazdu/>
-                
+                <KreatorWyjazdu />
+
               }
             />
             <Route
               path="privacy"
               element={
-                <Privacy/>
-                
+                <Privacy />
+
               }
             />
-             <Route
+            <Route
+              path="admin"
+              element={
+                <AdminPanel/>
+
+              }
+            />
+            <Route
               path="realizacja"
               element={
-                <RealizationPage/>
-                
+                <RealizationPage />
+
               }
             />
             <Route
               path="join-trip"
               element={
-                <JoiningToTrip/>
-                
+                <JoiningToTrip />
+
               }
             />
             <Route path="*" element={<Navigate to="/" replace />} />

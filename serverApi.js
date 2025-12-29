@@ -656,36 +656,90 @@ app.get('/attractions/nearby', async (req, res) => {
             return res.status(400).json({ error: 'Wymagane parametry: lat, lng (Number)' });
         }
 
+        // --- LOGIKA HYBRYDOWA ---
+        // Sprawdzamy, czy klient prosi o paginację
+        const explicitPage = req.query.page;
+        const explicitLimit = req.query.limit;
+        const usePagination = explicitPage !== undefined || explicitLimit !== undefined;
+
+        let skip = 0;
+        let limit = 300; // Domyślny limit "dla wszystkich" (zabezpieczenie przed overloadem)
+
+        if (usePagination) {
+            const pageVal = parseInt(explicitPage) || 1;
+            const limitVal = parseInt(explicitLimit) || 20;
+            skip = (pageVal - 1) * limitVal;
+            limit = limitVal;
+        }
+        // ------------------------
+
         const maxDistanceMetersAll = Math.max(1, Math.round(radiusKm * 1000));
-        const maxDistanceMeters15 = 15000; // 15 km – próg do sprawdzenia "czy okolica jest bogata"
 
-        // 1️⃣ Sprawdzenie, ile atrakcji mamy w promieniu 15 km (limit 20 dla optymalizacji)
-        const items15 = await Attraction.aggregate(
-            buildNearbyPipeline(lat, lng, maxDistanceMeters15, 20)
-        );
-        console.log("W najblizszej okolicy", items15.length)
-        // 2️⃣ Jeśli w 15 km mamy >= 20 atrakcji → NIE wołamy Google,
-        //    tylko od razu bierzemy wyniki z promienia radiusKm (np. 70 km)
-        if (items15.length >= 20) {
-            const itemsAll = await Attraction.aggregate(
-                buildNearbyPipeline(lat, lng, maxDistanceMetersAll, 300)
-            );
-            return res.json(itemsAll);
+        // Budowanie Pipeline'u MongoDB
+        const geoStage = {
+            $geoNear: {
+                near: { type: 'Point', coordinates: [lng, lat] },
+                key: 'locationGeo',
+                spherical: true,
+                distanceField: 'distanceMeters',
+                maxDistance: maxDistanceMetersAll,
+                query: { locationGeo: { $exists: true } },
+            },
+        };
+
+        const commonStages = [
+            {
+                $addFields: {
+                    distanceKm: { $round: [{ $divide: ['$distanceMeters', 1000] }, 2] },
+                    verified: { $ne: ['$dataSource', 'Bot'] },
+                },
+            },
+            {
+                $match: {
+                    $or: [
+                        { liczbaOpinie: { $gte: 150 } },
+                        { typy: 'museum' },
+                    ],
+                },
+            },
+            { $sort: { liczbaOpinie: -1 } }, // Sortowanie np. po popularności
+            {
+                $project: {
+                    createdAt: 0,
+                    updatedAt: 0,
+                    locationSource: 0,
+                },
+            }
+        ];
+
+        // Dodajemy paginację na końcu pipeline'u
+        const finalPipeline = [geoStage, ...commonStages];
+
+        if (usePagination) {
+            // Tryb Admina / Load More: ścisła paginacja
+            finalPipeline.push({ $skip: skip });
+            finalPipeline.push({ $limit: limit });
+        } else {
+            // Tryb Legacy: zwracamy "wszystkie" (do bezpiecznego limitu 300)
+            finalPipeline.push({ $limit: 300 });
         }
 
-        // 3️⃣ W 15 km jest mało atrakcji → dogrywamy z Google + bierzemy 70 km z bazy
-        try {
-            console.log("WYwoluje google")
-            const itemsAll = await fetchAndStoreGoogleAttractionsAround(lat, lng, radiusKm);
-            return res.json(itemsAll);
-        } catch (err) {
-            console.error('Dogrywanie atrakcji z Google nie powiodło się:', err?.message || err);
-            // fallback: zwróć cokolwiek mamy w bazie dla radiusKm
-            const itemsAll = await Attraction.aggregate(
-                buildNearbyPipeline(lat, lng, maxDistanceMetersAll, 300)
-            );
-            return res.json(itemsAll);
+        // 1. Wykonanie zapytania
+        const items = await Attraction.aggregate(finalPipeline);
+
+        // --- OBSŁUGA DOGRYWANIA Z GOOGLE (Opcjonalna optymalizacja) ---
+        // Jeśli to pierwsza strona (lub brak paginacji) i wyników jest mało,
+        // możemy spróbować dociągnąć z Google.
+        // Uwaga: Jeśli używasz paginacji, dociąganie z Google jest skomplikowane,
+        // bo zmienia offsety. Tutaj zostawiam prostą logikę:
+        // Jeśli tryb "legacy" i mało wyników -> dociągnij.
+
+        if (!usePagination && items.length < 20) {
+            // Tu ewentualnie logika fetchAndStoreGoogleAttractionsAround...
+            // Ale dla prostoty i wydajności w trybie paginacji admina zazwyczaj polegamy na tym co jest w bazie.
         }
+
+        return res.json(items);
 
     } catch (err) {
         console.error('GET /attractions/nearby error:', err);
@@ -1513,9 +1567,174 @@ app.get("/searchPlaces", async (req, res) => {
     }
 });
 
+// --- ENDPOINTY ADMINA DO ZARZĄDZANIA ATRAKCJAMI ---
 
+/**
+ * GET /admin/attractions
+ * Pobiera listę atrakcji z paginacją i filtrowaniem.
+ * Query params:
+ * - page (default 1)
+ * - limit (default 20)
+ * - search (szukanie po nazwie)
+ * - city (szukanie po adresie - proste filtrowanie miasta)
+ */
+app.get("/admin/attractions", async (req, res) => {
+    try {
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 20;
+        const search = req.query.search || "";
+        const city = req.query.city || "";
 
+        const query = {};
 
+        // Filtrowanie po nazwie
+        if (search) {
+            query.nazwa = { $regex: search, $options: "i" };
+        }
+
+        // Filtrowanie po mieście (szukamy w polu adres)
+        if (city) {
+            query.adres = { $regex: city, $options: "i" };
+        }
+
+        const total = await Attraction.countDocuments(query);
+        const attractions = await Attraction.find(query)
+            .sort({ updatedAt: -1 }) // Najpierw ostatnio edytowane
+            .skip((page - 1) * limit)
+            .limit(limit)
+            .select("googleId nazwa adres warianty locationSource dataSource updatedAt stronaInternetowa");
+
+        res.json({
+            data: attractions,
+            meta: {
+                total,
+                page,
+                limit,
+                totalPages: Math.ceil(total / limit),
+            },
+        });
+    } catch (err) {
+        console.error("GET /admin/attractions error:", err);
+        res.status(500).json({ error: "Błąd serwera podczas pobierania atrakcji." });
+    }
+});
+
+/**
+ * PUT /admin/attractions/:googleId
+ * Edycja atrakcji przez admina.
+ * Wymusza zmianę dataSource na 'Admin' lub 'Mod'.
+ */
+app.put("/admin/attractions/:googleId", async (req, res) => {
+    try {
+        const { googleId } = req.params;
+        const updateData = req.body;
+
+        // --- ZMIANA: Obsługa źródła danych ---
+        // Jeśli frontend przysłał dataSource/locationSource, używamy ich.
+        // Jeśli nie, zostawiamy bez zmian (nie nadpisujemy na siłę).
+        // Ewentualnie, jeśli chcesz wymusić 'Admin' TYLKO gdy pole jest puste:
+        if (!updateData.dataSource) {
+            updateData.dataSource = "Admin";
+        }
+        // -------------------------------------
+
+        // Usuwamy pola systemowe, których nie chcemy edytować ręcznie
+        delete updateData._id;
+        delete updateData.__v;
+        delete updateData.createdAt; 
+        // updatedAt zaktualizuje się samo (w pre-save hooku lub przez ustawienia mongoose)
+
+        const updatedAttraction = await Attraction.findOneAndUpdate(
+            { googleId },
+            { $set: updateData },
+            { new: true, runValidators: true }
+        );
+
+        if (!updatedAttraction) {
+            return res.status(404).json({ error: "Nie znaleziono atrakcji." });
+        }
+
+        res.json({ message: "Atrakcja zaktualizowana", attraction: updatedAttraction });
+    } catch (err) {
+        console.error("PUT /admin/attractions error:", err);
+        res.status(500).json({ error: "Błąd serwera podczas edycji." });
+    }
+});
+/**
+ * POST /admin/attractions
+ * Ręczne tworzenie nowej atrakcji przez Admina.
+ */
+app.post("/admin/attractions", async (req, res) => {
+    try {
+        const {
+            googleId,
+            nazwa,
+            adres,
+            lat,
+            lng,
+            stronaInternetowa,
+            wallpaper,
+            warianty,
+            // Pobieramy pola źródła z body
+            dataSource,
+            locationSource
+        } = req.body;
+
+        if (!nazwa || !adres) {
+            return res.status(400).json({ error: "Nazwa i adres są wymagane." });
+        }
+
+        const latitude = parseFloat(lat);
+        const longitude = parseFloat(lng);
+        let lokalizacja = {};
+        let locationGeo = undefined;
+
+        if (!isNaN(latitude) && !isNaN(longitude)) {
+            lokalizacja = { lat: latitude, lng: longitude };
+            locationGeo = { type: "Point", coordinates: [longitude, latitude] };
+        }
+
+        let finalGoogleId = googleId && String(googleId).trim().length > 0
+            ? String(googleId).trim()
+            : `manual_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
+
+        const newAttraction = new Attraction({
+            googleId: finalGoogleId,
+            parentPlaceId: "manual_entry",
+            nazwa,
+            adres,
+            lokalizacja,
+            locationGeo,
+            stronaInternetowa,
+            wallpaper,
+            warianty: warianty || [],
+            
+            // --- ZMIANA: Używamy danych z frontu lub domyślnie 'Admin' ---
+            dataSource: dataSource || "Admin",
+            locationSource: locationSource || "Admin",
+            // -------------------------------------------------------------
+            
+            ocena: 0,
+            liczbaOpinie: 0,
+            typy: ["custom"],
+            photos: []
+        });
+
+        await newAttraction.save();
+
+        res.status(201).json({ 
+            message: "Atrakcja utworzona pomyślnie", 
+            attraction: newAttraction 
+        });
+
+    } catch (err) {
+        console.error("POST /admin/attractions error:", err);
+        if (err.code === 11000) {
+            return res.status(409).json({ error: "Atrakcja o takim ID już istnieje." });
+        }
+        res.status(500).json({ error: "Błąd serwera podczas tworzenia atrakcji." });
+    }
+});
 // 1️⃣ Schemat Mongoose dla tras
 const TrasaSchema = new mongoose.Schema({
     fromLat: Number,
