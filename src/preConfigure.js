@@ -1252,7 +1252,7 @@ export const PreConfigure = (
 
                     <div className="preConfigureButtons">
 
-                        {realizationStatus == 0 || !realizationStatus && <a
+                        {!realizationStatus  ? <a
                             className={`preConfigureButton${canGoToConfigurator && !synchronisingPlan ? '' : ' disabled'}`}
                             href={canGoToConfigurator && !synchronisingPlan ? konfiguratorUrl : undefined}
                             onClick={(e) => {
@@ -1264,7 +1264,10 @@ export const PreConfigure = (
                         >
                             <Settings size={20} />
                             Konfigurator
-                        </a>}
+                        </a>
+
+                            : null
+                        }
                         {shareTripUrl && <>
                             <a className={publicPlan ? "preConfigureButton b" : "preConfigureButton b privatePlan"} onClick={() => setSharePopupOpened(!sharePopupOpened)}>
                                 <Share2 />
@@ -1316,7 +1319,7 @@ export const PreConfigure = (
                         setStandardHotelu={setStandardHotelu}
                         setStandardTransportu={setStandardTransportu}
                     />
-                    <ConfiguratorEntryTile isLogged={userFromStore ? true : false} ready={canGoToConfigurator && !synchronisingPlan} tripId={tripId} konfiguratorUrl={konfiguratorUrl} />
+                    <ConfiguratorEntryTile isLogged={userFromStore ? true : false} ready={canGoToConfigurator && !synchronisingPlan} tripId={tripId} konfiguratorUrl={konfiguratorUrl} blocked={realizationStatus ? true : false} />
                     <TilesRowWrapper className='b'>
 
                         {activitiesSchedule ? <TripTimeline activitiesSchedule={activitiesSchedule} loungeVersion={true} tripId={tripId} /> : <TripTimeline activitiesSchedule={[[]]} loungeVersion={true} tripId={tripId} />}

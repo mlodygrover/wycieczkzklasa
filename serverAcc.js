@@ -1309,7 +1309,7 @@ app.get("/api/trip-plans/:id", requireAuth, async (req, res) => {
             startHours,
             realizationStatus: doc?.realizationStatus ? doc.realizationStatus : 0,
         };
-
+        console.log(baseResponse)
         if (!extended) {
             // zwykła odpowiedź
             return res.json(baseResponse);
@@ -2185,6 +2185,145 @@ app.delete("/api/trip-plans/:tripId/authors/:userId", requireAuth, async (req, r
     } catch (err) {
         console.error("DELETE /api/trip-plans/:tripId/authors/:userId error:", err);
         return res.status(500).json({ error: "ServerError" });
+    }
+});
+
+///admin trips
+///admin trips
+
+/**
+* GET /api/admin/trip-plans
+* Zwraca WSZYSTKIE plany wycieczek z bazy danych.
+* Dostępne TYLKO dla użytkownika, którego ID jest zgodne z env.ADMIN_ID.
+*/
+
+app.get("/api/admin/trip-plans", requireAuth, async (req, res) => {
+    try {
+        // 1. Pobierz Admin ID ze zmiennych środowiskowych
+        const adminIdEnv = process.env.ADMIN_ID;
+
+        // 2. Pobierz ID aktualnie zalogowanego użytkownika (jako string)
+        const currentUserId = req.user?._id ? String(req.user._id) : null;
+
+        // 3. Sprawdź uprawnienia
+        // Jeśli nie ma ustawionego ADMIN_ID w env lub ID się nie zgadzają -> odmowa
+        if (!adminIdEnv || currentUserId !== adminIdEnv) {
+            console.warn(`[Security] Unauthorized admin access attempt by user: ${currentUserId}`);
+            return res.status(403).json({
+                error: "Forbidden",
+                message: "Brak uprawnień administratora."
+            });
+        }
+
+        // 4. Pobierz wszystkie plany z bazy (sortowanie od najnowszych)
+        const docs = await TripPlan.find().sort({ updatedAt: -1 }).lean();
+
+        // 5. Przetwórz dane (tak samo jak w standardowym endpoincie GET)
+        const out = docs.map((d) => {
+            const aoa = unpackDays(d.activitiesSchedule);
+            const price =
+                typeof d.computedPrice === "number"
+                    ? d.computedPrice
+                    : computePriceFromAoA(aoa);
+
+            // Bezpieczne mapowanie startHours
+            const startHours =
+                Array.isArray(d.startHours)
+                    ? d.startHours.map((v) => {
+                        const n = Number(v);
+                        return Number.isFinite(n) ? Math.trunc(n) : 0;
+                    })
+                    : [];
+
+            return {
+                _id: d._id,
+                createdAt: d.createdAt,
+                updatedAt: d.updatedAt,
+                authors: d.authors,
+                users: Array.isArray(d.users) ? d.users : [],
+                miejsceDocelowe: d.miejsceDocelowe,
+                miejsceStartowe: d.miejsceStartowe,
+                dataPrzyjazdu: d.dataPrzyjazdu,
+                dataWyjazdu: d.dataWyjazdu,
+                standardTransportu: d.standardTransportu,
+                standardHotelu: d.standardHotelu,
+                liczbaUczestnikow: d.liczbaUczestnikow,
+                liczbaOpiekunow: d.liczbaOpiekunow,
+                activitiesSchedule: aoa,
+                computedPrice: num(price),
+                photoLink: d.photoLink ?? null,
+                public: typeof d.public === "boolean" ? d.public : true,
+                nazwa: d.nazwa ?? null,
+                startHours,
+                realizationStatus: d?.realizationStatus ? d.realizationStatus : 0,
+            };
+        });
+
+        return res.json(out);
+
+    } catch (err) {
+        console.error("GET /api/admin/trip-plans error:", err);
+        return res.status(500).json({ error: "ServerError" });
+    }
+});
+/**
+ * PUT /api/admin/trip-plans/:id
+ * Aktualizacja dowolnych danych w planie wycieczki.
+ * Wymaga uprawnień Admina (zgodność ID z env).
+ */
+app.put("/api/admin/trip-plans/:id", requireAuth, async (req, res) => {
+    try {
+        const { id } = req.params;
+        const updateData = req.body;
+
+        // 1. Weryfikacja Admina
+        const adminIdEnv = process.env.ADMIN_ID;
+        const currentUserId = req.user?._id ? String(req.user._id) : null;
+
+        if (!adminIdEnv || currentUserId !== adminIdEnv) {
+            return res.status(403).json({
+                error: "Forbidden",
+                message: "Brak uprawnień administratora."
+            });
+        }
+
+        if (!mongoose.Types.ObjectId.isValid(id)) {
+            return res.status(400).json({ error: "InvalidObjectId" });
+        }
+
+        // 2. Zabezpieczenie przed edycją pól systemowych
+        delete updateData._id;
+        delete updateData.createdAt;
+        delete updateData.updatedAt;
+
+        // 3. Specjalna obsługa dat (jeśli przychodzą jako stringi z input type="date")
+        if (updateData.dataPrzyjazdu) {
+            updateData.dataPrzyjazdu = new Date(updateData.dataPrzyjazdu);
+        }
+        if (updateData.dataWyjazdu) {
+            updateData.dataWyjazdu = new Date(updateData.dataWyjazdu);
+        }
+
+        // 4. Aktualizacja w bazie
+        const updatedPlan = await TripPlan.findByIdAndUpdate(
+            id,
+            { $set: updateData },
+            { new: true, runValidators: true } // runValidators sprawdzi np. czy status jest liczbą
+        ).lean();
+
+        if (!updatedPlan) {
+            return res.status(404).json({ error: "NotFound", message: "Nie znaleziono planu." });
+        }
+
+        res.json({ message: "Plan zaktualizowany pomyślnie", plan: updatedPlan });
+
+    } catch (err) {
+        console.error("PUT /api/admin/trip-plans/:id error:", err);
+        // Obsługa błędów walidacji Mongoose
+        if (err.name === 'ValidationError') {
+            return res.status(400).json({ error: "ValidationError", details: err.message });
+        }
+        res.status(500).json({ error: "ServerError" });
     }
 });
 

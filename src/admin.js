@@ -21,19 +21,65 @@ import {
     Target,
     Menu as MenuIcon,
     Globe,
-    ImageIcon
+    Calendar,
+    DollarSign,
+    User,
+    ListFilter
 } from 'lucide-react';
 
 // --- CONFIG ---
 const port = process.env.REACT_APP__SERVER_API_SOURCE || "https://wycieczkzklasa.onrender.com";
+const portacc = process.env.REACT_APP_API_SOURCE || "https://api.draftngo.com";
 
-// --- STYLED COMPONENTS (RESPONSIVE) ---
+// --- HELPER FUNCTIONS ---
+const calculateDistance = (lat1, lon1, lat2, lon2) => {
+    if (!lat1 || !lon1 || !lat2 || !lon2) return 99999;
+    const R = 6371;
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+        Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+        Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c;
+};
+
+const formatDate = (dateString) => {
+    if (!dateString) return '-';
+    return new Date(dateString).toLocaleDateString('pl-PL');
+};
+
+// Formatowanie daty do input type="date" (YYYY-MM-DD)
+const isoDateToInput = (dateString) => {
+    if (!dateString) return '';
+    const d = new Date(dateString);
+    if (isNaN(d.getTime())) return '';
+    return d.toISOString().split('T')[0];
+};
+
+const getTripStatus = (status) => {
+    switch (status) {
+        case 0: return { label: 'Szkic / Planowanie', color: '#64748b', bg: '#f1f5f9' };
+        case 1: return { label: 'Zgłoszono do realizacji', color: '#d97706', bg: '#fffbeb' };
+        case 2: return { label: 'W trakcie płatności', color: '#0284c7', bg: '#e0f2fe' };
+        case 3: return { label: 'W trakcie weryfikacji', color: '#16a34a', bg: '#dcfce7' };
+        case 4: return { label: 'Zaplanowany...', color: '#16a34a', bg: '#dcfce7' };
+
+        case 5: return { label: 'Trwa...', color: '#dc2626', bg: '#fee2e2' };
+
+        case 6: return { label: 'Zakończony', color: '#dc2626', bg: '#fee2e2' };
+        case 9: return { label: 'Anulowano', color: '#dc2626', bg: '#fee2e2' };
+        default: return { label: 'Nieznany', color: '#64748b', bg: '#f1f5f9' };
+    }
+};
+
+// --- STYLED COMPONENTS ---
 
 const Container = styled.div`
   display: flex;
   width: 100%;
   min-height: 100vh;
-  background-color: #f8f9fa; /* Lekko szare tło dla lepszego kontrastu kart */
+  background-color: #f8f9fa;
   color: #000000;
   font-family: 'Inter', sans-serif;
   box-sizing: border-box;
@@ -160,7 +206,7 @@ const ContentScroll = styled.div`
   overflow-y: auto;
 
   @media (max-width: 768px) {
-    padding: 16px; /* Mniejszy padding na mobile */
+    padding: 16px;
   }
 `;
 
@@ -193,17 +239,17 @@ const FiltersContainer = styled.div`
     align-items: stretch;
     gap: 16px;
     padding: 16px;
-    border-radius: 12px; /* Pełne zaokrąglenie, bo tabela jest oddzielnie */
+    border-radius: 12px;
     border: 1px solid #e5e5e5;
     margin-bottom: 20px;
   }
 `;
 
-/* --- TABELA (DESKTOP) --- */
 const DesktopTableWrapper = styled.div`
   display: block;
+  overflow-x: auto;
   @media (max-width: 768px) {
-    display: none; /* Ukryj tabelę na mobile */
+    display: none;
   }
 `;
 
@@ -211,6 +257,7 @@ const Table = styled.table`
   width: 100%;
   border-collapse: collapse;
   font-size: 14px;
+  min-width: 900px;
 `;
 
 const Th = styled.th`
@@ -229,14 +276,13 @@ const Td = styled.td`
   vertical-align: middle;
 `;
 
-/* --- KARTY (MOBILE) --- */
 const MobileCardsWrapper = styled.div`
   display: none;
   flex-direction: column;
   gap: 16px;
   
   @media (max-width: 768px) {
-    display: flex; /* Pokaż karty na mobile */
+    display: flex;
   }
 `;
 
@@ -288,15 +334,24 @@ const SourceBadge = styled.span`
   color: ${props => props.$source === 'Admin' ? '#fff' : '#555'};
 `;
 
+const TripStatusBadge = styled.span`
+  font-size: 11px;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 20px;
+  background-color: ${props => props.$bg || '#f1f5f9'};
+  color: ${props => props.$color || '#64748b'};
+  white-space: nowrap;
+`;
+
 const CardActions = styled.div`
   margin-top: 8px;
   padding-top: 12px;
   border-top: 1px dashed #eee;
   display: flex;
   justify-content: flex-end;
+  gap: 10px;
 `;
-
-/* --- REST OF UI --- */
 
 const ActionButton = styled.button`
   background: #000;
@@ -330,7 +385,7 @@ const ActionButton = styled.button`
   }
   
   @media(max-width: 768px) {
-    width: 100%; /* Pełna szerokość przycisków na mobile w filtrach */
+    width: 100%;
   }
 `;
 
@@ -402,7 +457,7 @@ const RadiusControl = styled.div`
   @media(max-width: 768px) { width: 100%; }
 `;
 
-/* --- MODAL (RESPONSIVE) --- */
+// --- MODAL STYLES ---
 const ModalOverlay = styled.div`
   position: fixed;
   top: 0; left: 0; right: 0; bottom: 0;
@@ -419,7 +474,7 @@ const ModalContent = styled.div`
   background: white;
   width: 100%;
   max-width: 800px;
-  max-height: 90vh; /* Zostaw margines */
+  max-height: 90vh;
   border-radius: 12px;
   display: flex;
   flex-direction: column;
@@ -451,7 +506,6 @@ const ModalFooter = styled.div`
   justify-content: flex-end;
   gap: 10px;
   background: #f9f9f9;
-  
   @media(max-width: 600px) {
     flex-direction: column;
     button { width: 100%; }
@@ -461,6 +515,13 @@ const ModalFooter = styled.div`
 const FormGroup = styled.div`
   display: flex; flex-direction: column; gap: 6px;
   label { font-size: 13px; font-weight: 600; color: #444; }
+  input, textarea {
+    padding: 10px;
+    border: 1px solid #e0e0e0;
+    border-radius: 6px;
+    font-family: inherit;
+    &:focus { border-color: #000; outline: none; }
+  }
 `;
 
 const FormRow = styled.div`
@@ -470,9 +531,7 @@ const FormRow = styled.div`
   @media(max-width: 600px) { grid-template-columns: 1fr; gap: 16px; }
 `;
 
-// --- STYLES FOR VARIANTS ---
-// --- STYLES FOR VARIANTS (UPDATED FOR COLUMN LAYOUT) ---
-
+// --- VARIANTS STYLES ---
 const VariantsWrapper = styled.div`
   border: 1px solid #eee;
   border-radius: 8px;
@@ -484,7 +543,6 @@ const VariantsWrapper = styled.div`
 `;
 
 const VariantHeader = styled.div`
-  /* Desktop: Siatka w jednym wierszu */
   display: grid;
   grid-template-columns: 2fr 1fr 1fr 1fr auto; 
   gap: 10px;
@@ -493,27 +551,21 @@ const VariantHeader = styled.div`
   color: #666;
   margin-bottom: 5px;
   padding: 0 6px;
-  
-  @media (max-width: 768px) {
-    display: none; /* Ukrywamy nagłówki kolumn na mobile */
-  }
+  @media (max-width: 768px) { display: none; }
 `;
 
 const VariantItem = styled.div`
-  /* Desktop: Siatka w jednym wierszu */
   display: grid;
   grid-template-columns: 2fr 1fr 1fr 1fr auto;
   gap: 10px;
   align-items: center;
   padding-bottom: 10px;
   border-bottom: 1px dashed #ddd;
-  
   &:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
 
-  /* --- MOBILE: FULL COLUMN STACK --- */
   @media (max-width: 768px) {
     display: flex;
-    flex-direction: column; /* Wszystko jedno pod drugim */
+    flex-direction: column;
     gap: 12px;
     background: #ffffff;
     border: 1px solid #e5e5e5;
@@ -524,27 +576,18 @@ const VariantItem = styled.div`
   }
 `;
 
-// Helper: Pojedyncze pole (Input + Label na mobile)
 const VariantField = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  width: 100%;
+  display: flex; flex-direction: column; gap: 4px; width: 100%;
 `;
 
-// Helper: Etykieta widoczna TYLKO na mobile
 const MobileLabel = styled.span`
   display: none;
   @media (max-width: 768px) {
-    display: block;
-    font-size: 11px;
-    font-weight: 700;
-    color: #555;
-    text-transform: uppercase;
+    display: block; font-size: 11px; font-weight: 700; color: #555; text-transform: uppercase;
   }
 `;
-// --- MODAL COMPONENTS ---
 
+// --- MODAL COMPONENTS (EDIT & CREATE) ---
 const EditAttractionModal = ({ attraction, onClose, onSave }) => {
     const [formData, setFormData] = useState({ ...attraction });
 
@@ -575,7 +618,7 @@ const EditAttractionModal = ({ attraction, onClose, onSave }) => {
         <ModalOverlay onClick={onClose}>
             <ModalContent onClick={e => e.stopPropagation()}>
                 <ModalHeader>
-                    Edycja: {formData.nazwa}
+                    Edycja Atrakcji: {formData.nazwa}
                     <ActionButton className="secondary" onClick={onClose} style={{ padding: '6px' }}><X size={18} /></ActionButton>
                 </ModalHeader>
                 <ModalBody>
@@ -586,20 +629,19 @@ const EditAttractionModal = ({ attraction, onClose, onSave }) => {
                     <FormRow>
                         <FormGroup>
                             <label>Źródło Danych</label>
-                            <Select name="dataSource" value={formData.dataSource} onChange={handleChange}>
+                            <Select name="dataSource" value={formData.dataSource || 'Admin'} onChange={handleChange}>
                                 <option value="Admin">Admin</option>
-                                <option value="Mod">Moderator</option>
-                                <option value="Owner">Właściciel</option>
+                                <option value="Mod">Mod</option>
+                                <option value="Owner">Owner</option>
                                 <option value="Bot">Bot</option>
                             </Select>
                         </FormGroup>
                         <FormGroup>
                             <label>Źródło Lokalizacji</label>
-                            <Select name="locationSource" value={formData.locationSource} onChange={handleChange}>
+                            <Select name="locationSource" value={formData.locationSource || 'Admin'} onChange={handleChange}>
                                 <option value="Admin">Admin</option>
-                                <option value="Mod">Moderator</option>
+                                <option value="Google">Google Maps</option>
                                 <option value="Owner">Właściciel</option>
-                                <option value="Google">Google</option>
                             </Select>
                         </FormGroup>
                     </FormRow>
@@ -608,65 +650,124 @@ const EditAttractionModal = ({ attraction, onClose, onSave }) => {
 
                     <label style={{ fontSize: '14px', fontWeight: '700', marginTop: '10px' }}>Warianty oferty</label>
                     <VariantsWrapper>
-                        <VariantHeader>
-                            <span>Nazwa wariantu</span><span>Czas (min)</span><span>Cena (N)</span><span>Cena (U)</span><span></span>
-                        </VariantHeader>
-
+                        <VariantHeader><span>Nazwa wariantu</span><span>Czas (min)</span><span>Cena (N)</span><span>Cena (U)</span><span></span></VariantHeader>
                         {(formData.warianty || []).map((v, idx) => (
                             <VariantItem key={idx}>
-                                <VariantField>
-                                    <MobileLabel>Nazwa Wariantu</MobileLabel>
-                                    <Input
-                                        value={v.nazwaWariantu}
-                                        onChange={e => handleVariantChange(idx, 'nazwaWariantu', e.target.value)}
-                                        placeholder="Np. Bilet normalny"
-                                    />
-                                </VariantField>
-
-                                <VariantField>
-                                    <MobileLabel>Czas Zwiedzania (min)</MobileLabel>
-                                    <Input
-                                        type="number"
-                                        value={v.czasZwiedzania}
-                                        onChange={e => handleVariantChange(idx, 'czasZwiedzania', e.target.value)}
-                                        placeholder="Min"
-                                    />
-                                </VariantField>
-
-                                <VariantField>
-                                    <MobileLabel>Cena Normalna (PLN)</MobileLabel>
-                                    <Input
-                                        type="number"
-                                        value={v.cenaZwiedzania}
-                                        onChange={e => handleVariantChange(idx, 'cenaZwiedzania', e.target.value)}
-                                        placeholder="PLN"
-                                    />
-                                </VariantField>
-
-                                <VariantField>
-                                    <MobileLabel>Cena Ulgowa (PLN)</MobileLabel>
-                                    <Input
-                                        type="number"
-                                        value={v.cenaUlgowa}
-                                        onChange={e => handleVariantChange(idx, 'cenaUlgowa', e.target.value)}
-                                        placeholder="PLN"
-                                    />
-                                </VariantField>
-
-                                <ActionButton className="danger" style={{ padding: '8px', width: '100%' }} onClick={() => removeVariant(idx)}>
-                                    <Trash2 size={14} /> <span style={{ display: 'inline-block', marginLeft: '5px', '@media(min-width: 769px)': { display: 'none' } }}>Usuń ten wariant</span>
-                                </ActionButton>
+                                <VariantField><MobileLabel>Nazwa Wariantu</MobileLabel><Input value={v.nazwaWariantu} onChange={e => handleVariantChange(idx, 'nazwaWariantu', e.target.value)} placeholder="Np. Bilet normalny" /></VariantField>
+                                <VariantField><MobileLabel>Czas Zwiedzania (min)</MobileLabel><Input type="number" value={v.czasZwiedzania} onChange={e => handleVariantChange(idx, 'czasZwiedzania', e.target.value)} placeholder="Min" /></VariantField>
+                                <VariantField><MobileLabel>Cena Normalna (PLN)</MobileLabel><Input type="number" value={v.cenaZwiedzania} onChange={e => handleVariantChange(idx, 'cenaZwiedzania', e.target.value)} placeholder="PLN" /></VariantField>
+                                <VariantField><MobileLabel>Cena Ulgowa (PLN)</MobileLabel><Input type="number" value={v.cenaUlgowa} onChange={e => handleVariantChange(idx, 'cenaUlgowa', e.target.value)} placeholder="PLN" /></VariantField>
+                                <ActionButton className="danger" style={{ padding: '8px', width: '100%' }} onClick={() => removeVariant(idx)}><Trash2 size={14} /> <span style={{ display: 'inline-block', marginLeft: '5px', '@media(minWidth: 769px)': { display: 'none' } }}>Usuń ten wariant</span></ActionButton>
                             </VariantItem>
                         ))}
-
-                        <ActionButton className="secondary" style={{ marginTop: '10px', width: '100%', justifyContent: 'center' }} onClick={addVariant}>
-                            <Plus size={14} /> Dodaj wariant
-                        </ActionButton>
+                        <ActionButton className="secondary" style={{ marginTop: '10px', width: '100%', justifyContent: 'center' }} onClick={addVariant}><Plus size={14} /> Dodaj wariant</ActionButton>
                     </VariantsWrapper>
                 </ModalBody>
                 <ModalFooter>
                     <ActionButton className="secondary" onClick={onClose}>Anuluj</ActionButton>
                     <ActionButton onClick={() => onSave(formData)}><Save size={16} /> Zapisz</ActionButton>
+                </ModalFooter>
+            </ModalContent>
+        </ModalOverlay>
+    );
+};
+
+// --- NOWY MODAL: EDYCJA PLANU WYJAZDU ---
+const EditTripPlanModal = ({ plan, onClose, onSave }) => {
+    const [formData, setFormData] = useState({
+        ...plan,
+        dataPrzyjazdu: isoDateToInput(plan.dataPrzyjazdu),
+        dataWyjazdu: isoDateToInput(plan.dataWyjazdu)
+    });
+
+    const handleChange = (e) => {
+        const { name, value, type, checked } = e.target;
+        setFormData(prev => ({
+            ...prev,
+            [name]: type === 'checkbox' ? checked : value
+        }));
+    };
+
+    const handleSubmit = () => {
+        onSave(formData);
+    };
+
+    return (
+        <ModalOverlay onClick={onClose}>
+            <ModalContent onClick={e => e.stopPropagation()}>
+                <ModalHeader>
+                    Edycja Planu: {formData.nazwa}
+                    <ActionButton className="secondary" onClick={onClose} style={{ padding: '6px' }}><X size={18} /></ActionButton>
+                </ModalHeader>
+                <ModalBody>
+                    <FormGroup>
+                        <label>Nazwa Planu</label>
+                        <Input name="nazwa" value={formData.nazwa || ''} onChange={handleChange} />
+                    </FormGroup>
+
+                    <FormRow>
+                        <FormGroup>
+                            <label>Status Realizacji</label>
+                            <Select name="realizationStatus" value={formData.realizationStatus} onChange={handleChange}>
+                                <option value="0">Szkic / Planowanie</option>
+                                <option value="1">Zgłoszono do realizacji</option>
+                                <option value="2">W trakcie płatności</option>
+                                <option value="3">W trakcie weryfikacji</option>
+                                <option value="4">Zaplanowany...</option>
+                                <option value="5">Trwa...</option>
+                                <option value="6">Zakończony</option>
+                                <option value="9">Anulowano</option>
+                            </Select>
+                        </FormGroup>
+                        <FormGroup>
+                            <label>Cena Całkowita (PLN)</label>
+                            <Input type="number" name="computedPrice" value={formData.computedPrice} onChange={handleChange} />
+                        </FormGroup>
+                    </FormRow>
+
+                    <FormRow>
+                        <FormGroup>
+                            <label>Data Przyjazdu</label>
+                            <Input type="date" name="dataPrzyjazdu" value={formData.dataPrzyjazdu} onChange={handleChange} />
+                        </FormGroup>
+                        <FormGroup>
+                            <label>Data Wyjazdu</label>
+                            <Input type="date" name="dataWyjazdu" value={formData.dataWyjazdu} onChange={handleChange} />
+                        </FormGroup>
+                    </FormRow>
+
+                    <FormRow>
+                        <FormGroup>
+                            <label>Liczba Uczestników</label>
+                            <Input type="number" name="liczbaUczestnikow" value={formData.liczbaUczestnikow} onChange={handleChange} />
+                        </FormGroup>
+                        <FormGroup>
+                            <label>Liczba Opiekunów</label>
+                            <Input type="number" name="liczbaOpiekunow" value={formData.liczbaOpiekunow} onChange={handleChange} />
+                        </FormGroup>
+                    </FormRow>
+
+                    <FormGroup>
+                        <label>
+                            <input
+                                type="checkbox"
+                                name="public"
+                                checked={formData.public}
+                                onChange={handleChange}
+                                style={{ marginRight: '8px' }}
+                            />
+                            Plan Publiczny
+                        </label>
+                    </FormGroup>
+
+                    <div style={{ marginTop: '10px', padding: '10px', background: '#fffbeb', borderRadius: '6px', fontSize: '12px', color: '#b45309', border: '1px solid #fcd34d' }}>
+                        <strong>Uwaga:</strong> Edycja harmonogramu i szczegółów atrakcji jest możliwa tylko przez dedykowany konfigurator. Tutaj edytujesz tylko metadane administracyjne.
+                    </div>
+
+                </ModalBody>
+                <ModalFooter>
+                    <ActionButton className="secondary" onClick={onClose}>Anuluj</ActionButton>
+                    <ActionButton onClick={handleSubmit}><Save size={16} /> Zapisz</ActionButton>
                 </ModalFooter>
             </ModalContent>
         </ModalOverlay>
@@ -713,21 +814,11 @@ const CreateAttractionModal = ({ onClose, onSave }) => {
                     <FormRow>
                         <FormGroup>
                             <label>Źródło Danych</label>
-                            <Select name="dataSource" value={formData.dataSource} onChange={handleChange}>
-                                <option value="Admin">Admin</option>
-                                <option value="Mod">Moderator</option>
-                                <option value="Owner">Właściciel</option>
-                                <option value="Bot">Bot</option>
-                            </Select>
+                            <Select name="dataSource" value={formData.dataSource} onChange={handleChange}><option value="Admin">Admin</option><option value="Mod">Mod</option><option value="Owner">Owner</option><option value="Bot">Bot</option></Select>
                         </FormGroup>
                         <FormGroup>
                             <label>Źródło Lokalizacji</label>
-                            <Select name="locationSource" value={formData.locationSource} onChange={handleChange}>
-                                <option value="Admin">Admin</option>
-                                <option value="Mod">Moderator</option>
-                                <option value="Owner">Właściciel</option>
-                                <option value="Google">Google</option>
-                            </Select>
+                            <Select name="locationSource" value={formData.locationSource} onChange={handleChange}><option value="Admin">Admin</option><option value="Google">Google</option><option value="Owner">Owner</option></Select>
                         </FormGroup>
                     </FormRow>
                     <FormRow>
@@ -742,11 +833,11 @@ const CreateAttractionModal = ({ onClose, onSave }) => {
                         <VariantHeader><span>Nazwa</span><span>Czas</span><span>Cena N</span><span>Cena U</span><span></span></VariantHeader>
                         {formData.warianty.map((v, idx) => (
                             <VariantItem key={idx}>
-                                <input value={v.nazwaWariantu} onChange={e => handleVariantChange(idx, 'nazwaWariantu', e.target.value)} placeholder="Nazwa" />
-                                <input type="number" value={v.czasZwiedzania} onChange={e => handleVariantChange(idx, 'czasZwiedzania', e.target.value)} placeholder="Czas" />
-                                <input type="number" value={v.cenaZwiedzania} onChange={e => handleVariantChange(idx, 'cenaZwiedzania', e.target.value)} placeholder="Cena N" />
-                                <input type="number" value={v.cenaUlgowa} onChange={e => handleVariantChange(idx, 'cenaUlgowa', e.target.value)} placeholder="Cena U" />
-                                <ActionButton className="danger" style={{ padding: '6px' }} onClick={() => removeVariant(idx)}><Trash2 size={14} /></ActionButton>
+                                <VariantField><MobileLabel>Nazwa Wariantu</MobileLabel><Input value={v.nazwaWariantu} onChange={e => handleVariantChange(idx, 'nazwaWariantu', e.target.value)} placeholder="Nazwa" /></VariantField>
+                                <VariantField><MobileLabel>Czas (min)</MobileLabel><Input type="number" value={v.czasZwiedzania} onChange={e => handleVariantChange(idx, 'czasZwiedzania', e.target.value)} placeholder="Min" /></VariantField>
+                                <VariantField><MobileLabel>Cena Normalna</MobileLabel><Input type="number" value={v.cenaZwiedzania} onChange={e => handleVariantChange(idx, 'cenaZwiedzania', e.target.value)} placeholder="PLN" /></VariantField>
+                                <VariantField><MobileLabel>Cena Ulgowa</MobileLabel><Input type="number" value={v.cenaUlgowa} onChange={e => handleVariantChange(idx, 'cenaUlgowa', e.target.value)} placeholder="PLN" /></VariantField>
+                                <ActionButton className="danger" style={{ padding: '8px', width: '100%' }} onClick={() => removeVariant(idx)}><Trash2 size={14} /></ActionButton>
                             </VariantItem>
                         ))}
                         <ActionButton className="secondary" style={{ marginTop: '10px', width: '100%', justifyContent: 'center' }} onClick={addVariant}><Plus size={14} /> Dodaj</ActionButton>
@@ -761,7 +852,44 @@ const CreateAttractionModal = ({ onClose, onSave }) => {
     );
 };
 
-// --- ATTRACTIONS VIEW ---
+// --- USERNAME DISPLAY COMPONENT (NEW) ---
+const UsernameDisplay = ({ userId }) => {
+    const [name, setName] = useState(null);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        if (!userId) {
+            setLoading(false);
+            return;
+        }
+
+        const fetchName = async () => {
+            try {
+                // Fetch from the public API endpoint for username
+                const res = await fetch(`${portacc}/api/users/${userId}/name`);
+                if (res.ok) {
+                    const data = await res.json();
+                    setName(data.username || "Brak nazwy");
+                } else {
+                    setName("Nieznany");
+                }
+            } catch (error) {
+                console.error("Error fetching username:", error);
+                setName("Błąd");
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchName();
+    }, [userId]);
+
+    if (!userId) return <span>-</span>;
+    if (loading) return <span>...</span>;
+    return <span title={userId}>{name}</span>;
+};
+
+// --- VIEWS ---
 
 const AttractionsView = () => {
     const [attractions, setAttractions] = useState([]);
@@ -805,7 +933,6 @@ const AttractionsView = () => {
             lng: parseFloat(city.location?.lng || city.lon) || 0,
             name: city.nazwa
         });
-        console.log(selectedLocation)
         setShowSuggestions(false);
         setPage(1);
         setAttractions([]);
@@ -1030,6 +1157,170 @@ const AttractionsView = () => {
     );
 };
 
+// --- PLANS VIEW (NOWE) ---
+
+const PlansView = () => {
+    const [plans, setPlans] = useState([]);
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState(null);
+    const [statusFilter, setStatusFilter] = useState('all');
+    const [editingPlan, setEditingPlan] = useState(null); // Stan dla edytowanego planu
+
+    const fetchPlans = async () => {
+        setLoading(true);
+        try {
+            //credentials include są kluczowe dla endpointu wymagającego logowania
+            const res = await fetch(`${portacc}/api/admin/trip-plans`, { credentials: 'include' });
+            if (!res.ok) {
+                if (res.status === 403) throw new Error("Brak uprawnień administratora");
+                throw new Error("Błąd pobierania planów");
+            }
+            const data = await res.json();
+            setPlans(data || []);
+        } catch (err) {
+            console.error(err);
+            setError(err.message);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        fetchPlans();
+    }, []);
+
+    const handleUpdatePlan = async (updatedData) => {
+        try {
+            const res = await fetch(`${portacc}/api/admin/trip-plans/${updatedData._id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify(updatedData)
+            });
+
+            if (!res.ok) {
+                throw new Error('Błąd podczas aktualizacji planu');
+            }
+
+            // Po sukcesie zamknij modal i odśwież listę (lub zaktualizuj lokalnie)
+            setEditingPlan(null);
+            fetchPlans();
+            alert("Plan zaktualizowany pomyślnie.");
+
+        } catch (err) {
+            console.error(err);
+            alert("Wystąpił błąd: " + err.message);
+        }
+    };
+
+    const filteredPlans = plans.filter(plan => {
+        if (statusFilter === 'all') return true;
+        return plan.realizationStatus === Number(statusFilter);
+    });
+
+    if (loading) return <div style={{ padding: '40px', textAlign: 'center' }}>Ładowanie planów...</div>;
+    if (error) return <div style={{ padding: '40px', textAlign: 'center', color: 'red' }}>Błąd: {error}</div>;
+
+    return (
+        <SectionContainer>
+            <div style={{ padding: '24px', borderBottom: '1px solid #e5e5e5', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
+                <h2 style={{ fontSize: '18px', fontWeight: '700', margin: 0 }}>Wszystkie Plany Wyjazdów</h2>
+                <div style={{ width: '220px' }}>
+                    <label style={{ fontSize: '11px', fontWeight: '600', marginBottom: '4px', display: 'block', color: '#666' }}>Status realizacji</label>
+                    <Select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
+                        <option value="0">Szkic / Planowanie</option>
+                        <option value="1">Zgłoszono do realizacji</option>
+                        <option value="2">W trakcie płatności</option>
+                        <option value="3">W trakcie weryfikacji</option>
+                        <option value="4">Zaplanowany...</option>
+                        <option value="5">Trwa...</option>
+                        <option value="6">Zakończony</option>
+                        <option value="9">Anulowano</option>
+                    </Select>
+                </div>
+            </div>
+
+            <DesktopTableWrapper>
+                <Table>
+                    <thead>
+                        <tr>
+                            <Th>Status</Th>
+                            <Th>Nazwa</Th>
+                            <Th>Lokalizacja</Th>
+                            <Th>Data</Th>
+                            <Th>Uczestnicy</Th>
+                            <Th>Cena</Th>
+                            <Th>Autor</Th>
+                            <Th>Akcje</Th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {filteredPlans.map(plan => {
+                            const statusInfo = getTripStatus(plan.realizationStatus);
+                            return (
+                                <tr key={plan._id}>
+                                    <Td>
+                                        <TripStatusBadge $bg={statusInfo.bg} $color={statusInfo.color}>
+                                            {statusInfo.label}
+                                        </TripStatusBadge>
+                                    </Td>
+                                    <Td><strong>{plan.nazwa || 'Bez nazwy'}</strong></Td>
+                                    <Td>{plan.miejsceDocelowe?.nazwa || '-'}</Td>
+                                    <Td>{formatDate(plan.dataPrzyjazdu)}</Td>
+                                    <Td>{plan.liczbaUczestnikow} (+{plan.liczbaOpiekunow})</Td>
+                                    <Td>{plan.computedPrice} PLN</Td>
+                                    <Td><UsernameDisplay userId={plan.authors?.[0]} /></Td>
+                                    <Td>
+                                        <ActionButton className="secondary" title="Edytuj" onClick={() => setEditingPlan(plan)}>
+                                            <Edit3 size={14} />
+                                        </ActionButton>
+                                    </Td>
+                                </tr>
+                            );
+                        })}
+                        {filteredPlans.length === 0 && <tr><Td colSpan="8" style={{ textAlign: 'center', padding: '40px', color: '#999' }}>Brak planów w bazie.</Td></tr>}
+                    </tbody>
+                </Table>
+            </DesktopTableWrapper>
+
+            <MobileCardsWrapper>
+                {filteredPlans.map(plan => {
+                    const statusInfo = getTripStatus(plan.realizationStatus);
+                    return (
+                        <AttractionCard key={plan._id}>
+                            <CardHeader>
+                                <h3>{plan.nazwa || 'Bez nazwy'}</h3>
+                                <TripStatusBadge $bg={statusInfo.bg} $color={statusInfo.color}>
+                                    {statusInfo.label}
+                                </TripStatusBadge>
+                            </CardHeader>
+                            <CardRow><MapPin size={14} /> {plan.miejsceDocelowe?.nazwa || '-'}</CardRow>
+                            <CardRow><Calendar size={14} /> {formatDate(plan.dataPrzyjazdu)} - {formatDate(plan.dataWyjazdu)}</CardRow>
+                            <CardRow><Users size={14} /> {plan.liczbaUczestnikow} uczniów, {plan.liczbaOpiekunow} opiekunów</CardRow>
+                            <CardRow><DollarSign size={14} /> {plan.computedPrice} PLN</CardRow>
+                            <CardRow><User size={14} /> Autor: <UsernameDisplay userId={plan.authors?.[0]} /></CardRow>
+                            <CardActions>
+                                <ActionButton className="secondary" style={{ width: '100%' }} onClick={() => setEditingPlan(plan)}>
+                                    Edytuj / Szczegóły
+                                </ActionButton>
+                            </CardActions>
+                        </AttractionCard>
+                    );
+                })}
+            </MobileCardsWrapper>
+
+            {/* MODAL EDYCJI PLANU */}
+            {editingPlan && (
+                <EditTripPlanModal
+                    plan={editingPlan}
+                    onClose={() => setEditingPlan(null)}
+                    onSave={handleUpdatePlan}
+                />
+            )}
+        </SectionContainer>
+    );
+};
+
 const DashboardView = () => (
     <div style={{ padding: '20px', textAlign: 'center', color: '#888' }}>
         Tu będzie Dashboard (statystyki).
@@ -1045,6 +1336,7 @@ export const AdminPanel = () => {
     const renderContent = () => {
         switch (activePage) {
             case 'dashboard': return <DashboardView />;
+            case 'plans': return <PlansView />; // <-- TUTAJ UŻYWAMY NOWEGO KOMPONENTU
             case 'attractions': return <AttractionsView />;
             default: return <DashboardView />;
         }
@@ -1083,7 +1375,10 @@ export const AdminPanel = () => {
                 <TopBar>
                     <div style={{ display: 'flex', alignItems: 'center' }}>
                         <MenuButton onClick={() => setIsSidebarOpen(true)}><MenuIcon size={24} /></MenuButton>
-                        <PageTitle>{activePage === 'attractions' ? 'Zarządzanie Atrakcjami' : 'Panel Administratora'}</PageTitle>
+                        <PageTitle>
+                            {activePage === 'attractions' ? 'Zarządzanie Atrakcjami' :
+                                activePage === 'plans' ? 'Lista Wyjazdów' : 'Panel Administratora'}
+                        </PageTitle>
                     </div>
                     <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
                         <span style={{ fontSize: '13px', fontWeight: '600', display: 'none', '@media(minWidth:768px)': { display: 'inline' } }}>Admin</span>
