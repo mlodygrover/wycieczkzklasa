@@ -1264,8 +1264,8 @@ app.get("/api/trip-plans/:id", requireAuth, async (req, res) => {
 
         // jeśli nie ma w users, sprawdzamy authors
         const isAuthor = !isUser && authorsArray.some((a) => idEquals(a, requesterId));
-
-        if (!isUser && !isAuthor) {
+        const isAdmin = requesterId === process.env.ADMIN_ID;
+        if (!isUser && !isAuthor && !isAdmin) {
             return res.status(403).json({
                 error: "Forbidden",
                 message: "Nie masz dostępu do tego planu.",
@@ -1352,7 +1352,7 @@ app.delete("/api/trip-plans/:id", async (req, res) => {
 });
 
 /**
- * GET /api/trip-plans/by-author/:userId
+ * GET /api/y-author/:userId
  * Lista planów, w których user jest autorem LUB uczestnikiem (users).
  * W każdym rekordzie dodajemy pole `role`: "author" | "user".
  */
@@ -1457,75 +1457,86 @@ app.get("/api/trip-plans/by-author/:userId", requireAuth, async (req, res) => {
 });
 
 
-// Publiczna lista planów konkretnego autora – tylko te z public: true
-app.get("/api/trip-plans/public/by-author/:userId", async (req, res) => {
+/**
+ * GET /api/trip-plans/:tripId/by-author/:userId
+ * Zwraca plan, jeśli userId ∈ authors LUB userId ∈ users; 
+ * ALBO jeśli aktualny user to Admin.
+ */
+app.get("/api/trip-plans/:tripId/by-author/:userId", requireAuth, async (req, res) => {
     try {
-        const { userId } = req.params;
+        const { tripId, userId } = req.params;
 
+        if (!mongoose.Types.ObjectId.isValid(tripId)) {
+            return res.status(400).json({ error: "InvalidObjectId", which: "tripId" });
+        }
         if (!mongoose.Types.ObjectId.isValid(userId)) {
-            return res.status(400).json({ error: "InvalidObjectId" });
+            return res.status(400).json({ error: "InvalidObjectId", which: "userId" });
         }
 
-        const page = Math.max(parseInt(req.query.page ?? "1", 10) || 1, 1);
-        const limitRaw = parseInt(req.query.limit ?? "50", 10) || 50;
-        const limit = Math.min(Math.max(limitRaw, 1), 100);
-        const skip = (page - 1) * limit;
+        // --- KONTROLA ADMINA ---
+        const requesterId = req.user?._id;
+        const adminIdEnv = process.env.ADMIN_ID;
+        const isAdmin = adminIdEnv && String(requesterId) === adminIdEnv;
 
-        const query = {
-            authors: new mongoose.Types.ObjectId(userId),
-            public: true,
-        };
+        let doc;
 
-        const [items, total] = await Promise.all([
-            TripPlan.find(query).sort({ createdAt: -1 }).skip(skip).limit(limit).lean(),
-            TripPlan.countDocuments(query),
-        ]);
+        if (isAdmin) {
+            // Jeśli Admin: pobierz po prostu po ID, bez sprawdzania autorów
+            doc = await TripPlan.findById(tripId).lean();
+        } else {
+            // Jeśli Zwykły User: sprawdź czy podany userId jest w autorach/uczestnikach
+            doc = await TripPlan.findOne({
+                _id: new mongoose.Types.ObjectId(tripId),
+                $or: [
+                    { authors: new mongoose.Types.ObjectId(userId) },
+                    { users: new mongoose.Types.ObjectId(userId) },
+                ],
+            }).lean();
+        }
 
-        const out = items.map((d) => {
-            const aoa = unpackDays(d.activitiesSchedule);
-            const price =
-                typeof d.computedPrice === "number"
-                    ? d.computedPrice
-                    : computePriceFromAoA(aoa);
+        if (!doc) {
+            // Jeśli admin - znaczy że plan nie istnieje. 
+            // Jeśli user - plan nie istnieje lub brak uprawnień.
+            return res.json(null);
+        }
 
-            const startHours = Array.isArray(d.startHours)
-                ? d.startHours.map((v) => {
-                    const n = Number(v);
-                    return Number.isFinite(n) ? Math.trunc(n) : 0;
-                })
-                : [];
+        const aoa = unpackDays(doc.activitiesSchedule);
+        const price =
+            typeof doc.computedPrice === "number"
+                ? doc.computedPrice
+                : computePriceFromAoA(aoa);
 
-            return {
-                _id: d._id,
-                createdAt: d.createdAt,
-                updatedAt: d.updatedAt,
-                authors: d.authors,
-                miejsceDocelowe: d.miejsceDocelowe,
-                miejsceStartowe: d.miejsceStartowe,
-                dataPrzyjazdu: d.dataPrzyjazdu,
-                dataWyjazdu: d.dataWyjazdu,
-                standardTransportu: d.standardTransportu,
-                standardHotelu: d.standardHotelu,
-                liczbaUczestnikow: d.liczbaUczestnikow,
-                liczbaOpiekunow: d.liczbaOpiekunow,
-                activitiesSchedule: aoa,
-                computedPrice: num(price),
-                photoLink: d.photoLink ?? null,
-                public: typeof d.public === "boolean" ? d.public : true,
-                nazwa: d.nazwa ?? null,
-                startHours, // <-- NOWE POLE
-            };
-        });
+        const startHours = Array.isArray(doc.startHours)
+            ? doc.startHours.map((v) => {
+                const n = Number(v);
+                return Number.isFinite(n) ? Math.trunc(n) : 0;
+            })
+            : [];
 
         return res.json({
-            total,
-            page,
-            limit,
-            count: out.length,
-            items: out,
+            _id: doc._id,
+            createdAt: doc.createdAt,
+            updatedAt: doc.updatedAt,
+            authors: doc.authors,
+            users: Array.isArray(doc.users) ? doc.users : [],
+            miejsceDocelowe: doc.miejsceDocelowe,
+            miejsceStartowe: doc.miejsceStartowe,
+            dataPrzyjazdu: doc.dataPrzyjazdu,
+            dataWyjazdu: doc.dataWyjazdu,
+            standardTransportu: doc.standardTransportu,
+            standardHotelu: doc.standardHotelu,
+            liczbaUczestnikow: doc.liczbaUczestnikow,
+            liczbaOpiekunow: doc.liczbaOpiekunow,
+            activitiesSchedule: aoa,
+            computedPrice: num(price),
+            photoLink: doc.photoLink ?? null,
+            public: typeof doc.public === "boolean" ? doc.public : true,
+            nazwa: doc.nazwa ?? null,
+            startHours,
+            realizationStatus: doc?.realizationStatus ? doc.realizationStatus : 0,
         });
     } catch (err) {
-        console.error("GET /api/trip-plans/public/by-author/:userId error:", err);
+        console.error("GET /api/trip-plans/:tripId/by-author/:userId error:", err);
         return res.status(500).json({ error: "ServerError" });
     }
 });
@@ -1597,9 +1608,10 @@ app.get("/api/trip-plans/:tripId/by-author/:userId", async (req, res) => {
     }
 });
 
+
 /**
  * PUT /api/trip-plans/:tripId
- * Aktualizuje plan, walidując nowe pola (w tym uczestników/opiekunów).
+ * Aktualizuje plan. Dostęp: Autor LUB Admin.
  */
 app.put("/api/trip-plans/:tripId", requireAuth, async (req, res) => {
     try {
@@ -1609,15 +1621,32 @@ app.put("/api/trip-plans/:tripId", requireAuth, async (req, res) => {
             return res.status(400).json({ error: "InvalidObjectId", which: "tripId" });
         }
 
-        const plan = await TripPlan.findOne({
-            _id: new mongoose.Types.ObjectId(tripId),
-            authors: new mongoose.Types.ObjectId(req.user._id),
-        });
+        // --- KONTROLA DOSTĘPU (ZMODYFIKOWANA DLA ADMINA) ---
 
+        // 1. Pobierz dane usera i admina
+        const requesterId = req.user?._id;
+        const adminIdEnv = process.env.ADMIN_ID;
+        // Sprawdź czy to admin (porównanie stringów)
+        const isAdmin = adminIdEnv && String(requesterId) === adminIdEnv;
+
+        // 2. Znajdź plan
+        const plan = await TripPlan.findById(tripId);
         if (!plan) {
             return res.status(404).json({ error: "NotFound" });
         }
 
+        // 3. Sprawdź czy to autor
+        const isAuthor = (plan.authors || []).some((a) => idEquals(a, requesterId));
+
+        // 4. Jeśli NIE admin I NIE autor -> Forbidden
+        if (!isAdmin && !isAuthor) {
+            return res.status(403).json({
+                error: "Forbidden",
+                message: "Brak uprawnień do edycji tego planu."
+            });
+        }
+
+        // ... DALSZA CZĘŚĆ KODU BEZ ZMIAN (walidacja i update) ...
         const {
             activitiesSchedule,
             computedPrice,
@@ -1630,8 +1659,8 @@ app.put("/api/trip-plans/:tripId", requireAuth, async (req, res) => {
             liczbaUczestnikow,
             liczbaOpiekunow,
             public: publicFromClient,
-            nazwa, // <-- nazwa planu
-            startHours, // <-- NOWE POLE W BODY
+            nazwa,
+            startHours,
         } = req.body || {};
 
         const updates = {};
@@ -1642,79 +1671,38 @@ app.put("/api/trip-plans/:tripId", requireAuth, async (req, res) => {
             if (!a || !b) return false;
             const n1 = (a.nazwa || "").trim().toLowerCase();
             const n2 = (b.nazwa || "").trim().toLowerCase();
-            const la = Number(a?.location?.lat),
-                lb = Number(b?.location?.lat);
-            const ga = Number(a?.location?.lng),
-                gb = Number(b?.location?.lng);
-            const sameName = n1 === n2 && n1.length > 0;
-            const sameCoords =
-                Number.isFinite(la) &&
-                Number.isFinite(lb) &&
-                Number.isFinite(ga) &&
-                Number.isFinite(gb) &&
-                la === lb &&
-                ga === gb;
-            return sameName && sameCoords;
+            const la = Number(a?.location?.lat), lb = Number(b?.location?.lat);
+            const ga = Number(a?.location?.lng), gb = Number(b?.location?.lng);
+            return n1 === n2 && n1.length > 0 && Number.isFinite(la) && Number.isFinite(lb) && la === lb && ga === gb;
         };
-        const makeSlug = (s) =>
-            String(s || "")
-                .normalize("NFKD")
-                .replace(/[\u0300-\u036f]/g, "")
-                .replace(/[^a-zA-Z0-9\s-]/g, "")
-                .trim()
-                .replace(/\s+/g, "-")
-                .toLowerCase()
-                .slice(0, 80);
+        const makeSlug = (s) => String(s || "").normalize("NFKD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-zA-Z0-9\s-]/g, "").trim().replace(/\s+/g, "-").toLowerCase().slice(0, 80);
 
-        // activitiesSchedule
         if (Object.prototype.hasOwnProperty.call(req.body, "activitiesSchedule")) {
-            if (!isAoA(activitiesSchedule)) {
-                return res.status(400).json({
-                    error: "BadPayload",
-                    message: "activitiesSchedule musi być tablicą tablic (dni).",
-                });
-            }
+            if (!isAoA(activitiesSchedule)) return res.status(400).json({ error: "BadPayload", message: "activitiesSchedule musi być tablicą tablic." });
             updates.activitiesSchedule = packDays(activitiesSchedule);
             aoaForPrice = activitiesSchedule;
         }
 
-        // startHours – jednowymiarowa tablica minut
         if (Object.prototype.hasOwnProperty.call(req.body, "startHours")) {
-            if (!Array.isArray(startHours)) {
-                return res.status(400).json({
-                    error: "BadPayload",
-                    message: "startHours musi być tablicą liczb (minuty od północy).",
-                });
-            }
-
-            const normalized = startHours
-                .map((v) => {
-                    const n = Number(v);
-                    return Number.isFinite(n) ? Math.trunc(n) : null;
-                })
-                .filter((v) => v !== null);
-
+            if (!Array.isArray(startHours)) return res.status(400).json({ error: "BadPayload", message: "startHours musi być tablicą liczb." });
+            const normalized = startHours.map((v) => { const n = Number(v); return Number.isFinite(n) ? Math.trunc(n) : null; }).filter((v) => v !== null);
             updates.startHours = normalized;
         }
 
-        // miejsceDocelowe
         let destinationChanged = false;
         if (Object.prototype.hasOwnProperty.call(req.body, "miejsceDocelowe")) {
             const v = validatePlace(miejsceDocelowe, { fieldName: "miejsceDocelowe" });
             if (!v.ok) return res.status(400).json({ error: "BadPayload", message: v.message });
-
             destinationChanged = !samePlace(plan.miejsceDocelowe, miejsceDocelowe);
             updates.miejsceDocelowe = miejsceDocelowe;
         }
 
-        // miejsceStartowe
         if (Object.prototype.hasOwnProperty.call(req.body, "miejsceStartowe")) {
             const v = validatePlace(miejsceStartowe, { fieldName: "miejsceStartowe" });
             if (!v.ok) return res.status(400).json({ error: "BadPayload", message: v.message });
             updates.miejsceStartowe = miejsceStartowe;
         }
 
-        // daty
         const hasArr = Object.prototype.hasOwnProperty.call(req.body, "dataPrzyjazdu");
         const hasDep = Object.prototype.hasOwnProperty.call(req.body, "dataWyjazdu");
         if (hasArr || hasDep) {
@@ -1726,65 +1714,37 @@ app.put("/api/trip-plans/:tripId", requireAuth, async (req, res) => {
             updates.dataWyjazdu = dv.b;
         }
 
-        // standardTransportu
         if (Object.prototype.hasOwnProperty.call(req.body, "standardTransportu")) {
             const trStd = clampInt(standardTransportu, 0, 2);
-            if (trStd === null) {
-                return res.status(400).json({
-                    error: "BadPayload",
-                    message: "standardTransportu musi być liczbą całkowitą 0–2.",
-                });
-            }
+            if (trStd === null) return res.status(400).json({ error: "BadPayload", message: "standardTransportu musi być liczbą całkowitą 0–2." });
             updates.standardTransportu = trStd;
         }
 
-        // standardHotelu
         if (Object.prototype.hasOwnProperty.call(req.body, "standardHotelu")) {
             const hoStd = clampInt(standardHotelu, 0, 3);
-            if (hoStd === null) {
-                return res.status(400).json({
-                    error: "BadPayload",
-                    message: "standardHotelu musi być liczbą całkowitą 0–3.",
-                });
-            }
+            if (hoStd === null) return res.status(400).json({ error: "BadPayload", message: "standardHotelu musi być liczbą całkowitą 0–3." });
             updates.standardHotelu = hoStd;
         }
 
-        // uczestnicy / opiekunowie
-        if (
-            Object.prototype.hasOwnProperty.call(req.body, "liczbaUczestnikow") ||
-            Object.prototype.hasOwnProperty.call(req.body, "liczbaOpiekunow")
-        ) {
+        if (Object.prototype.hasOwnProperty.call(req.body, "liczbaUczestnikow") || Object.prototype.hasOwnProperty.call(req.body, "liczbaOpiekunow")) {
             const pv = validateParticipants(
-                Object.prototype.hasOwnProperty.call(req.body, "liczbaUczestnikow")
-                    ? liczbaUczestnikow
-                    : plan.liczbaUczestnikow,
-                Object.prototype.hasOwnProperty.call(req.body, "liczbaOpiekunow")
-                    ? liczbaOpiekunow
-                    : plan.liczbaOpiekunow
+                Object.prototype.hasOwnProperty.call(req.body, "liczbaUczestnikow") ? liczbaUczestnikow : plan.liczbaUczestnikow,
+                Object.prototype.hasOwnProperty.call(req.body, "liczbaOpiekunow") ? liczbaOpiekunow : plan.liczbaOpiekunow
             );
             if (!pv.ok) return res.status(400).json({ error: "BadPayload", message: pv.message });
             updates.liczbaUczestnikow = pv.u;
             updates.liczbaOpiekunow = pv.o;
         }
 
-        // nazwa – jeśli przysłana
         if (Object.prototype.hasOwnProperty.call(req.body, "nazwa")) {
             if (typeof nazwa === "string" && nazwa.trim() !== "") {
                 updates.nazwa = nazwa.trim();
             } else {
-                // pusta nazwa → domyślna na podstawie miejsca docelowego
-                const base =
-                    miejsceDocelowe?.nazwa ??
-                    plan.miejsceDocelowe?.nazwa ??
-                    "";
-                if (base) {
-                    updates.nazwa = `Wyjazd do ${base}`;
-                }
+                const base = miejsceDocelowe?.nazwa ?? plan.miejsceDocelowe?.nazwa ?? "";
+                if (base) updates.nazwa = `Wyjazd do ${base}`;
             }
         }
 
-        // computedPrice
         if (Object.prototype.hasOwnProperty.call(req.body, "computedPrice")) {
             const clientPrice = Number(computedPrice);
             if (Number.isFinite(clientPrice) && clientPrice >= 0) {
@@ -1796,83 +1756,44 @@ app.put("/api/trip-plans/:tripId", requireAuth, async (req, res) => {
             updates.computedPrice = computePriceFromAoA(aoaForPrice);
         }
 
-        // public
         if (Object.prototype.hasOwnProperty.call(req.body, "public")) {
             if (typeof publicFromClient === "boolean") {
                 updates.public = publicFromClient;
             } else {
-                return res.status(400).json({
-                    error: "BadPayload",
-                    message: "Pole 'public' musi być typu boolean (true/false).",
-                });
+                return res.status(400).json({ error: "BadPayload", message: "Pole 'public' musi być typu boolean." });
             }
         }
 
-        // jeżeli zmieniło się miejsce docelowe → odśwież zdjęcie, slug i ewentualnie domyślną nazwę
         if (destinationChanged && miejsceDocelowe?.nazwa && miejsceDocelowe?.location?.lat && miejsceDocelowe?.location?.lng) {
             try {
-                const photoLink = await fetchUnsplashPhotoLinkWithTranslation(
-                    miejsceDocelowe.nazwa, miejsceDocelowe.location.lat, miejsceDocelowe.location.lng,
-                );
-                if (photoLink) {
-                    updates.photoLink = photoLink;
-                }
+                const photoLink = await fetchUnsplashPhotoLinkWithTranslation(miejsceDocelowe.nazwa, miejsceDocelowe.location.lat, miejsceDocelowe.location.lng);
+                if (photoLink) updates.photoLink = photoLink;
             } catch (e) {
-                console.warn(
-                    "Nie udało się pobrać photoLink dla nowego miejsca docelowego:",
-                    e?.message || e
-                );
+                console.warn("Nie udało się pobrać photoLink:", e?.message || e);
             }
-
-            const slug = makeSlug(miejsceDocelowe.nazwa);
-            updates.urlSlug = slug;
-
-            // jeśli klient NIE przesłał 'nazwa' w body, zaktualizuj domyślną nazwę
+            updates.urlSlug = makeSlug(miejsceDocelowe.nazwa);
             if (!Object.prototype.hasOwnProperty.call(req.body, "nazwa")) {
                 updates.nazwa = `Wyjazd do ${miejsceDocelowe.nazwa}`;
             }
         }
 
         if (!Object.keys(updates).length) {
-            return res
-                .status(400)
-                .json({ error: "NoValidFields", message: "Brak pól do aktualizacji." });
+            return res.status(400).json({ error: "NoValidFields", message: "Brak pól do aktualizacji." });
         }
 
-        const updated = await TripPlan.findByIdAndUpdate(
-            plan._id,
-            { $set: updates },
-            {
-                new: true,
-                runValidators: true,
-            }
-        ).lean();
+        const updated = await TripPlan.findByIdAndUpdate(plan._id, { $set: updates }, { new: true, runValidators: true }).lean();
 
-        const aoa = updated.activitiesSchedule ? unpackDays(updated.activitiesSchedule) : null;
-        const priceOut =
-            typeof updated.computedPrice === "number"
-                ? updated.computedPrice
-                : aoa
-                    ? computePriceFromAoA(aoa)
-                    : null;
-
-        const startHoursOut = Array.isArray(updated.startHours)
-            ? updated.startHours.map((v) => {
-                const n = Number(v);
-                return Number.isFinite(n) ? Math.trunc(n) : 0;
-            })
-            : [];
-        // Bezpieczne users:
-        const usersOut = Array.isArray(updated.users)
-            ? updated.users
-            : [];
+        const aoaOut = updated.activitiesSchedule ? unpackDays(updated.activitiesSchedule) : null;
+        const priceOut = typeof updated.computedPrice === "number" ? updated.computedPrice : aoaOut ? computePriceFromAoA(aoaOut) : null;
+        const startHoursOut = Array.isArray(updated.startHours) ? updated.startHours.map((v) => { const n = Number(v); return Number.isFinite(n) ? Math.trunc(n) : 0; }) : [];
+        const usersOut = Array.isArray(updated.users) ? updated.users : [];
 
         return res.json({
             _id: updated._id,
             createdAt: updated.createdAt,
             updatedAt: updated.updatedAt,
             authors: updated.authors,
-            users: usersOut,              // ⬅️ tutaj dodajesz userów
+            users: usersOut,
             miejsceDocelowe: updated.miejsceDocelowe,
             miejsceStartowe: updated.miejsceStartowe,
             dataPrzyjazdu: updated.dataPrzyjazdu,
@@ -1881,7 +1802,7 @@ app.put("/api/trip-plans/:tripId", requireAuth, async (req, res) => {
             standardHotelu: updated.standardHotelu,
             liczbaUczestnikow: updated.liczbaUczestnikow,
             liczbaOpiekunow: updated.liczbaOpiekunow,
-            activitiesSchedule: aoa,
+            activitiesSchedule: aoaOut,
             computedPrice: priceOut != null ? num(priceOut) : null,
             photoLink: updated.photoLink ?? null,
             public: typeof updated.public === "boolean" ? updated.public : true,
@@ -1903,7 +1824,7 @@ app.put("/api/trip-plans/:tripId", requireAuth, async (req, res) => {
 app.put("/api/trip-plans/:tripId/realization-status/start", requireAuth, async (req, res) => {
     try {
         const { tripId } = req.params;
-
+        const isAdmin = requesterId === process.env.ADMIN_ID;
         if (!mongoose.Types.ObjectId.isValid(tripId)) {
             return res.status(400).json({ error: "InvalidObjectId", which: "tripId" });
         }
@@ -1933,7 +1854,7 @@ app.put("/api/trip-plans/:tripId/realization-status/start", requireAuth, async (
             if (!exists) {
                 return res.status(404).json({ error: "NotFound" });
             }
-            return res.status(403).json({ error: "Forbidden", message: "Tylko autor może rozpocząć realizację planu." });
+            if (!isAdmin) return res.status(403).json({ error: "Forbidden", message: "Tylko autor może rozpocząć realizację planu." });
         }
 
         return res.status(200).json({
@@ -1965,7 +1886,8 @@ app.post("/api/trip-plans/:tripId/users/:userId", requireAuth, async (req, res) 
 
         const requesterId = req.user._id;
         const isAuthor = (plan.authors || []).some((a) => idEquals(a, requesterId));
-        if (!isAuthor) {
+        const isAdmin = requesterId === process.env.ADMIN_ID;
+        if (!isAuthor && !isAdmin) {
             return res.status(403).json({ error: "Forbidden", message: "Tylko autor może dodawać uczestników." });
         }
 
@@ -2022,7 +1944,8 @@ app.post("/api/trip-plans/:tripId/authors/:userId", requireAuth, async (req, res
 
         const requesterId = req.user._id;
         const requesterIsAuthor = (plan.authors || []).some((a) => idEquals(a, requesterId));
-        if (!requesterIsAuthor) {
+        const isAdmin = requesterId === process.env.ADMIN_ID;
+        if (!requesterIsAuthor && !isAdmin) {
             return res.status(403).json({ error: "Forbidden", message: "Tylko autor może dodawać kolejnych autorów." });
         }
 
@@ -2078,10 +2001,10 @@ app.delete("/api/trip-plans/:tripId/users/:userId", requireAuth, async (req, res
 
         const requesterId = req.user._id;
         const isAuthor = (plan.authors || []).some((a) => idEquals(a, requesterId));
-
+        const isAdmin = requesterId === process.env.ADMIN_ID;
         const isSelf = idEquals(userId, requesterId);
 
-        if (!isAuthor && !isSelf) {
+        if (!isAuthor && !isSelf && !isAdmin) {
             return res.status(403).json({
                 error: "Forbidden",
                 message: "Musisz być autorem lub usuwać samego siebie.",
@@ -2147,7 +2070,8 @@ app.delete("/api/trip-plans/:tripId/authors/:userId", requireAuth, async (req, r
 
         const requesterId = req.user._id;
         const requesterIsAuthor = (plan.authors || []).some((a) => idEquals(a, requesterId));
-        if (!requesterIsAuthor) {
+        const isAdmin = requesterId === process.env.ADMIN_ID;
+        if (!requesterIsAuthor && !isAdmin) {
             return res.status(403).json({
                 error: "Forbidden",
                 message: "Tylko autor może usuwać innych autorów.",
@@ -2510,8 +2434,8 @@ app.get("/api/trip-plans/:tripId/join-code", requireAuth, async (req, res) => {
         const isAuthor = Array.isArray(plan.authors)
             ? plan.authors.some((a) => idEquals(a, requesterId))
             : false;
-
-        if (!isAuthor) {
+        const isAdmin = requesterId === process.env.ADMIN_ID;
+        if (!isAuthor && !isAdmin) {
             return res.status(403).json({
                 error: "Forbidden",
                 message: "Tylko autorzy planu mogą pobrać kod dołączenia.",

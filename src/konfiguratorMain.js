@@ -36,6 +36,7 @@ import { PopupManager } from "./konfigurator/popupManager";
 import { AddActivityNew } from "./addActivityNew";
 import { format } from "url";
 import { FeaturesSection } from "./brandTiles";
+import MissingAttractionInfo from "./infocomp";
 
 
 const port = process.env.REACT_APP__SERVER_API_SOURCE || "https://wycieczkzklasa.onrender.com";
@@ -225,6 +226,7 @@ const KonfiguratorMainMainboxLeft = styled.div`
 
 
     .listBox {
+      
         width: 100%;
         flex: 1 1 auto;
         min-height: 0;
@@ -1552,6 +1554,7 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
                     const resp = await fetch(url, { credentials: "include" });
                     if (!aborted && resp.ok) {
                         const data = await resp.json();
+                        console.log("Plan z tripId", data)
                         if (data?.realizationStatus) {
                             navigate(`/konfigurator-lounge/?tripId=${tripId}`);
                             return; // opcjonalnie, żeby nie ustawiać state po redirect
@@ -3727,12 +3730,14 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
                                     <img src="googlelogo.svg" />
                                 </div>}
                             {atrakcje
+
                                 .filter(atrakcja =>
                                     atrakcja.dataSource === "Bot" && (
                                         atrakcja.nazwa.toLowerCase().includes(attractionsSearching.toLowerCase()) ||
                                         atrakcja.adres.toLowerCase().includes(attractionsSearching.toLowerCase()))
                                 )
                                 .toSorted((a, b) => (b.liczbaOpinie * b.ocena || 0) - (a.liczbaOpinie * a.ocena || 0))
+                                .slice(0, 50)
                                 .map((atrakcja, idx) => (
                                     <AttractionResultMediumVerifiedComponent
                                         key={`${atrakcja.googleId}${idx}${atrakcja?.wallpaper}`}
@@ -3744,6 +3749,7 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
                                         lngMD={miejsceDocelowe.location.lng}
                                     />
                                 ))}
+                                <MissingAttractionInfo/>
                         </div>
                         <div className={radioChosen === 1 ? "listBox" : "listBox listBox--hidden"}>
                             {basicActivities

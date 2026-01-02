@@ -759,7 +759,9 @@ const EditTripPlanModal = ({ plan, onClose, onSave }) => {
                             Plan Publiczny
                         </label>
                     </FormGroup>
-
+                    <a href={`/konfigurator?tripId=${formData._id}`}>
+                        konfigurator
+                    </a>
                     <div style={{ marginTop: '10px', padding: '10px', background: '#fffbeb', borderRadius: '6px', fontSize: '12px', color: '#b45309', border: '1px solid #fcd34d' }}>
                         <strong>Uwaga:</strong> Edycja harmonogramu i szczegółów atrakcji jest możliwa tylko przez dedykowany konfigurator. Tutaj edytujesz tylko metadane administracyjne.
                     </div>

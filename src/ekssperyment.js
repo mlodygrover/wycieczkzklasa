@@ -1,13 +1,12 @@
 
 import { minutesToStringTime } from "./roots/attractionResults";
 
-import VariantButton from "./variantButton";
-// --- STYLES ---
 import React, { use, useEffect, useRef, useState } from "react";
 import { MapContainer, Marker, TileLayer } from "react-leaflet";
 import styled from "styled-components";
-// Usunąłem import VariantButton, bo zaimplementujemy przycisk i panel lokalnie
-import { BadgeCheck, Drama, Landmark, Route, Ticket, Timer, Info, X, BookOpen, Camera, Map, Check, ChevronDown } from "lucide-react";
+import VariantButton from "./variantButton";
+import { BadgeCheck, Drama, Landmark, Route, Ticket, Timer, Info, X } from "lucide-react";
+
 const AttractionResultMedium = styled.div`
     width: 90%;
     max-width: 300px;
@@ -337,8 +336,8 @@ const AttractionResultMediumComponent = ({
 
 export default AttractionResultMediumComponent;
 
+// --- STYLES ---
 
-// --- STYLES (Główny kontener - bez zmian) ---
 const AttractionResultMediumVerifiedComponentMainbox = styled.div`
     max-width: 300px;
     min-width: 250px;
@@ -356,7 +355,7 @@ const AttractionResultMediumVerifiedComponentMainbox = styled.div`
     position: relative;
     transition: background-image 0.3s ease-in-out;
     background-color: #f0f0f0;
-    overflow: hidden;
+    overflow: hidden; /* Ważne dla overlay */
 
     .leaflet-bottom.leaflet-right {
         display: block;
@@ -373,7 +372,8 @@ const AttractionResultMediumVerifiedComponentMainbox = styled.div`
         content: '';
         position: absolute;
         inset: 0;
-        background: linear-gradient(180deg, transparent 35%, rgba(0, 0, 0, 0.6) 60%);
+        /* Lżejszy gradient, bo opis jest teraz w overlay */
+        background: linear-gradient(180deg, transparent 40%, rgba(0, 0, 0, 0.4) 70%, rgba(0, 0, 0, 0.8) 100%);
         z-index: 1;
     }
 
@@ -381,13 +381,16 @@ const AttractionResultMediumVerifiedComponentMainbox = styled.div`
         display: flex;
         flex-direction: row;
         align-items: center;
-        justify-content: space-between;
+        justify-content: space-between; /* Rozstrzelenie elementów (kategorie po lewej, info po prawej) */
         width: 100%;
         margin-bottom: auto;
         position: relative;
-        z-index: 2;
+        z-index: 2; /* Musi być nad overlay */
 
-        .left-icons { display: flex; gap: 5px; }
+        .left-icons {
+            display: flex;
+            gap: 5px;
+        }
 
         .categoryIcon {
             height: 35px;
@@ -399,151 +402,81 @@ const AttractionResultMediumVerifiedComponentMainbox = styled.div`
             align-items: center;
             justify-content: center;
             box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+
             img { filter: brightness(0) invert(1); }
             &.b { background-color: #0026ffff; }
         }
 
+        /* Przycisk Info */
         .infoButton {
             height: 35px;
             width: 35px;
-            background-color: rgba(255, 255, 255, 0.95);
+            background-color: rgba(255, 255, 255, 0.2);
+            backdrop-filter: blur(4px);
             border-radius: 50%;
-            color: #008d73;
+            color: white;
             display: flex;
             align-items: center;
             justify-content: center;
             cursor: pointer;
-            transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
-            &:hover { transform: scale(1.1); background-color: #fff; color: #006553; }
+            transition: background-color 0.2s;
+            border: 1px solid rgba(255,255,255,0.3);
+
+            &:hover {
+                background-color: rgba(255, 255, 255, 0.4);
+            }
         }
     }
 `;
 
-/* --- PANEL OVERLAY (Wspólny styl dla Info i Wariantów) --- */
-const OverlayPanel = styled.div`
+/* --- INFO OVERLAY STYLE --- */
+const InfoOverlay = styled.div`
     position: absolute;
-    top: 0; left: 0; right: 0; bottom: 0;
-    background: linear-gradient(to bottom, #ffffff, #f8f9fa);
-    z-index: 10;
+    inset: 0;
+    background-color: rgba(20, 20, 20, 0.95); /* Ciemne tło dla czytelności */
+    z-index: 10; /* Nad wszystkim innym */
     padding: 20px;
     display: flex;
     flex-direction: column;
-    transform: translateY(${props => props.$isOpen ? '0' : '100%'});
+    justify-content: flex-start;
+    align-items: flex-start;
+    color: white;
+    transform: translateY(${props => props.$isOpen ? '0' : '100%'}); /* Animacja wysuwania */
     transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     border-radius: 15px;
-    border-top: 4px solid #008d73;
-    box-shadow: 0 -10px 25px rgba(0,0,0,0.15);
-
-    &::after {
-        content: ''; position: absolute; bottom: -20px; right: -20px; width: 120px; height: 120px;
-        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23008d73' stroke-width='1' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z'/%3E%3Cpath d='M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z'/%3E%3C/svg%3E");
-        background-repeat: no-repeat; opacity: 0.05; pointer-events: none; z-index: 0;
-    }
+    overflow-y: auto; /* Scroll jeśli opis długi */
 
     .overlay-header {
-        width: 100%; display: flex; justify-content: space-between; align-items: center;
-        margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px dashed #e2e8f0; z-index: 1;
-        h4 {
-            margin: 0; font-size: 15px; font-weight: 700; color: #1e293b; font-family: Inter, sans-serif;
-            display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden;
-        }
-        .close-btn { cursor: pointer; color: #94a3b8; transition: all 0.2s; &:hover { color: #ef4444; } }
-    }
-
-    .description-content {
-        flex: 1; overflow-y: auto; padding-right: 5px; z-index: 1; margin-bottom: 10px;
-        &::-webkit-scrollbar { width: 4px; }
-        &::-webkit-scrollbar-thumb { background-color: #cbd5e1; border-radius: 4px; }
-    }
-
-    .description-text {
-        font-size: 13px; line-height: 1.6; color: #334155; font-weight: 400; text-align: left; white-space: pre-wrap;
-    }
-
-    .attribution-footer {
-        margin-top: auto; padding-top: 10px; border-top: 1px solid #e2e8f0; z-index: 1; display: flex; flex-direction: column; gap: 6px;
-        .attr-row {
-            display: flex; align-items: center; gap: 6px; font-size: 10px; color: #64748b;
-            svg { color: #008d73; width: 12px; height: 12px; }
-            a { color: inherit; text-decoration: none; &:hover { text-decoration: underline; color: #008d73; } }
-        }
-    }
-`;
-
-/* --- LISTA WARIANTÓW (Stylizowana) --- */
-const VariantList = styled.div`
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    width: 100%;
-    z-index: 1;
-    overflow-y: auto;
-    padding-right: 5px;
-    max-height: 100%;
-
-    &::-webkit-scrollbar { width: 4px; }
-    &::-webkit-scrollbar-thumb { background-color: #cbd5e1; border-radius: 4px; }
-
-    .variant-item {
-        padding: 12px;
-        background-color: #fff;
-        border: 1px solid #e2e8f0;
-        border-radius: 8px;
-        cursor: pointer;
+        width: 100%;
         display: flex;
         justify-content: space-between;
         align-items: center;
-        transition: all 0.2s;
+        margin-bottom: 15px;
+        border-bottom: 1px solid rgba(255,255,255,0.1);
+        padding-bottom: 10px;
 
-        &:hover {
-            border-color: #008d73;
-            background-color: #f0fdf9;
-        }
-
-        &.active {
-            border-color: #008d73;
-            background-color: #ecfdf5;
+        h4 {
+            margin: 0;
+            font-size: 14px;
+            font-weight: 600;
             color: #008d73;
-            font-weight: 600;
         }
 
-        .var-name {
-            font-size: 13px;
-        }
-        .var-price {
-            font-size: 13px;
-            font-weight: 600;
-            color: #059669;
+        .close-btn {
+            cursor: pointer;
+            color: #aaa;
+            &:hover { color: white; }
         }
     }
-`;
 
-/* --- BUTTON WYBORU WARIANTU (Styl podobny do VerifiedMediumMainbox) --- */
-const VariantTriggerButton = styled.button`
-    width: 100%;
-    margin-bottom: 10px;
-    height: 32px;
-    background-color: #00b191; /* Odcień zieleni pasujący do kafelka */
-    color: white;
-    border: none;
-    border-radius: 5px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 0 12px;
-    font-size: 13px;
-    font-weight: 500;
-    font-family: inherit;
-    cursor: pointer;
-    transition: background 0.3s;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-
-    &:hover {
-        background-color: #00967b;
+    .description-text {
+        font-size: 13px;
+        line-height: 1.5;
+        color: #e0e0e0;
+        font-weight: 300;
+        text-align: left;
+        white-space: pre-wrap; /* Zachowuje akapity */
     }
-
-    svg { opacity: 0.8; }
 `;
 
 const VerifiedMediumMainbox = styled.div`
@@ -562,27 +495,76 @@ const VerifiedMediumMainbox = styled.div`
     position: relative;
 
     .attractionResultMediumTitleBox {
-        width: 100%; min-height: 50px; display: flex; flex-direction: row; align-items: stretch; justify-content: flex-start;
+        width: 100%;
+        min-height: 50px;
+        display: flex;
+        flex-direction: row;
+        align-items: stretch;
+        justify-content: flex-start;
+
         .titleTextBox {
-            flex: 1; display: flex; flex-direction: column; align-items: flex-start; justify-content: center; margin-bottom: 5px;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            justify-content: center;
+            margin-bottom: 5px;
+            
             .attractionResultMediumTitle {
-                font-size: 16px; width: 100%; text-align: left; font-family: Inter, system-ui, -apple-system, sans-serif; font-weight: 700; text-shadow: 0 2px 4px rgba(0, 0, 0, 0.8);
+                font-size: 16px;
+                width: 100%;
+                text-align: left;
+                font-family: Inter, system-ui, -apple-system, sans-serif;
+                font-weight: 700;
+                text-shadow: 0 2px 4px rgba(0, 0, 0, 0.8);
             }
+
             .attractionResultMediumSubtitle {
-                font-size: 12px; color: #e0e0e0; font-weight: 500; text-align: left; width: 100%; text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+                font-size: 12px;
+                color: #e0e0e0;
+                font-weight: 500;
+                text-align: left;
+                width: 100%;
+                text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+
                 &.b {
-                    display: flex; flex-direction: row; align-items: center; justify-content: space-between; margin-top: 6px; gap: 2px;
+                    display: flex;
+                    flex-direction: row;
+                    align-items: center;
+                    justify-content: space-between;
+                    margin-top: 6px;
+                    gap: 2px;
                     a { text-decoration: none; color: inherit; }
-                    span { display: flex; align-items: center; gap: 4px; }
+                    span {
+                        display: flex;
+                        align-items: center;
+                        gap: 4px;
+                    }
                 }
             }
         }
     }
 
     .attractionResultMediumAddBox {
-        height: 30px; width: 100%; background-color: #008d73ff; color: #f0f0f0; border-radius: 5px;
-        display: flex; align-items: center; justify-content: center; text-align: center; font-size: 14px; font-weight: 500; cursor: pointer; transition: 0.3s ease-in-out; box-sizing: border-box; margin: 0;
-        &:hover { background-color: #007a61ff; }
+        height: 30px;
+        width: 100%;
+        background-color: #008d73ff;
+        color: #f0f0f0;
+        border-radius: 5px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        font-size: 14px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: 0.3s ease-in-out;
+        box-sizing: border-box;
+        margin: 0;
+
+        &:hover {
+            background-color: #007a61ff;
+        }
     }
 `;
 
@@ -616,10 +598,12 @@ export const AttractionResultMediumVerifiedComponent = ({
     const [bgImage, setBgImage] = useState(null);
     const [description, setDescription] = useState(atrakcja.opis || null);
     
-    // Stan paneli (tylko jeden otwarty na raz)
-    const [activeOverlay, setActiveOverlay] = useState(null); // 'info' | 'variants' | null
+    // Stan do obsługi panelu informacyjnego
+    const [isInfoOpen, setIsInfoOpen] = useState(false);
 
-    const [selectedVariantIdx, setSelectedVariantIdx] = useState(0);
+    const [wariantsOpened, setWariantsOpened] = useState(false);
+    const wariantButtonRef = useRef(null);
+    const [selectedVariant, setSelectedVariant] = useState(null);
 
     const FALLBACK_WALLPAPER = 'https://images.unsplash.com/photo-1716481631637-e2d4fd2456e2?q=80&w=870&auto=format&fit=crop';
     
@@ -644,14 +628,6 @@ export const AttractionResultMediumVerifiedComponent = ({
         targetUrl = atrakcja.wallpaper || FALLBACK_WALLPAPER;
     }
 
-    // Wykrywanie źródeł
-    const isWikipediaImage = targetUrl.includes('wikimedia.org');
-    const isUnsplashImage = targetUrl.includes('unsplash.com');
-    const isGoogleSource = atrakcja.dataSource === 'Google' || (atrakcja.googleId && !atrakcja.googleId.startsWith('custom_') && !atrakcja.googleId.startsWith('dAct_'));
-    const googleMapsUrl = atrakcja.googleId 
-        ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(atrakcja.nazwa)}&query_place_id=${atrakcja.googleId}`
-        : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(atrakcja.nazwa)}`;
-
     // Lazy Loading
     useEffect(() => {
         if (typ === 3 && hasCoords && targetUrl === FALLBACK_WALLPAPER) return;
@@ -669,32 +645,42 @@ export const AttractionResultMediumVerifiedComponent = ({
                         observer.unobserve(entry.target);
                     }
                 });
-            }, { rootMargin: "100px", threshold: 0.01 }
+            },
+            { rootMargin: "100px", threshold: 0.01 }
         );
 
         if (containerRef.current) observer.observe(containerRef.current);
         return () => { if (containerRef.current) observer.unobserve(containerRef.current); };
     }, [targetUrl, typ, hasCoords, description, atrakcja.nazwa]);
 
-    // Initial Variant Setup
+    // Variant Logic
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (wariantButtonRef.current && !wariantButtonRef.current.contains(event.target)) {
+                setWariantsOpened(false);
+            }
+        };
+        if (wariantsOpened) document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, [wariantsOpened]);
+
     useEffect(() => {
         if (atrakcja?.warianty && atrakcja.warianty.length > 0) {
-            updateVariantData(0); // Domyślnie pierwszy
+            atrakcja.czasZwiedzania = atrakcja.warianty[0].czasZwiedzania || 60;
+            atrakcja.cenaZwiedzania = atrakcja.warianty[0].cenaZwiedzania || 0;
         } else {
             atrakcja.czasZwiedzania = 60;
             atrakcja.cenaZwiedzania = 0;
         }
     }, [atrakcja]);
 
-    const updateVariantData = (idx) => {
-        if(!atrakcja.warianty || !atrakcja.warianty[idx]) return;
-        
-        setSelectedVariantIdx(idx);
+    function setWariant(idx) {
+        setSelectedVariant(idx);
         atrakcja.czasZwiedzania = atrakcja.warianty[idx].czasZwiedzania || 60;
         atrakcja.cenaZwiedzania = atrakcja.warianty[idx].cenaZwiedzania || 0;
         atrakcja.chosenWariant = atrakcja.warianty[idx].nazwaWariantu;
         atrakcja.selectedVariant = idx;
-    };
+    }
 
     function formatDistanceKm(latA, lngA, latB, lngB) {
         const toRad = (deg) => (deg * Math.PI) / 180;
@@ -706,9 +692,10 @@ export const AttractionResultMediumVerifiedComponent = ({
         return `${(R * c).toFixed(1)} km`;
     }
 
-    const toggleOverlay = (type, e) => {
-        e.stopPropagation();
-        setActiveOverlay(activeOverlay === type ? null : type);
+    // Toggle Info Panel
+    const toggleInfo = (e) => {
+        e.stopPropagation(); // Zapobiegamy innym akcjom
+        setIsInfoOpen(!isInfoOpen);
     };
 
     return (
@@ -716,7 +703,7 @@ export const AttractionResultMediumVerifiedComponent = ({
             ref={containerRef}
             style={((typ === 1 || typ === 2 || typ === 3) && bgImage) ? { backgroundImage: bgImage } : { backgroundColor: '#f0f0f0' }}
         >
-            {/* Tło Mapy */}
+            {/* Tło Mapy (tylko dla typ=3) */}
             {typ === 3 && hasCoords && targetUrl === FALLBACK_WALLPAPER && (
                 <div style={{ position: 'absolute', inset: 0, borderRadius: 15, overflow: 'hidden', zIndex: 0, pointerEvents: 'none' }}>
                     <MapContainer center={[atrakcja.lokalizacja.lat, atrakcja.lokalizacja.lng]} zoom={13} style={{ width: '100%', height: '100%' }} scrollWheelZoom={false} dragging={false} doubleClickZoom={false} zoomControl={false} attributionControl={false}>
@@ -726,7 +713,7 @@ export const AttractionResultMediumVerifiedComponent = ({
                 </div>
             )}
 
-            {/* --- GÓRNA BELKA --- */}
+            {/* --- GÓRNA BELKA (Ikony + Info) --- */}
             <div className="verifiedLabels">
                 <div className="left-icons">
                     <div className="categoryIcon">
@@ -735,70 +722,26 @@ export const AttractionResultMediumVerifiedComponent = ({
                     {typ === 1 && <div className="categoryIcon b"><BadgeCheck /></div>}
                 </div>
 
-                <div className="infoButton" onClick={(e) => toggleOverlay('info', e)} title="Pokaż szczegóły">
-                    <Info size={20} />
-                </div>
+                {/* Przycisk Info - widoczny tylko jeśli jest opis */}
+                {description && (
+                    <div className="infoButton" onClick={toggleInfo} title="Pokaż opis">
+                        <Info size={20} />
+                    </div>
+                )}
             </div>
 
-            {/* --- PANEL INFO --- */}
-            <OverlayPanel $isOpen={activeOverlay === 'info'}>
+            {/* --- PANEL INFORMACYJNY (Overlay) --- */}
+            <InfoOverlay $isOpen={isInfoOpen} onClick={toggleInfo}>
                 <div className="overlay-header">
-                    <h4>{atrakcja.nazwa}</h4>
-                    <X size={20} className="close-btn" onClick={(e) => toggleOverlay('info', e)} />
+                    <h4>Informacje o atrakcji</h4>
+                    <X size={18} className="close-btn" />
                 </div>
-                <div className="description-content">
-                    <div className="description-text">
-                        {description || "Brak opisu dla tej atrakcji."}
-                    </div>
+                <div className="description-text">
+                    {description}
                 </div>
-                <div className="attribution-footer">
-                    {description && (
-                        <div className="attr-row">
-                            <BookOpen />
-                            <span>Opis: <a href={`https://pl.wikipedia.org/wiki/${encodeURIComponent(atrakcja.nazwa)}`} target="_blank" rel="noreferrer">Wikipedia</a></span>
-                        </div>
-                    )}
-                    {isGoogleSource && (
-                        <div className="attr-row">
-                            <Map />
-                            <span>Dane: <a href={googleMapsUrl} target="_blank" rel="noreferrer">Google Maps</a></span>
-                        </div>
-                    )}
-                    {isWikipediaImage && <div className="attr-row"><Camera /><span>Zdjęcie: <a href={targetUrl} target="_blank" rel="noreferrer">Wikimedia Commons</a></span></div>}
-                    {isUnsplashImage && <div className="attr-row"><Camera /><span>Zdjęcie: <a href="https://unsplash.com/" target="_blank" rel="noreferrer">Unsplash</a></span></div>}
-                </div>
-            </OverlayPanel>
+            </InfoOverlay>
 
-            {/* --- PANEL WARIANTÓW (ZAMIAST DROPDOWNA) --- */}
-            <OverlayPanel $isOpen={activeOverlay === 'variants'}>
-                <div className="overlay-header">
-                    <h4>Wybierz wariant</h4>
-                    <X size={20} className="close-btn" onClick={(e) => toggleOverlay('variants', e)} />
-                </div>
-                
-                <VariantList>
-                    {atrakcja.warianty?.map((wariant, idx) => (
-                        <div 
-                            key={idx} 
-                            className={`variant-item ${selectedVariantIdx === idx ? 'active' : ''}`}
-                            onClick={() => {
-                                updateVariantData(idx);
-                                setActiveOverlay(null); // Zamknij po wyborze
-                            }}
-                        >
-                            <span className="var-name">{wariant.nazwaWariantu}</span>
-                            <div style={{display:'flex', alignItems:'center', gap:'10px'}}>
-                                {wariant.cenaZwiedzania != null && (
-                                    <span className="var-price">{wariant.cenaZwiedzania} zł</span>
-                                )}
-                                {selectedVariantIdx === idx && <Check size={16} />}
-                            </div>
-                        </div>
-                    ))}
-                </VariantList>
-            </OverlayPanel>
-
-            {/* --- GŁÓWNA ZAWARTOŚĆ --- */}
+            {/* --- GŁÓWNA ZAWARTOŚĆ KAFELKA --- */}
             <VerifiedMediumMainbox>
                 <div className="attractionResultMediumTitleBox">
                     <div className="titleTextBox">
@@ -815,12 +758,10 @@ export const AttractionResultMediumVerifiedComponent = ({
                     </div>
                 </div>
 
-                {/* PRZYCISK WYBORU WARIANTU (JEŚLI WIĘCEJ NIŻ 1) */}
                 {atrakcja?.warianty && atrakcja.warianty.length > 1 && (
-                    <VariantTriggerButton onClick={(e) => toggleOverlay('variants', e)}>
-                        {atrakcja.warianty[selectedVariantIdx]?.nazwaWariantu || "Wybierz wariant"}
-                        <ChevronDown size={16} />
-                    </VariantTriggerButton>
+                    <div ref={wariantButtonRef} style={{marginBottom: '10px'}}>
+                        <VariantButton variants={atrakcja.warianty} onSelect={setWariant} selectedVariantInit={selectedVariant} typ={2} sourcePlace={sourcePlace} />
+                    </div>
                 )}
 
                 <div className="attractionResultMediumAddBox" onClick={() => addActivity(wybranyDzien, atrakcja)}>

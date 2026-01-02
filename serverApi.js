@@ -773,7 +773,7 @@ app.get('/attractions/nearby', async (req, res) => {
 async function getWikipediaImageUrl(attractionName, options = {}) {
     const {
         lang = "pl",
-        thumbWidth = 1200,
+        thumbWidth = 300,
         userAgent = "MyApp/1.0 (contact: your-email@example.com)",
         timeoutMs = 12_000,
     } = options;
@@ -966,11 +966,11 @@ app.get("/api/wiki-image", async (req, res) => {
             return res.status(400).json({
                 error: "Missing required query param: name",
                 example:
-                    "/api/wiki-image?name=Smok%20Wawelski%20w%20Krakow&lang=pl&thumbWidth=1200&googleId=YOUR_GOOGLE_ID",
+                    "/api/wiki-image?name=Smok%20Wawelski%20w%20Krakow&lang=pl&thumbWidth=300&googleId=YOUR_GOOGLE_ID",
             });
         }
 
-        const thumbWidth = req.query.thumbWidth ? Number(req.query.thumbWidth) : 1200;
+        const thumbWidth = req.query.thumbWidth ? Number(req.query.thumbWidth) : 300;
         if (!Number.isFinite(thumbWidth) || thumbWidth <= 0) {
             return res.status(400).json({ error: "thumbWidth must be a positive number" });
         }
