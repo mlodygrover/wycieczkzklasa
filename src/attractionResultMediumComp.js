@@ -448,7 +448,7 @@ const OverlayPanel = styled.div`
             margin: 0; font-size: 15px; font-weight: 700; color: #1e293b; font-family: Inter, sans-serif;
             display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden;
         }
-        .close-btn { cursor: pointer; color: #94a3b8; transition: all 0.2s; &:hover { color: #ef4444; } }
+        .close-btn { cursor: pointer; flex-shrink: 0;color: #94a3b8; transition: all 0.2s; &:hover { color: #ef4444; } }
     }
 
     .description-content {

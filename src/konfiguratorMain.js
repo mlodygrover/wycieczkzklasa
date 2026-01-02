@@ -3399,7 +3399,7 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
             const url = new URL(window.location.href);
             const params = url.search || ""; // np. "?tripId=123&arr=2025-05-01..."
 
-            const redirectLink = `/realizacja/?tripId=${tripId || ""}`;
+            const redirectLink = `/realizacja?tripId=${tripId || ""}`;
             navigate(redirectLink);
         } finally {
             setRedirecting(false);
@@ -3737,7 +3737,7 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
                                         atrakcja.adres.toLowerCase().includes(attractionsSearching.toLowerCase()))
                                 )
                                 .toSorted((a, b) => (b.liczbaOpinie * b.ocena || 0) - (a.liczbaOpinie * a.ocena || 0))
-                                .slice(0, 50)
+                                .slice(0, 20)
                                 .map((atrakcja, idx) => (
                                     <AttractionResultMediumVerifiedComponent
                                         key={`${atrakcja.googleId}${idx}${atrakcja?.wallpaper}`}

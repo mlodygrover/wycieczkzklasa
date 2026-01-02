@@ -9,6 +9,7 @@ import {
   AlertCircle,
   X
 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 const portacc = process.env.REACT_APP_API_SOURCE || "https://api.draftngo.com";
 // --- STYLES (Bliźniacze do RealizationInfoCard) ---
@@ -312,6 +313,9 @@ export const RealizationActionCard = ({
   onRealize,
   tripId = null,
 }) => {
+
+  const navigate = useNavigate();
+
   const [termsAccepted, setTermsAccepted] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
@@ -349,6 +353,8 @@ export const RealizationActionCard = ({
           // jeśli trzymasz plan w state, możesz go od razu zaktualizować:
           // setSynchronisedPlan((prev) => prev ? { ...prev, realizationStatus: 1 } : prev);
           console.log("Realization started:", data);
+          const redirectLink = `/konfigurator-lounge?tripId=${tripId || ""}`;
+          navigate(redirectLink);
         }
       }
     } catch (e) {

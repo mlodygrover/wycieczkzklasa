@@ -1824,15 +1824,16 @@ app.put("/api/trip-plans/:tripId", requireAuth, async (req, res) => {
 app.put("/api/trip-plans/:tripId/realization-status/start", requireAuth, async (req, res) => {
     try {
         const { tripId } = req.params;
+        const requesterId = req.user?._id;
+        if (!requesterId) {
+            return res.status(401).json({ error: "Unauthenticated" });
+        }
+
         const isAdmin = requesterId === process.env.ADMIN_ID;
         if (!mongoose.Types.ObjectId.isValid(tripId)) {
             return res.status(400).json({ error: "InvalidObjectId", which: "tripId" });
         }
 
-        const requesterId = req.user?._id;
-        if (!requesterId) {
-            return res.status(401).json({ error: "Unauthenticated" });
-        }
 
         // Aktualizacja atomowa: tylko jeśli requester jest w authors
         const updated = await TripPlan.findOneAndUpdate(
