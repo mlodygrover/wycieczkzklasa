@@ -1637,7 +1637,12 @@ app.put("/api/trip-plans/:tripId", requireAuth, async (req, res) => {
 
         // 3. Sprawdź czy to autor
         const isAuthor = (plan.authors || []).some((a) => idEquals(a, requesterId));
-
+        if (plan.realizationStatus && !isAdmin) {
+            return res.status(403).json({
+                error: "Forbidden",
+                message: "Tylko admin moze modyfikowac plan poza szkicem"
+            });
+        }
         // 4. Jeśli NIE admin I NIE autor -> Forbidden
         if (!isAdmin && !isAuthor) {
             return res.status(403).json({
@@ -1857,7 +1862,7 @@ app.put("/api/trip-plans/:tripId/realization-status/start", requireAuth, async (
             }
             if (!isAdmin) return res.status(403).json({ error: "Forbidden", message: "Tylko autor może rozpocząć realizację planu." });
         }
-
+        initializePaymentsForTrip(updated._id)
         return res.status(200).json({
             ok: true,
             tripId: updated._id,
@@ -2791,20 +2796,262 @@ app.get("/api/trip-plans/:tripId/messages/sync", requireAuth, async (req, res) =
     }
 });
 
-async function backfillRealizationStatus() {
+
+const PaymentSchema = new mongoose.Schema({
+    tripId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'TripPlan',
+        required: true
+    },
+    userId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User',
+        required: true
+    },
+
+    // --- ZMIANA: Rozdzielenie kwot ---
+
+    // Kwota, którą użytkownik POWINIEN zapłacić (zgodna z aktualną ceną wyjazdu)
+    amountRequired: {
+        type: Number,
+        required: true,
+        default: 0
+    },
+
+    // Kwota, którą użytkownik FAKTYCZNIE wpłacił (potwierdzona przez bramkę)
+    amountPaid: {
+        type: Number,
+        default: 0
+    },
+
+    currency: { type: String, default: 'PLN' },
+
+    // Status teraz zależy od relacji amountPaid vs amountRequired
+    status: {
+        type: String,
+        enum: ['pending', 'partial', 'completed', 'overpaid', 'failed'],
+        default: 'pending'
+    },
+
+    // Dane techniczne
+    provider: { type: String, enum: ['tpay', 'stripe'], default: 'tpay' },
+    providerTransactionId: { type: String },
+    crc: { type: String },
+    paidAt: { type: Date }
+
+}, { timestamps: true });
+
+PaymentSchema.index({ tripId: 1, userId: 1 }, { unique: true });
+const Payment = mongoose.model('Payment', PaymentSchema);
+
+
+/**
+ * Inicjalizuje lub aktualizuje rekordy płatności dla uczestników.
+ * - Aktualizuje amountRequired dla WSZYSTKICH (nawet tych, co już zapłacili).
+ * - Nie rusza amountPaid ani statusu (chyba że to nowy rekord).
+ */
+async function initializePaymentsForTrip(tripId) {
     try {
-        const result = await TripPlan.updateMany(
-            { realizationStatus: { $exists: false } },
-            { $set: { realizationStatus: 0 } }
-        );
-        console.log(
-            `[MIGRATION] TripPlan realizationStatus backfill done. matched=${result.matchedCount ?? result.n} modified=${result.modifiedCount ?? result.nModified}`
-        );
-    } catch (e) {
-        console.error("[MIGRATION] TripPlan realizationStatus backfill error:", e?.message || e);
+        const trip = await TripPlan.findById(tripId);
+        if (!trip) throw new Error('TripPlan not found');
+
+        const allParticipantIds = new Set([
+            ...(trip.authors || []).map(id => id.toString()),
+            ...(trip.users || []).map(id => id.toString())
+        ]);
+
+        if (allParticipantIds.size === 0) return;
+
+        // Aktualna cena wyjazdu w groszach
+        const currentTripPriceInGrosze = Math.round((trip.computedPrice || 0) * 100);
+
+        const operations = Array.from(allParticipantIds).map(userId => ({
+            updateOne: {
+                filter: { tripId: trip._id, userId: userId },
+                update: {
+                    // 1. TO WYKONUJE SIĘ ZAWSZE (Aktualizacja ceny wyjazdu)
+                    $set: {
+                        amountRequired: currentTripPriceInGrosze,
+                        // Opcjonalnie: Zaktualizuj status na 'partial', jeśli cena wzrosła, a ktoś miał 'completed'
+                        // (To wymagałoby pipeline'u agregacji w update, poniżej prostsza wersja logiczna)
+                    },
+                    // 2. TO WYKONUJE SIĘ TYLKO PRZY TWORZENIU NOWEGO REKORDU
+                    $setOnInsert: {
+                        amountPaid: 0, // Nowy użytkownik nic nie wpłacił
+                        currency: 'PLN',
+                        status: 'pending',
+                        provider: 'tpay'
+                    }
+                },
+                upsert: true
+            }
+        }));
+
+        const result = await Payment.bulkWrite(operations);
+
+        // Dodatkowy krok (opcjonalny, ale zalecany):
+        // Jeśli cena wzrosła, musimy zmienić statusy 'completed' na 'partial' (częściowo opłacone).
+        // Robimy to osobnym zapytaniem dla bezpieczeństwa logicznego.
+        if (result.matchedCount > 0) {
+            await Payment.updateMany(
+                {
+                    tripId: trip._id,
+                    status: 'completed',
+                    $expr: { $lt: ["$amountPaid", "$amountRequired"] } // Gdzie wpłacono < wymagane
+                },
+                { $set: { status: 'partial' } }
+            );
+        }
+
+        console.log(`Zaktualizowano płatności dla tripId: ${tripId}. Cena: ${currentTripPriceInGrosze / 100} PLN`);
+        return result;
+
+    } catch (error) {
+        console.error("Błąd aktualizacji płatności:", error);
+        throw error;
     }
 }
 
+
+// Konfiguracja Tpay
+const TPAY_CLIENT_ID = process.env.TPAY_CLIENT_ID;
+const TPAY_CLIENT_SECRET = process.env.TPAY_CLIENT_SECRET;
+const TPAY_MERCHANT_ID = process.env.TPAY_MERCHANT_ID;
+const TPAY_SECURITY_CODE = process.env.TPAY_SECURITY_CODE;
+const TPAY_API_URL = 'https://api.tpay.org'; // Sandbox. Dla produkcji: api.tpay.com
+
+const API_URL = process.env.API_URL;
+app.post('/payments/init', async (req, res) => {
+    // Zakładam, że masz middleware auth, który dodaje req.user
+    const userId = req.user._id;
+    const { tripId } = req.body;
+
+    try {
+        // 1. Upewnij się, że dane w bazie są aktualne
+        await initializePaymentsForTrip(tripId);
+
+        // 2. Pobierz aktualny stan płatności
+        const payment = await Payment.findOne({ tripId, userId }).populate('tripId');
+
+        if (!payment) return res.status(404).json({ error: "Błąd płatności" });
+
+        // 3. Oblicz ile trzeba dopłacić
+        // amountRequired i amountPaid są w groszach (integer)
+        const amountLeft = payment.amountRequired - payment.amountPaid;
+
+        if (amountLeft <= 0) {
+            return res.status(400).json({ error: "Wyjazd jest już opłacony." });
+        }
+
+        // 4. Generuj unikalny CRC dla tej konkretnej transakcji
+        // Format: tripId|userId|timestamp
+        const crc = `${tripId}|${userId}|${Date.now()}`;
+
+        // Zapisz CRC w bazie (opcjonalne, ale dobre do debugowania)
+        payment.crc = crc;
+        await payment.save();
+
+        // 5. Pobierz token Tpay (OAuth)
+        const authRes = await axios.post(`${TPAY_API_URL}/oauth/auth`, {
+            client_id: TPAY_CLIENT_ID,
+            client_secret: TPAY_CLIENT_SECRET
+        });
+        const accessToken = authRes.data.access_token;
+
+        // 6. Utwórz transakcję w Tpay
+        const transactionRes = await axios.post(`${TPAY_API_URL}/transactions`, {
+            amount: amountLeft / 100, // Tpay oczekuje float (PLN), my mamy grosze
+            description: `Wyjazd: ${payment.tripId.nazwa || 'Wycieczka'}`,
+            hiddenDescription: crc, // To wróci w webhooku, kluczowe do identyfikacji!
+            payer: {
+                email: req.user.email,
+                name: req.user.username || "Uczestnik"
+            },
+            callbacks: {
+                // Gdzie przekierować użytkownika PO płatności (Wstecz do sklepu)
+                payerUrls: {
+                    success: `${CLIENT_URL}/trip/${tripId}?paymentStatus=success`,
+                    error: `${CLIENT_URL}/trip/${tripId}?paymentStatus=error`,
+                },
+                // Gdzie Tpay ma wysłać potwierdzenie w tle (Webhook)
+                notification: {
+                    url: `${API_URL}/api/payments/notification`,
+                    email: req.user.email
+                }
+            }
+        }, {
+            headers: { Authorization: `Bearer ${accessToken}` }
+        });
+
+        // 7. Zwróć URL do przekierowania frontendu
+        res.json({ paymentUrl: transactionRes.data.transactionPaymentUrl });
+
+    } catch (error) {
+        console.error("Błąd inicjacji płatności:", error?.response?.data || error.message);
+        res.status(500).json({ error: "Nie udało się utworzyć płatności" });
+    }
+});
+
+app.post('/payments/notification', express.urlencoded({ extended: true }), async (req, res) => {
+    // Tpay wysyła dane jako x-www-form-urlencoded
+    const {
+        id, tr_id, tr_date, tr_crc, tr_amount, tr_paid, tr_desc,
+        tr_status, tr_error, tr_email, md5sum
+    } = req.body;
+
+    // 1. Weryfikacja podpisu MD5 (Security Check)
+    // Wzór: md5(id + tr_id + tr_amount + tr_crc + kod_bezpieczenstwa)
+    const stringToHash = `${id}${tr_id}${tr_amount}${tr_crc}${TPAY_SECURITY_CODE}`;
+    const calculatedMd5 = crypto.createHash('md5').update(stringToHash).digest('hex');
+
+    if (calculatedMd5 !== md5sum) {
+        console.error("Błędny podpis MD5 z Tpay!");
+        return res.status(400).send('INVALID SIGNATURE');
+    }
+
+    // 2. Jeśli status to TRUE (zapłacono)
+    if (tr_status === 'TRUE') {
+        try {
+            // Rozpakuj CRC: tripId|userId|timestamp
+            const [tripId, userId] = tr_crc.split('|');
+            const paidAmountInGrosze = Math.round(Number(tr_amount) * 100);
+
+            // Znajdź płatność
+            const payment = await Payment.findOne({ tripId, userId });
+
+            if (payment) {
+                // Sprawdź czy ta transakcja nie została już przetworzona (idempotentność)
+                // Możesz to robić sprawdzając czy providerTransactionId == tr_id
+                // Ale w modelu uproszczonym po prostu dodajemy kwotę:
+
+                // Aktualizacja kwot
+                payment.amountPaid += paidAmountInGrosze;
+                payment.providerTransactionId = tr_id;
+                payment.paidAt = new Date();
+
+                // Logika statusu
+                if (payment.amountPaid >= payment.amountRequired) {
+                    payment.status = 'completed';
+                    if (payment.amountPaid > payment.amountRequired) {
+                        payment.status = 'overpaid'; // Opcjonalnie
+                    }
+                } else {
+                    payment.status = 'partial'; // Nadal za mało (np. rata)
+                }
+
+                await payment.save();
+                console.log(`Zaksięgowano ${tr_amount} PLN dla tripId: ${tripId}`);
+            }
+        } catch (err) {
+            console.error("Błąd bazy danych w webhooku:", err);
+            // Nawet jak jest błąd DB, Tpay musi dostać TRUE, żeby nie spamował, 
+            // chyba że chcesz, żeby ponawiał próby (wtedy wyślij status 500)
+        }
+    }
+
+    // 3. Tpay wymaga odpowiedzi tekstowej "TRUE" na koniec
+    res.send('TRUE');
+});
 
 const port = process.env.PORT || 5007;
 

@@ -2,12 +2,13 @@ import React, { useState, useEffect, useRef } from 'react';
 import styled, { keyframes } from 'styled-components';
 import {
     MapPin, Search, X, Calendar as CalendarIcon, Minus, Plus, Bus, Train, Car,
-    Home, Building2, Star, Check, Map, ChevronLeft, ChevronRight, AlertCircle
+    Home, Building2, Star, Check, Map, ChevronLeft, ChevronRight, AlertCircle, CreditCard, Loader2
 } from 'lucide-react';
-import { TripSchedulePreview } from './activitiesSchedulePreview';
-
+// import { TripSchedulePreview } from './activitiesSchedulePreview'; // Zakładam, że to importujesz gdzie indziej
 
 const port = process.env.REACT_APP__SERVER_API_SOURCE || "https://wycieczkzklasa.onrender.com";
+const portacc = process.env.REACT_APP_API_SOURCE || "https://api.draftngo.com";
+
 /* ===================== ANIMATIONS ===================== */
 const pulse = keyframes`
   0%, 100% { box-shadow: 0 0 0 0 rgba(58,126,126,.4); }
@@ -146,7 +147,42 @@ const NavButton = styled.button`
 `;
 const PlaceholderTab = styled.div`
   width:100%; max-width:1600px; background:#f9fafb; border:2px solid #e5e7eb; border-radius:12px; padding:32px; text-align:center; box-shadow:0 4px 20px rgba(3,0,46,.1);
-  p{ color:#6b7280; font-family:Inter,sans-serif; }
+  p{ color:#6b7280; font-family:Inter,sans-serif; margin-bottom: 20px;}
+`;
+
+const PayButton = styled.button`
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    background: linear-gradient(135deg, #00b191 0%, #008f75 100%);
+    color: white;
+    padding: 12px 24px;
+    border-radius: 8px;
+    border: none;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 12px rgba(0, 177, 145, 0.3);
+    margin: 0 auto;
+
+    &:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 16px rgba(0, 177, 145, 0.4);
+        background: linear-gradient(135deg, #00c4a1 0%, #00a385 100%);
+    }
+
+    &:active {
+        transform: translateY(0);
+    }
+
+    &:disabled {
+        background: #ccc;
+        cursor: not-allowed;
+        transform: none;
+        box-shadow: none;
+    }
 `;
 
 /* ===================== CHOICES ===================== */
@@ -502,6 +538,7 @@ const MapModal = ({ open, onClose, location, otherLocation, onSave }) => {
 /* ===================== MAIN ===================== */
 export const PreConfigureSketch = ({
     // external values
+    tripId, // Zakładam, że tripId jest przekazywany w propsach
     miejsceDocelowe,
     miejsceStartowe,
     dataWyjazdu,
@@ -523,6 +560,51 @@ export const PreConfigureSketch = ({
 }) => {
     const [selectedMenu, setSelectedMenu] = useState(0);
     const [showMapModal, setShowMapModal] = useState(null);
+    const [isProcessingPayment, setIsProcessingPayment] = useState(false);
+
+    // Funkcja inicjująca płatność
+    const handlePayment = async () => {
+        if (!tripId) {
+            alert("Brak ID wyjazdu. Nie można zainicjować płatności.");
+            return;
+        }
+
+        setIsProcessingPayment(true);
+        try {
+            // Zakładam, że autoryzacja odbywa się przez ciasteczka lub nagłówek, który jest dołączany automatycznie (credentials: 'include' w axios lub fetch)
+            // Jeśli używasz fetch, upewnij się, że masz token (jeśli wymagany)
+            
+            const response = await fetch(`${portacc}/payments/init`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    // 'Authorization': `Bearer ${token}` // Jeśli token jest w localStorage
+                },
+                // credentials: 'include', // Ważne dla ciasteczek
+                body: JSON.stringify({ tripId })
+            });
+
+            if (!response.ok) {
+                const errData = await response.json();
+                throw new Error(errData.error || 'Błąd inicjacji płatności');
+            }
+
+            const data = await response.json();
+            if (data.paymentUrl) {
+                // Przekierowanie do Tpay
+                window.location.href = data.paymentUrl;
+            } else {
+                throw new Error("Brak URL płatności w odpowiedzi serwera.");
+            }
+
+        } catch (error) {
+            console.error("Błąd płatności:", error);
+            alert(`Wystąpił błąd: ${error.message}`);
+        } finally {
+            setIsProcessingPayment(false);
+        }
+    };
+
     return (
         <MainContainer>
             <ContentWrapper>
@@ -636,7 +718,13 @@ export const PreConfigureSketch = ({
                     <PlaceholderTab><p>Zakładka Uczestnicy - w przygotowaniu</p></PlaceholderTab>
                 )}
                 {selectedMenu === 2 && (
-                    <PlaceholderTab><p>Zakładka Płatności - w przygotowaniu</p></PlaceholderTab>
+                    <PlaceholderTab>
+                        <p>Tutaj możesz bezpiecznie opłacić swój udział w wyjeździe.</p>
+                        <PayButton onClick={handlePayment} disabled={isProcessingPayment}>
+                            {isProcessingPayment ? <Loader2 className="animate-spin" /> : <CreditCard />}
+                            {isProcessingPayment ? 'Przetwarzanie...' : 'Opłać wyjazd'}
+                        </PayButton>
+                    </PlaceholderTab>
                 )}
             </ContentWrapper>
 
