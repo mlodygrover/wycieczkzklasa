@@ -2973,8 +2973,8 @@ app.post('/payments/init', requireAuth, async (req, res) => {
             callbacks: {
                 // Gdzie przekierować użytkownika PO płatności (Wstecz do sklepu)
                 payerUrls: {
-                    success: `${CLIENT_URL}/trip/${tripId}?paymentStatus=success`,
-                    error: `${CLIENT_URL}/trip/${tripId}?paymentStatus=error`,
+                    success: `${CLIENT_URL}/konfigurator-lounge/${tripId}?paymentStatus=success`,
+                    error: `${CLIENT_URL}/konfigurator-lounge/${tripId}?paymentStatus=error`,
                 },
                 // Gdzie Tpay ma wysłać potwierdzenie w tle (Webhook)
                 notification: {

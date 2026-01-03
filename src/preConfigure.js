@@ -14,6 +14,7 @@ import { TilesRowWrapper } from './realizationPage.js';
 import { TripTimeline } from './activitiesTable.js';
 import { RealizationInfoCard } from './stepsInfo.js';
 import { ConfiguratorEntryTile } from './configuratorEntryTile.js';
+import { PaymentsPage } from './paymentPage.js';
 
 const portacc = process.env.REACT_APP_API_SOURCE || "https://api.draftngo.com";
 
@@ -1339,7 +1340,7 @@ export const PreConfigure = (
             {selectedMenu === 2 && (
                 // Zakładka płatności (obecnie pusta)
                 <div style={{ padding: '20px', textAlign: 'center' }}>
-                    Sekcja płatności jest w trakcie implementacji.
+                    <PaymentsPage computedPrice={10000} tripId={tripId} />
                 </div>
             )}
             {selectedMenu == 3 && <UsersChatbox tripId={tripId} />}
