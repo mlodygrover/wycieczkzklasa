@@ -2975,7 +2975,7 @@ app.post('/payments/init', async (req, res) => {
                 },
                 // Gdzie Tpay ma wysłać potwierdzenie w tle (Webhook)
                 notification: {
-                    url: `${API_URL}/api/payments/notification`,
+                    url: `${API_URL}/payments/notification`,
                     email: req.user.email
                 }
             }
