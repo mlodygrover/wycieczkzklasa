@@ -475,6 +475,8 @@ const readFromUrl = () => {
     const downloadPlan = sp.get('downloadPlan') || null;
     const tripId = sp.get('tripId') || null;
     const nazwaWyjazdu = sp.get('nw') || null;
+    const initPage = Number(sp.get('tab')) ?? 0;
+ 
     return {
         miejsceDocelowe,
         miejsceStartowe,
@@ -487,6 +489,7 @@ const readFromUrl = () => {
         downloadPlan,
         tripId,
         nazwaWyjazdu,
+        initPage
     };
 };
 
@@ -608,10 +611,11 @@ export const PreConfigure = (
     );
     const [publicPlan, setPublicPlan] = useState(true)
     const [nazwaWyjazdu, setNazwaWyjazdu] = useState(urlDefaults.nazwaWyjazdu ?? nazwaWyjazduInit)
-    const [selectedMenu, setSelectedMenu] = useState(0);
-
+    const [selectedMenu, setSelectedMenu] = useState(urlDefaults.initPage ?? 0);
+    console.log(urlDefaults)
     // 4) Stany / błędy planów
     const [synchronisedPlan, setsynchronisedPlan] = useState(null);
+    const [paymentStatuses, setPaymentStatuses] = useState(null);
     const [downloadedPlan, setDownloadedPlan] = useState(null); // opcjonalne użycie
     const [planError, setPlanError] = useState(null);
     const [planLoading, setPlanLoading] = useState(false);
@@ -727,9 +731,31 @@ export const PreConfigure = (
 
         (async () => {
             try {
+                // 1. Pobierz plan
                 const plan = await fetchTripPlanById(tripId, { signal: ac.signal });
                 setsynchronisedPlan(plan);
-                console.log("Pobrano plan", plan)
+                console.log("Pobrano plan", plan);
+
+                // 2. Pobierz statusy płatności (dodane)
+                try {
+                    const payResp = await fetch(`${portacc}/api/trip-plans/${tripId}/payment-statuses`, {
+                        method: "GET",
+                        credentials: "include", // Ważne dla ciasteczek sesyjnych
+                        headers: { Accept: "application/json" },
+                        signal: ac.signal,
+                    });
+
+                    if (payResp.ok) {
+                        const payData = await payResp.json();
+                        setPaymentStatuses(payData.statuses)
+                        console.log(payData.statuses, paymentStatuses)
+                    }
+                } catch (payErr) {
+                    if (payErr.name !== "AbortError") {
+                        console.error("Network error przy płatnościach:", payErr);
+                    }
+                }
+
             } catch (e) {
                 if (e.name !== "AbortError") {
                     setPlanError(e.message || "Fetch error");
@@ -742,7 +768,6 @@ export const PreConfigure = (
 
         return () => ac.abort();
     }, [tripId]);
-
     // 8) Jeżeli w URL jest downloadPlan, a nie ma tripId – pobierz plan „do odczytu”
     useEffect(() => {
         if (!downloadPlan || !String(downloadPlan).trim()) return;
@@ -1253,7 +1278,7 @@ export const PreConfigure = (
 
                     <div className="preConfigureButtons">
 
-                        {!realizationStatus  ? <a
+                        {!realizationStatus ? <a
                             className={`preConfigureButton${canGoToConfigurator && !synchronisingPlan ? '' : ' disabled'}`}
                             href={canGoToConfigurator && !synchronisingPlan ? konfiguratorUrl : undefined}
                             onClick={(e) => {
@@ -1334,6 +1359,7 @@ export const PreConfigure = (
                 <ParticipantsTable
                     users={synchronisedPlan?.participants ?? ["err_loading"]}
                     authors={synchronisedPlan?.authors ?? ["err_loading"]}
+                    paymentStatuses={paymentStatuses}
                 />
                 <UsersChatbox tripId={tripId} />
             </div>
@@ -1343,7 +1369,7 @@ export const PreConfigure = (
                     <PaymentsPage computedPrice={10000} tripId={tripId} />
                 </div>
             )}
-            {selectedMenu == 3 && <UsersChatbox tripId={tripId} />}
+        
             {sharePopupOpened && <PreConfigureSharePopupWrapper onClick={() => setSharePopupOpened(false)}>
                 <PreConfigureSharePopup onClick={(e) => { e.stopPropagation() }}>
                     <div className='sharePopupCloseBar'>

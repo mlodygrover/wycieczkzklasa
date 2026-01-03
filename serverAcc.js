@@ -2973,8 +2973,8 @@ app.post('/payments/init', requireAuth, async (req, res) => {
             callbacks: {
                 // Gdzie przekierować użytkownika PO płatności (Wstecz do sklepu)
                 payerUrls: {
-                    success: `${CLIENT_URL}/konfigurator-lounge/${tripId}?paymentStatus=success`,
-                    error: `${CLIENT_URL}/konfigurator-lounge/${tripId}?paymentStatus=error`,
+                    success: `${CLIENT_URL}/konfigurator-lounge?tripId=${tripId}&paymentStatus=success&tab=2`,
+                    error: `${CLIENT_URL}/konfigurator-lounge/?tripId=${tripId}&paymentStatus=error&tab=2`,
                 },
                 // Gdzie Tpay ma wysłać potwierdzenie w tle (Webhook)
                 notification: {
@@ -3056,6 +3056,87 @@ app.post('/payments/notification', express.urlencoded({ extended: true }), async
     res.send('TRUE');
 });
 
+/**
+ * Zwraca statusy płatności dla wszystkich uczestników wyjazdu.
+ * * Kody statusów:
+ * 0 - Płatność istnieje i amountPaid >= amountRequired (Opłacono)
+ * 1 - Płatność istnieje, ale amountPaid < amountRequired (Niedopłata/Częściowa)
+ * 2 - Brak rekordu płatności (Nie rozpoczęto)
+ * * @param {string} tripId 
+ * @returns {Promise<Object>} Mapa { userId: statusCode }
+ */
+async function checkParticipantsPaymentStatus(tripId) {
+    // 1. Pobierz plan wyjazdu
+    const trip = await TripPlan.findById(tripId);
+    if (!trip) {
+        throw new Error('TripPlan not found');
+    }
+
+    // 2. Zbierz unikalne ID wszystkich uczestników (authors + users)
+    const allParticipantIds = new Set([
+        ...(trip.authors || []).map(id => id.toString()),
+        ...(trip.users || []).map(id => id.toString())
+    ]);
+
+    // 3. Pobierz WSZYSTKIE płatności dla tego wyjazdu jednym zapytaniem
+    const payments = await Payment.find({ tripId: trip._id });
+
+    // 4. Stwórz mapę dla szybkiego dostępu: userId -> obiekt płatności
+    const paymentMap = new Map();
+    payments.forEach(p => {
+        paymentMap.set(p.userId.toString(), p);
+    });
+
+    // 5. Generuj wynik
+    const results = {};
+
+    allParticipantIds.forEach(userId => {
+        const payment = paymentMap.get(userId);
+
+        if (!payment) {
+            // BRAK PŁATNOŚCI
+            results[userId] = 2;
+        } else {
+            // PŁATNOŚĆ ISTNIEJE - sprawdzamy kwotę
+            // Używamy >= na wypadek nadpłaty (co też jest OK)
+            if (payment.amountPaid >= payment.amountRequired) {
+                // OPŁACONO (kwota się zgadza lub jest wyższa)
+                results[userId] = 0;
+            } else {
+                // NIERÓWNA (za mało wpłacono)
+                results[userId] = 1;
+            }
+        }
+    });
+
+    return results;
+}
+// Pamiętaj o imporcie funkcji na górze pliku
+// const { checkParticipantsPaymentStatus } = require('./utils/paymentHelpers'); 
+
+app.get('/api/trip-plans/:tripId/payment-statuses', requireAuth, async (req, res) => {
+    const { tripId } = req.params;
+
+    if (!mongoose.Types.ObjectId.isValid(tripId)) {
+        return res.status(400).json({ error: "InvalidObjectId" });
+    }
+
+    try {
+        // Sprawdzenie uprawnień (opcjonalnie - czy user jest uczestnikiem/autorem)
+        // ... (Twoja logika autoryzacji) ...
+
+        const statuses = await checkParticipantsPaymentStatus(tripId);
+
+        res.json({
+            tripId,
+            statuses // Obiekt w formacie { "USER_ID_1": 0, "USER_ID_2": 2, ... }
+        });
+
+    } catch (err) {
+        console.error("Błąd sprawdzania statusów płatności:", err);
+        res.status(500).json({ error: "ServerError" });
+    }
+});
 const port = process.env.PORT || 5007;
 
 app.listen(port, () => {

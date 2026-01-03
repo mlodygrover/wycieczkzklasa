@@ -214,7 +214,7 @@ const IconButton = styled.button`
     }
 `
 
-export const ParticipantsTable = ({ users = [], authors = [] }) => {
+export const ParticipantsTable = ({ users = [], authors = [], paymentStatuses = [] }) => {
     const userFromStore = useUserStore((state) => state.user);
 
     useEffect(() => {
@@ -228,7 +228,8 @@ export const ParticipantsTable = ({ users = [], authors = [] }) => {
     }, [userFromStore?._id]);
 
     const loggedUserId = userFromStore?._id ? String(userFromStore._id) : null;
-
+    const status = paymentStatuses && paymentStatuses[loggedUserId];
+    console.log(paymentStatuses)
     return (
         <ParticipantsTableMainbox>
             <StyledTable>
@@ -238,7 +239,7 @@ export const ParticipantsTable = ({ users = [], authors = [] }) => {
                         <HeaderCell className="mailCell headerFull">Adres email</HeaderCell>
                         <HeaderCell className="headerFull">Status płatności</HeaderCell>
                         <HeaderCell className="actionCell headerFull"></HeaderCell>
-                        
+
                         <HeaderCell className="headerMobile">Osoba</HeaderCell>
                         <HeaderCell className="mailCell headerMobile">Email</HeaderCell>
                         <HeaderCell className="headerMobile">Status</HeaderCell>
@@ -271,11 +272,11 @@ export const ParticipantsTable = ({ users = [], authors = [] }) => {
                                         </span>
                                     </TableCell>
                                     <TableCell>
-                                        <PaymentStatus className="paymentStatus none">
-                                            Nieopłacone
+                                        <PaymentStatus className={`paymentStatus ${status === 0 ? 'done' : status === 1 ? 'part' : 'none'}`}>
+                                            {status === 0 ? 'Opłacono' : status === 1 ? 'Niedopłata' : 'Brak wpłaty'}
                                         </PaymentStatus>
                                     </TableCell>
-                                    
+
                                     {/* --- Akcje (zawsze widoczne) --- */}
                                     <TableCell className="actionCell">
                                         {!isLogged && (
