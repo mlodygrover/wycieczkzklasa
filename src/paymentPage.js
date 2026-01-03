@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import styled, { keyframes, css } from 'styled-components';
 import { 
     CreditCard, CheckCircle, XCircle, Loader2, 
-    ShieldCheck, Lock, ChevronRight, Info 
+    ShieldCheck, Lock, ChevronRight, Info, AlertTriangle, FileText, Clock 
 } from 'lucide-react';
 
 const portacc = process.env.REACT_APP_API_SOURCE || "https://api.draftngo.com";
@@ -18,16 +18,16 @@ const slideUp = keyframes`
 const PageWrapper = styled.div`
     width: 90%;
     max-width: 1600px;
-    margin: 40px auto;
+    margin: 0 auto;
     font-family: 'Inter', sans-serif;
     animation: ${slideUp} 0.5s ease-out;
+    margin-bottom: 10px;
 `;
 
 const ContentGrid = styled.div`
     display: grid;
     grid-template-columns: 1.4fr 1fr;
     gap: 40px;
-    margin-top: 30px;
 
     @media (max-width: 960px) {
         grid-template-columns: 1fr;
@@ -126,7 +126,7 @@ const PayButton = styled.button`
     cursor: pointer;
     display: flex;
     align-items: center;
-    justify-content: space-between; /* Tekst po lewej, strzałka po prawej */
+    justify-content: space-between;
     padding: 0 32px;
     transition: all 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
     box-shadow: 0 8px 20px -6px rgba(0,0,0,0.3);
@@ -181,7 +181,7 @@ const InfoCard = styled.div`
 
     @media (max-width: 600px) {
         padding: 24px;
-        order: -1; /* Na mobile dajemy to pod spód lub nad, zależnie od preferencji. Tu zostawiam domyślnie, ale można zmienić order */
+        order: -1; 
     }
 `;
 
@@ -209,21 +209,9 @@ const InfoRow = styled.div`
         color: #111;
         text-align: right;
         
-        &.highlight {
-            color: #059669;
-            background: #d1fae5;
-            padding: 4px 10px;
-            border-radius: 6px;
-            font-size: 13px;
-        }
-        
-        &.pending {
-            color: #d97706;
-            background: #fef3c7;
-            padding: 4px 10px;
-            border-radius: 6px;
-            font-size: 13px;
-        }
+        &.status-0 { color: #059669; background: #d1fae5; padding: 4px 10px; border-radius: 6px; font-size: 13px; }
+        &.status-1 { color: #b45309; background: #fef3c7; padding: 4px 10px; border-radius: 6px; font-size: 13px; }
+        &.status-2 { color: #d97706; background: #fffbeb; padding: 4px 10px; border-radius: 6px; font-size: 13px; border: 1px solid #fde68a; }
     }
 `;
 
@@ -248,11 +236,7 @@ const ProviderInfo = styled.div`
         color: white;
     }
 
-    div {
-        display: flex;
-        flex-direction: column;
-    }
-
+    div { display: flex; flex-direction: column; }
     span.tiny { font-size: 11px; color: #888; text-transform: uppercase; font-weight: 600; }
     span.bold { font-size: 14px; font-weight: 700; color: #111; }
 `;
@@ -268,25 +252,59 @@ const Notification = styled.div`
     margin-bottom: 16px;
     
     ${p => p.$type === 'success' && css`
-        background: #ecfdf5;
-        border: 1px solid #a7f3d0;
-        color: #065f46;
-        svg { color: #059669; }
+        background: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46; svg { color: #059669; }
     `}
-
     ${p => p.$type === 'error' && css`
-        background: #fef2f2;
-        border: 1px solid #fecaca;
-        color: #991b1b;
-        svg { color: #dc2626; }
+        background: #fef2f2; border: 1px solid #fecaca; color: #991b1b; svg { color: #dc2626; }
     `}
+`;
+
+// --- BLOKADA PŁATNOŚCI ---
+const BlockedCard = styled(MainCard)`
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    min-height: 300px;
+    background: #f9fafb;
+    border: 2px dashed #e5e7eb;
+    box-shadow: none;
+`;
+
+const BlockedContent = styled.div`
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+    max-width: 400px;
+
+    .icon-wrapper {
+        width: 64px; height: 64px; background: #e5e7eb; border-radius: 50%;
+        display: flex; align-items: center; justify-content: center;
+        margin-bottom: 8px;
+        svg { color: #6b7280; width: 32px; height: 32px; }
+    }
+    
+    h3 { margin: 0; font-size: 20px; color: #111; }
+    p { margin: 0; color: #666; font-size: 14px; line-height: 1.5; }
+    
+    &.paid {
+        .icon-wrapper { background: #d1fae5; svg { color: #059669; } }
+    }
+    
+    &.verify {
+        .icon-wrapper { background: #fff7ed; svg { color: #ea580c; } }
+    }
 `;
 
 // ===================== KOMPONENT =====================
 
-export const PaymentsPage = ({ tripId, computedPrice, paymentStatus: propPaymentStatus }) => {
+export const PaymentsPage = ({ tripId, computedPrice, paymentStatus: propPaymentStatus, realizationStatus }) => {
     const [isProcessing, setIsProcessing] = useState(false);
     const [urlStatus, setUrlStatus] = useState(null);
+
+    const currentStatus = Number(propPaymentStatus); 
+    const isPaid = currentStatus === 0;
 
     useEffect(() => {
         const sp = new URLSearchParams(window.location.search);
@@ -328,12 +346,81 @@ export const PaymentsPage = ({ tripId, computedPrice, paymentStatus: propPayment
         }
     };
 
-    const isPaid = propPaymentStatus === 'completed';
+    const getStatusLabel = (status) => {
+        switch (status) {
+            case 0: return 'Opłacono';
+            case 1: return 'Niedopłata';
+            case 2: return 'Oczekuje na wpłatę';
+            default: return 'Nieznany';
+        }
+    };
 
+    // --- RENDEROWANIE BLOKAD ---
+
+    // 1. Jeśli użytkownik już opłacił (paymentStatus === 0) - zawsze wygrywa
+    if (isPaid) {
+        return (
+            <PageWrapper>
+                <BlockedCard>
+                    <BlockedContent className="paid">
+                        <div className="icon-wrapper"><CheckCircle /></div>
+                        <h3>Wyjazd opłacony</h3>
+                        <p>Dziękujemy! Twój udział w wyjeździe został w pełni opłacony. Nie musisz wykonywać żadnych dodatkowych działań.</p>
+                    </BlockedContent>
+                </BlockedCard>
+            </PageWrapper>
+        );
+    }
+
+    // 2. Szkic (status 0)
+    if (realizationStatus === 0) {
+        return (
+            <PageWrapper>
+                <BlockedCard>
+                    <BlockedContent>
+                        <div className="icon-wrapper"><FileText /></div>
+                        <h3>Płatność niedostępna</h3>
+                        <p>Wyjazd znajduje się w fazie szkicu. Płatność będzie możliwa dopiero po zgłoszeniu wyjazdu do realizacji przez organizatora.</p>
+                    </BlockedContent>
+                </BlockedCard>
+            </PageWrapper>
+        );
+    }
+
+    // 3. Oczekiwanie na weryfikację administratora (status 1) - NOWOŚĆ
+    if (realizationStatus === 1) {
+        return (
+            <PageWrapper>
+                <BlockedCard>
+                    <BlockedContent className="verify">
+                        <div className="icon-wrapper"><Clock /></div>
+                        <h3>Weryfikacja wyjazdu</h3>
+                        <p>Administrator weryfikuje zgłoszony wyjazd. Płatność zostanie odblokowana po zatwierdzeniu planu.</p>
+                    </BlockedContent>
+                </BlockedCard>
+            </PageWrapper>
+        );
+    }
+
+    // 4. Wyjazd zakończony / po terminie (status > 2)
+    if (realizationStatus > 2) {
+        return (
+            <PageWrapper>
+                <BlockedCard>
+                    <BlockedContent>
+                        <div className="icon-wrapper"><AlertTriangle /></div>
+                        <h3>Płatność zakończona</h3>
+                        <p>Nie można już dokonać płatności dla tego wyjazdu (status realizacji: {realizationStatus}).</p>
+                    </BlockedContent>
+                </BlockedCard>
+            </PageWrapper>
+        );
+    }
+
+    // --- GŁÓWNY WIDOK PŁATNOŚCI (Dla realizationStatus === 2 i braku wpłaty) ---
     return (
         <PageWrapper>
             
-            {/* --- NOTYFIKACJE --- */}
             {urlStatus === 'success' && (
                 <Notification $type="success">
                     <CheckCircle size={20} />
@@ -370,13 +457,13 @@ export const PaymentsPage = ({ tripId, computedPrice, paymentStatus: propPayment
                     <PaymentActions>
                         <PayButton 
                             onClick={handlePayment} 
-                            disabled={isProcessing || isPaid || !computedPrice}
+                            disabled={isProcessing || !computedPrice}
                         >
                             <div className="btn-label">
                                 {isProcessing ? <Loader2 className="animate-spin" /> : <CreditCard />}
-                                <span>{isPaid ? 'Wyjazd opłacony' : 'Przejdź do płatności'}</span>
+                                <span>Przejdź do płatności</span>
                             </div>
-                            {!isPaid && !isProcessing && <ChevronRight size={20} />}
+                            {!isProcessing && <ChevronRight size={20} />}
                         </PayButton>
 
                         <SecurityBadge>
@@ -395,8 +482,8 @@ export const PaymentsPage = ({ tripId, computedPrice, paymentStatus: propPayment
 
                     <InfoRow>
                         <span className="label">Status</span>
-                        <span className={`value ${isPaid ? 'highlight' : 'pending'}`}>
-                            {isPaid ? 'Opłacono' : 'Oczekuje'}
+                        <span className={`value status-${currentStatus}`}>
+                            {getStatusLabel(currentStatus)}
                         </span>
                     </InfoRow>
 

@@ -228,8 +228,7 @@ export const ParticipantsTable = ({ users = [], authors = [], paymentStatuses = 
     }, [userFromStore?._id]);
 
     const loggedUserId = userFromStore?._id ? String(userFromStore._id) : null;
-    const status = paymentStatuses && paymentStatuses[loggedUserId];
-    console.log(paymentStatuses)
+
     return (
         <ParticipantsTableMainbox>
             <StyledTable>
@@ -253,6 +252,7 @@ export const ParticipantsTable = ({ users = [], authors = [], paymentStatuses = 
                             const isLogged = loggedUserId && loggedUserId === userId;
                             const isAuthor = authors.includes(userId);
 
+                            const status = paymentStatuses && paymentStatuses[userId];
                             return (
                                 <TableRow key={userId || idx} className={isLogged ? "loggedUser" : ""}>
                                     <TableCell>

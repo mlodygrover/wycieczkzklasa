@@ -19,7 +19,6 @@ import { PaymentsPage } from './paymentPage.js';
 const portacc = process.env.REACT_APP_API_SOURCE || "https://api.draftngo.com";
 
 const port = process.env.REACT_APP__SERVER_API_SOURCE || "https://wycieczkzklasa.onrender.com";
-console.log(port)
 /* ===================== LAYOUT ===================== */
 const PreConfigureMainbox = styled.div`
   width: 100%;
@@ -476,7 +475,7 @@ const readFromUrl = () => {
     const tripId = sp.get('tripId') || null;
     const nazwaWyjazdu = sp.get('nw') || null;
     const initPage = Number(sp.get('tab')) ?? 0;
- 
+
     return {
         miejsceDocelowe,
         miejsceStartowe,
@@ -612,7 +611,7 @@ export const PreConfigure = (
     const [publicPlan, setPublicPlan] = useState(true)
     const [nazwaWyjazdu, setNazwaWyjazdu] = useState(urlDefaults.nazwaWyjazdu ?? nazwaWyjazduInit)
     const [selectedMenu, setSelectedMenu] = useState(urlDefaults.initPage ?? 0);
-    console.log(urlDefaults)
+ 
     // 4) Stany / błędy planów
     const [synchronisedPlan, setsynchronisedPlan] = useState(null);
     const [paymentStatuses, setPaymentStatuses] = useState(null);
@@ -748,7 +747,6 @@ export const PreConfigure = (
                     if (payResp.ok) {
                         const payData = await payResp.json();
                         setPaymentStatuses(payData.statuses)
-                        console.log(payData.statuses, paymentStatuses)
                     }
                 } catch (payErr) {
                     if (payErr.name !== "AbortError") {
@@ -861,7 +859,6 @@ export const PreConfigure = (
         if (typeof publicPlanSource === "boolean") {
             setPublicPlan(publicPlanSource);
         }
-        console.log("TETS2", nazwaWyjazduSource);
         if (nazwaWyjazduSource) setNazwaWyjazdu(nazwaWyjazduSource);
         if (activitiesScheduleSource) setActivitiesSchedule(activitiesScheduleSource);
 
@@ -1134,7 +1131,6 @@ export const PreConfigure = (
 
         if (canSave) {
             (async () => {
-                console.log("do zapisania")
                 await saveOrCreateTripPlan({ signal: ac.signal });
             })();
         }
@@ -1365,11 +1361,9 @@ export const PreConfigure = (
             </div>
             {selectedMenu === 2 && (
                 // Zakładka płatności (obecnie pusta)
-                <div style={{ padding: '20px', textAlign: 'center' }}>
-                    <PaymentsPage computedPrice={10000} tripId={tripId} />
-                </div>
+                <PaymentsPage computedPrice={synchronisedPlan?.computedPrice ?? 0} tripId={tripId} realizationStatus={synchronisedPlan.realizationStatus} paymentStatus={paymentStatuses?.[userFromStore._id]} />
             )}
-        
+
             {sharePopupOpened && <PreConfigureSharePopupWrapper onClick={() => setSharePopupOpened(false)}>
                 <PreConfigureSharePopup onClick={(e) => { e.stopPropagation() }}>
                     <div className='sharePopupCloseBar'>
