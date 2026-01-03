@@ -4,7 +4,7 @@ import {
     MapPin, Search, X, Calendar as CalendarIcon, Minus, Plus, Bus, Train, Car,
     Home, Building2, Star, Check, Map, ChevronLeft, ChevronRight, AlertCircle, CreditCard, Loader2
 } from 'lucide-react';
-// import { TripSchedulePreview } from './activitiesSchedulePreview'; // Zakładam, że to importujesz gdzie indziej
+// import { TripSchedulePreview } from './activitiesSchedulePreview';
 
 const port = process.env.REACT_APP__SERVER_API_SOURCE || "https://wycieczkzklasa.onrender.com";
 const portacc = process.env.REACT_APP_API_SOURCE || "https://api.draftngo.com";
@@ -147,9 +147,10 @@ const NavButton = styled.button`
 `;
 const PlaceholderTab = styled.div`
   width:100%; max-width:1600px; background:#f9fafb; border:2px solid #e5e7eb; border-radius:12px; padding:32px; text-align:center; box-shadow:0 4px 20px rgba(3,0,46,.1);
-  p{ color:#6b7280; font-family:Inter,sans-serif; margin-bottom: 20px;}
+  p{ color:#6b7280; font-family:Inter,sans-serif; }
 `;
 
+/* ===================== NEW BUTTON STYLE ===================== */
 const PayButton = styled.button`
     display: flex;
     align-items: center;
@@ -165,7 +166,8 @@ const PayButton = styled.button`
     cursor: pointer;
     transition: all 0.3s ease;
     box-shadow: 0 4px 12px rgba(0, 177, 145, 0.3);
-    margin: 0 auto;
+    margin-top: 10px;
+    width: 100%;
 
     &:hover {
         transform: translateY(-2px);
@@ -538,7 +540,7 @@ const MapModal = ({ open, onClose, location, otherLocation, onSave }) => {
 /* ===================== MAIN ===================== */
 export const PreConfigureSketch = ({
     // external values
-    tripId, // Zakładam, że tripId jest przekazywany w propsach
+    tripId,
     miejsceDocelowe,
     miejsceStartowe,
     dataWyjazdu,
@@ -562,7 +564,7 @@ export const PreConfigureSketch = ({
     const [showMapModal, setShowMapModal] = useState(null);
     const [isProcessingPayment, setIsProcessingPayment] = useState(false);
 
-    // Funkcja inicjująca płatność
+    // --- PAYMENTS LOGIC ---
     const handlePayment = async () => {
         if (!tripId) {
             alert("Brak ID wyjazdu. Nie można zainicjować płatności.");
@@ -571,16 +573,12 @@ export const PreConfigureSketch = ({
 
         setIsProcessingPayment(true);
         try {
-            // Zakładam, że autoryzacja odbywa się przez ciasteczka lub nagłówek, który jest dołączany automatycznie (credentials: 'include' w axios lub fetch)
-            // Jeśli używasz fetch, upewnij się, że masz token (jeśli wymagany)
-            
-            const response = await fetch(`${portacc}/payments/init`, {
+            const response = await fetch(`${portacc}/payments/init`, { // Upewnij się, że ścieżka to /api/payments/init lub /payments/init zgodnie z backendem
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    // 'Authorization': `Bearer ${token}` // Jeśli token jest w localStorage
                 },
-                // credentials: 'include', // Ważne dla ciasteczek
+                credentials: 'include', // <--- TO MUSI BYĆ ODKOMENTOWANE!
                 body: JSON.stringify({ tripId })
             });
 
@@ -608,124 +606,118 @@ export const PreConfigureSketch = ({
     return (
         <MainContainer>
             <ContentWrapper>
-                {selectedMenu === 0 && (
-                    <GridContainer>
-                        {/* Miejsce docelowe */}
-                        <ConfigBox $isEmpty={!miejsceDocelowe?.nazwa || !miejsceDocelowe?.location?.lat}>
-                            <BoxSubtitle $isEmpty={!miejsceDocelowe?.nazwa || !miejsceDocelowe?.location?.lat}>
-                                Dokąd wybierzemy się tym razem?
-                                {(!miejsceDocelowe?.nazwa || !miejsceDocelowe?.location?.lat) && <RequiredBadge>Wymagane</RequiredBadge>}
-                            </BoxSubtitle>
-                            <BoxTitle $isEmpty={!miejsceDocelowe?.nazwa || !miejsceDocelowe?.location?.lat}>
-                                Miejsce docelowe
-                                {(!miejsceDocelowe?.nazwa || !miejsceDocelowe?.location?.lat) && <AlertCircle size={18} color="#3A7E7E" />}
-                            </BoxTitle>
+                <GridContainer>
+                    {/* Miejsce docelowe */}
+                    <ConfigBox $isEmpty={!miejsceDocelowe?.nazwa || !miejsceDocelowe?.location?.lat}>
+                        <BoxSubtitle $isEmpty={!miejsceDocelowe?.nazwa || !miejsceDocelowe?.location?.lat}>
+                            Dokąd wybierzemy się tym razem?
+                            {(!miejsceDocelowe?.nazwa || !miejsceDocelowe?.location?.lat) && <RequiredBadge>Wymagane</RequiredBadge>}
+                        </BoxSubtitle>
+                        <BoxTitle $isEmpty={!miejsceDocelowe?.nazwa || !miejsceDocelowe?.location?.lat}>
+                            Miejsce docelowe
+                            {(!miejsceDocelowe?.nazwa || !miejsceDocelowe?.location?.lat) && <AlertCircle size={18} color="#3A7E7E" />}
+                        </BoxTitle>
 
-                            <LocationSearch
-                                value={miejsceDocelowe?.nazwa || ''}
-                                onChange={(sel) => setMiejsceDocelowe(sel)}
-                                placeholder="Wpisz miejsce docelowe"
-                                onMapClick={() => setShowMapModal('dest')}
-                            />
-                        </ConfigBox>
+                        <LocationSearch
+                            value={miejsceDocelowe?.nazwa || ''}
+                            onChange={(sel) => setMiejsceDocelowe(sel)}
+                            placeholder="Wpisz miejsce docelowe"
+                            onMapClick={() => setShowMapModal('dest')}
+                        />
+                    </ConfigBox>
 
-                        {/* Miejsce startowe */}
-                        <ConfigBox $isEmpty={!miejsceStartowe?.nazwa || !miejsceStartowe?.location?.lat}>
-                            <BoxSubtitle $isEmpty={!miejsceStartowe?.nazwa || !miejsceStartowe?.location?.lat}>
-                                Gdzie zaczynamy naszą przygodę?
-                                {(!miejsceStartowe?.nazwa || !miejsceStartowe?.location?.lat) && <RequiredBadge>Wymagane</RequiredBadge>}
-                            </BoxSubtitle>
-                            <BoxTitle $isEmpty={!miejsceStartowe?.nazwa || !miejsceStartowe?.location?.lat}>
-                                Miejsce startowe
-                                {(!miejsceStartowe?.nazwa || !miejsceStartowe?.location?.lat) && <AlertCircle size={18} color="#3A7E7E" />}
-                            </BoxTitle>
+                    {/* Miejsce startowe */}
+                    <ConfigBox $isEmpty={!miejsceStartowe?.nazwa || !miejsceStartowe?.location?.lat}>
+                        <BoxSubtitle $isEmpty={!miejsceStartowe?.nazwa || !miejsceStartowe?.location?.lat}>
+                            Gdzie zaczynamy naszą przygodę?
+                            {(!miejsceStartowe?.nazwa || !miejsceStartowe?.location?.lat) && <RequiredBadge>Wymagane</RequiredBadge>}
+                        </BoxSubtitle>
+                        <BoxTitle $isEmpty={!miejsceStartowe?.nazwa || !miejsceStartowe?.location?.lat}>
+                            Miejsce startowe
+                            {(!miejsceStartowe?.nazwa || !miejsceStartowe?.location?.lat) && <AlertCircle size={18} color="#3A7E7E" />}
+                        </BoxTitle>
 
-                            <LocationSearch
-                                value={miejsceStartowe?.nazwa || ''}
-                                onChange={(sel) => setMiejsceStartowe(sel)}
-                                placeholder="Wpisz miejsce startowe"
-                                onMapClick={() => setShowMapModal('start')}
-                            />
-                        </ConfigBox>
+                        <LocationSearch
+                            value={miejsceStartowe?.nazwa || ''}
+                            onChange={(sel) => setMiejsceStartowe(sel)}
+                            placeholder="Wpisz miejsce startowe"
+                            onMapClick={() => setShowMapModal('start')}
+                        />
+                    </ConfigBox>
 
-                        {/* Data wyjazdu */}
-                        <ConfigBox $isEmpty={!dataWyjazdu}>
-                            <BoxSubtitle $isEmpty={!dataWyjazdu}>
-                                Kiedy jedziemy?
-                                {!dataWyjazdu && <RequiredBadge>Wymagane</RequiredBadge>}
-                            </BoxSubtitle>
-                            <BoxTitle $isEmpty={!dataWyjazdu}>
-                                Data wyjazdu
-                                {!dataWyjazdu && <AlertCircle size={18} color="#3A7E7E" />}
-                            </BoxTitle>
-                            <DatePicker value={dataWyjazdu} onChange={setDataWyjazdu} placeholder="Wybierz datę wyjazdu" />
-                        </ConfigBox>
+                    {/* Data wyjazdu */}
+                    <ConfigBox $isEmpty={!dataWyjazdu}>
+                        <BoxSubtitle $isEmpty={!dataWyjazdu}>
+                            Kiedy jedziemy?
+                            {!dataWyjazdu && <RequiredBadge>Wymagane</RequiredBadge>}
+                        </BoxSubtitle>
+                        <BoxTitle $isEmpty={!dataWyjazdu}>
+                            Data wyjazdu
+                            {!dataWyjazdu && <AlertCircle size={18} color="#3A7E7E" />}
+                        </BoxTitle>
+                        <DatePicker value={dataWyjazdu} onChange={setDataWyjazdu} placeholder="Wybierz datę wyjazdu" />
+                    </ConfigBox>
 
-                        {/* Data powrotu */}
-                        <ConfigBox $isEmpty={!dataPowrotu}>
-                            <BoxSubtitle $isEmpty={!dataPowrotu}>
-                                Niestety powrót też jest ważny...
-                                {!dataPowrotu && <RequiredBadge>Wymagane</RequiredBadge>}
-                            </BoxSubtitle>
-                            <BoxTitle $isEmpty={!dataPowrotu}>
-                                Data powrotu
-                                {!dataPowrotu && <AlertCircle size={18} color="#3A7E7E" />}
-                            </BoxTitle>
-                            <DatePicker value={dataPowrotu} onChange={setDataPowrotu} placeholder="Wybierz datę powrotu" />
-                        </ConfigBox>
+                    {/* Data powrotu */}
+                    <ConfigBox $isEmpty={!dataPowrotu}>
+                        <BoxSubtitle $isEmpty={!dataPowrotu}>
+                            Niestety powrót też jest ważny...
+                            {!dataPowrotu && <RequiredBadge>Wymagane</RequiredBadge>}
+                        </BoxSubtitle>
+                        <BoxTitle $isEmpty={!dataPowrotu}>
+                            Data powrotu
+                            {!dataPowrotu && <AlertCircle size={18} color="#3A7E7E" />}
+                        </BoxTitle>
+                        <DatePicker value={dataPowrotu} onChange={setDataPowrotu} placeholder="Wybierz datę powrotu" />
+                    </ConfigBox>
 
-                        {/* Liczba uczestników */}
-                        <ConfigBox>
-                            <BoxSubtitle>Uuu, sporo nas</BoxSubtitle>
-                            <BoxTitle>Liczba uczestników</BoxTitle>
-                            <CounterWrapper>
-                                <CounterButton onClick={() => setLiczbaUczestnikow(Math.max(1, (liczbaUczestnikow || 1) - 1))}><Minus size={16} /></CounterButton>
-                                <CounterInput type="number" value={liczbaUczestnikow ?? 1} onChange={(e) => setLiczbaUczestnikow(Math.max(1, parseInt(e.target.value) || 1))} min="1" />
-                                <CounterButton $primary onClick={() => setLiczbaUczestnikow((liczbaUczestnikow || 1) + 1)}><Plus size={16} /></CounterButton>
-                            </CounterWrapper>
-                        </ConfigBox>
+                    {/* Liczba uczestników */}
+                    <ConfigBox>
+                        <BoxSubtitle>Uuu, sporo nas</BoxSubtitle>
+                        <BoxTitle>Liczba uczestników</BoxTitle>
+                        <CounterWrapper>
+                            <CounterButton onClick={() => setLiczbaUczestnikow(Math.max(1, (liczbaUczestnikow || 1) - 1))}><Minus size={16} /></CounterButton>
+                            <CounterInput type="number" value={liczbaUczestnikow ?? 1} onChange={(e) => setLiczbaUczestnikow(Math.max(1, parseInt(e.target.value) || 1))} min="1" />
+                            <CounterButton $primary onClick={() => setLiczbaUczestnikow((liczbaUczestnikow || 1) + 1)}><Plus size={16} /></CounterButton>
+                        </CounterWrapper>
+                    </ConfigBox>
 
-                        {/* Liczba opiekunów */}
-                        <ConfigBox>
-                            <BoxSubtitle>Każdy opiekun to skarb</BoxSubtitle>
-                            <BoxTitle>Liczba opiekunów</BoxTitle>
-                            <CounterWrapper>
-                                <CounterButton onClick={() => setLiczbaOpiekunow(Math.max(0, (liczbaOpiekunow || 0) - 1))}><Minus size={16} /></CounterButton>
-                                <CounterInput type="number" value={liczbaOpiekunow ?? 0} onChange={(e) => setLiczbaOpiekunow(Math.max(0, parseInt(e.target.value) || 0))} min="0" />
-                                <CounterButton $primary onClick={() => setLiczbaOpiekunow((liczbaOpiekunow || 0) + 1)}><Plus size={16} /></CounterButton>
-                            </CounterWrapper>
-                        </ConfigBox>
+                    {/* Liczba opiekunów */}
+                    <ConfigBox>
+                        <BoxSubtitle>Każdy opiekun to skarb</BoxSubtitle>
+                        <BoxTitle>Liczba opiekunów</BoxTitle>
+                        <CounterWrapper>
+                            <CounterButton onClick={() => setLiczbaOpiekunow(Math.max(0, (liczbaOpiekunow || 0) - 1))}><Minus size={16} /></CounterButton>
+                            <CounterInput type="number" value={liczbaOpiekunow ?? 0} onChange={(e) => setLiczbaOpiekunow(Math.max(0, parseInt(e.target.value) || 0))} min="0" />
+                            <CounterButton $primary onClick={() => setLiczbaOpiekunow((liczbaOpiekunow || 0) + 1)}><Plus size={16} /></CounterButton>
+                        </CounterWrapper>
+                    </ConfigBox>
 
-                        {/* Standard noclegu */}
-                        <ConfigBox>
-                            <BoxSubtitle>Sen to podstawa udanego wyjazdu</BoxSubtitle>
-                            <BoxTitle>Standard noclegu</BoxTitle>
-                            <HotelSelector value={standardHotelu} onChange={setStandardHotelu} />
-                        </ConfigBox>
+                    {/* Standard noclegu */}
+                    <ConfigBox>
+                        <BoxSubtitle>Sen to podstawa udanego wyjazdu</BoxSubtitle>
+                        <BoxTitle>Standard noclegu</BoxTitle>
+                        <HotelSelector value={standardHotelu} onChange={setStandardHotelu} />
+                    </ConfigBox>
 
-                        {/* Standard transportu */}
-                        <ConfigBox>
-                            <BoxSubtitle>Teleportacja? Jeszcze nie teraz...</BoxSubtitle>
-                            <BoxTitle>Standard transportu</BoxTitle>
-                            <TransportSelector value={standardTransportu} onChange={setStandardTransportu} />
-                        </ConfigBox>
-                        
-                    </GridContainer>
+                    {/* Standard transportu */}
+                    <ConfigBox>
+                        <BoxSubtitle>Teleportacja? Jeszcze nie teraz...</BoxSubtitle>
+                        <BoxTitle>Standard transportu</BoxTitle>
+                        <TransportSelector value={standardTransportu} onChange={setStandardTransportu} />
+                    </ConfigBox>
 
-                )}
-
-                {selectedMenu === 1 && (
-                    <PlaceholderTab><p>Zakładka Uczestnicy - w przygotowaniu</p></PlaceholderTab>
-                )}
-                {selectedMenu === 2 && (
-                    <PlaceholderTab>
-                        <p>Tutaj możesz bezpiecznie opłacić swój udział w wyjeździe.</p>
+                    {/* PŁATNOŚCI - NOWA SEKCJA */}
+                    <ConfigBox>
+                        <BoxSubtitle>Płatność</BoxSubtitle>
+                        <BoxTitle>Opłać wyjazd</BoxTitle>
                         <PayButton onClick={handlePayment} disabled={isProcessingPayment}>
                             {isProcessingPayment ? <Loader2 className="animate-spin" /> : <CreditCard />}
                             {isProcessingPayment ? 'Przetwarzanie...' : 'Opłać wyjazd'}
                         </PayButton>
-                    </PlaceholderTab>
-                )}
+                    </ConfigBox>
+
+                </GridContainer>
             </ContentWrapper>
 
             {/* Map modals */}

@@ -15,6 +15,9 @@ const openai = new OpenAI({
     apiKey: process.env.OPENAI_API_KEY,
 });
 const app = express();
+
+const CLIENT_URL = process.env.CLIENT_URL || "http://localhost:3000";
+
 // bardzo ważne dla Render / Heroku / proxy
 app.set('trust proxy', 1);
 /* =========================
@@ -212,7 +215,7 @@ app.get('/auth/facebook/callback',
     }),
     (req, res) => {
         // === LOGIN SUCCESS ===
-        const CLIENT_URL = process.env.CLIENT_URL || "http://localhost:3000";
+
 
         // 1. Pobieramy i dekodujemy parametr state zwrócony przez Facebooka
         let returnToPath = '/';
@@ -2918,10 +2921,10 @@ const TPAY_CLIENT_ID = process.env.TPAY_CLIENT_ID;
 const TPAY_CLIENT_SECRET = process.env.TPAY_CLIENT_SECRET;
 const TPAY_MERCHANT_ID = process.env.TPAY_MERCHANT_ID;
 const TPAY_SECURITY_CODE = process.env.TPAY_SECURITY_CODE;
-const TPAY_API_URL = 'https://api.tpay.org'; // Sandbox. Dla produkcji: api.tpay.com
+const TPAY_API_URL = 'https://openapi.sandbox.tpay.com'; // Sandbox. Dla produkcji: api.tpay.com
 
 const API_URL = process.env.API_URL;
-app.post('/payments/init', async (req, res) => {
+app.post('/payments/init', requireAuth, async (req, res) => {
     // Zakładam, że masz middleware auth, który dodaje req.user
     const userId = req.user._id;
     const { tripId } = req.body;

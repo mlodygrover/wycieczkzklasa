@@ -1318,6 +1318,7 @@ export const PreConfigure = (
                         setLiczbaOpiekunow={setLiczbaOpiekunow}
                         setStandardHotelu={setStandardHotelu}
                         setStandardTransportu={setStandardTransportu}
+                        tripId={tripId}
                     />
                     <ConfiguratorEntryTile isLogged={userFromStore ? true : false} ready={canGoToConfigurator && !synchronisingPlan} tripId={tripId} konfiguratorUrl={konfiguratorUrl} blocked={realizationStatus ? true : false} />
                     <TilesRowWrapper className='b'>
