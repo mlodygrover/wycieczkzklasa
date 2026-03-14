@@ -7,7 +7,7 @@ import { timeToMinutes } from "../konfiguratorMain"
 import { minutesToTime } from "../konfigurator/konfiguratorWyjazduComp"
 import React from "react"
 import { Loader2 } from "../loader2"
-import { Clock, MapPin, ChevronUp, ChevronDown, Trash2, RefreshCw, Route, Landmark, Drama, Brush, Shrub, Plane, Bed } from 'lucide-react';
+import { Clock, MapPin, ChevronUp, ChevronDown, Trash2, RefreshCw, Route, Landmark, Drama, Brush, Shrub, Plane, Bed, Footprints, Train, Bus, Car } from 'lucide-react';
 import VariantButton from "../variantButton"
 
 
@@ -482,7 +482,7 @@ export const AttractionResultFull = ({
                             {isNaN(minutesToTime(localStartTime)) ? minutesToTime(localStartTime % 1440) : <Loader2 />}
                         </div>
 
-                        {actIdx == 0 && <IncreaseButton onClick={() => setLocalStartTime(localStartTime + 10 < checkOut ? (localStartTime + 10) % 1440 : localStartTime)} > <img src="../icons/plus-white.svg" height="15px" alt="Zwiększ" /> </IncreaseButton>}
+                        {actIdx == 0 && <IncreaseButton onClick={() => setLocalStartTime((localStartTime + 10) % 1440)} > <img src="../icons/plus-white.svg" height="15px" alt="Zwiększ" /> </IncreaseButton>}
 
                         {attraction?.czasZwiedzania != 0 &&
                             <>
@@ -584,6 +584,8 @@ const RouteResultMainbox = styled.div`
     justify-content: center;
     gap: 5px;
     margin-left: -40px;
+
+
     
     
     
@@ -615,9 +617,8 @@ const RouteResultOutbox = styled.div`
     width: 100%;
     max-width: 1000px;
     height: 50px;
-    background-color: #fafafa;
     border-radius: 10px;
-    border: 1px solid #eaeaea;
+    
     display: flex;
     flex-direction: row;
     align-items: center;
@@ -631,9 +632,11 @@ const RouteResultOutbox = styled.div`
         display: flex;
         align-items: center;
         justify-content: center;
-        img{
-        height: 100%;
-        width: 100%;}
+        svg{
+            height: 70%;
+         
+            color: #606060;
+        }
     
     }
     @media screen and (max-width: 1200px){
@@ -659,14 +662,18 @@ const RouteResultButtonLabel = styled.label`
     border-bottom: 2px solid transparent;
     border-bottom-right-radius: 0px;
     border-bottom-left-radius: 0px;
-
-    &:hover {
+    background-color: white;
+    &:hover {   
         border-bottom: 2px solid #008d73ff;
     }
 
     input[type="radio"]:checked + & {
         border-bottom: 2px solid #008d73ff;
         
+    }
+    svg{
+        color: #606060;
+        height: 18px;
     }
     @media screen and (max-width: 1200px){
         height: 100%;
@@ -709,15 +716,16 @@ export const RouteResult = ({ routes, onTransportChange, actIdx, dayIdx, chosenT
     }
 
     const options = [
-        { idx: 0, icon: "../icons/pedestrian.svg", label: "Pieszo", visible: routes.czasy[0] < 180 },
-        { idx: 1, icon: "../icons/icon-public-trannsport.svg", label: "Komunikacja" },
-        { idx: 2, icon: "../icons/bus.svg", label: "Auto" },
+        { idx: 3, icon: <Footprints/>, label: "Pieszo", visible: routes.czasy[0] < 180 },
+        { idx: 0, icon: <Train/>, label: "Komunikacja" },
+        { idx: 1, icon: <Bus/>, label: "Auto" },
+        { idx: 2, icon: <Car/>, label: "Auto" },
     ];
 
     return (
         <RouteResultOutbox>
             <div className="routeImgBox">
-                <Route size={25}/>
+                <Route size={25} />
             </div>
 
             <RouteResultMainbox>
@@ -735,7 +743,7 @@ export const RouteResult = ({ routes, onTransportChange, actIdx, dayIdx, chosenT
                                     style={{ display: "none" }}
                                 />
                                 <RouteResultButtonLabel htmlFor={`transport-${dayIdx}-${actIdx}-${opt.idx}`}>
-                                    <img src={opt.icon} height={"20px"} />
+                                    {opt.icon}
                                     {routes.czasy.length > opt.idx ? minutesToStringTime(routes.czasy[opt.idx]) : "..."}
                                 </RouteResultButtonLabel>
                             </React.Fragment>

@@ -1361,7 +1361,7 @@ export const PreConfigure = (
             </div>
             {selectedMenu === 2 && (
                 // Zakładka płatności (obecnie pusta)
-                <PaymentsPage computedPrice={synchronisedPlan?.computedPrice ?? 0} tripId={tripId} realizationStatus={synchronisedPlan.realizationStatus} paymentStatus={paymentStatuses?.[userFromStore._id]} />
+                <PaymentsPage computedPrice={synchronisedPlan?.computedPrice ?? 0} tripId={tripId} realizationStatus={synchronisedPlan?.realizationStatus || 1} paymentStatus={paymentStatuses?.[userFromStore._id]} />
             )}
 
             {sharePopupOpened && <PreConfigureSharePopupWrapper onClick={() => setSharePopupOpened(false)}>

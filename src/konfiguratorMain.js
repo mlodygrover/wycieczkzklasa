@@ -2233,7 +2233,7 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
                     tabRoutesTmp[dayIdx].push({
                         start: current,
                         end: next,
-                        czasy: [walking, transit, driving],
+                        czasy: [transit, driving, driving, walking],
                         transitRoute,
                     });
                 } catch (err) {
@@ -3523,19 +3523,7 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
                         <SettingsButton onClick={() => setPopupPickerOpened(4)} className={miejsceStartowePopupOpened ? "chosen def" : "def"}>
                             <TramFront size={30} />
                             Preferowany transport: {standardTransportu || standardTransportu == 0 ? namesTransportTab[standardTransportu] : "..."}
-                            {wyborStandardTransportuOpened && <div className="settingsPopup" onClick={(e) => e.stopPropagation()} >
-                                Forma transportu
-                                <Radio1
-                                    options={[
-                                        { value: 1, icon: "../icons/icon-private-bus.svg", label: "Wynajęty autokar" },
-                                        { value: 0, icon: "../icons/icon-public-trannsport.svg", label: "Transport publiczny" },
-                                        { value: 2, icon: "../icons/icon-own-transport.svg", label: "Własny" }
-                                    ]}
-                                    setWybor={setStandardTransportu}
-                                    value={standardTransportu}
-                                    name="transport-form"
-                                />
-                            </div>}
+                          
                         </SettingsButton>
                     </KonfiguratorMainSettings>
 
@@ -3640,9 +3628,10 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
                         onClick={() => redirectToSettings()}>
                         <ChevronLeft size={16} />Ustawienia wyjazdu
                     </div>
-                    <div className="mobileNavButton b">
+                    <div className="mobileNavButton b" onClick={() => redirectToRealization()}>
+                        
 
-                        Zarezerwuj wyjazd<Rocket size={16} />
+                        Realizacja wyjazdu<Rocket size={16} />
                     </div>
                 </MobileNavButtons>
                 <KonfiguratorMainMainbox>
@@ -3737,7 +3726,7 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
                                         atrakcja.adres.toLowerCase().includes(attractionsSearching.toLowerCase()))
                                 )
                                 .toSorted((a, b) => (b.liczbaOpinie * b.ocena || 0) - (a.liczbaOpinie * a.ocena || 0))
-                                .slice(0, 20)
+                                .slice(0, 50)
                                 .map((atrakcja, idx) => (
                                     <AttractionResultMediumVerifiedComponent
                                         key={`${atrakcja.googleId}${idx}${atrakcja?.wallpaper}`}

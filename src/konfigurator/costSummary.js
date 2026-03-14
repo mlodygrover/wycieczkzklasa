@@ -153,7 +153,7 @@ export const CostSummary = ({ tripId="", setRedirecting, handleSaveClick, hasPen
             const url = new URL(window.location.href);
             const params = url.search || ""; // np. "?tripId=123&arr=2025-05-01..."
 
-            const redirectLink = `/realizacja/?tripId=${tripId || ""}`;
+            const redirectLink = `/realizacja/?tripId=${tripId}`;
             Navigate(redirectLink);
         } finally {
             setRedirecting(false);

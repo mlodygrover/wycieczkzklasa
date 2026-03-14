@@ -51,10 +51,14 @@ async function computePrice({
     liczbaUczestnikow,
     liczbaOpiekunow,
     routeSchedule,
-    wybranyHotel,
+    wybranyHotel,    
+    chosenTransportSchedule,
     standardTransportu,
-    chosenTransportSchedule
+
+    standardHotelu,
 }) {
+    console.log(chosenTransportSchedule, standardTransportu, standardHotelu)
+    //console.log(activitiesSchedule, liczbaOpiekunow, liczbaUczestnikow, routeSchedule, wybranyHotel, standardTransportu, chosenTransportSchedule)
     if (liczbaUczestnikow == 0) return 0;
     // 1) suma aktywności
     let sumaAktywnosci = 0;
@@ -66,13 +70,11 @@ async function computePrice({
     }
     let aktywnosciPerUczestnik = Math.ceil(sumaAktywnosci * (liczbaOpiekunow + liczbaUczestnikow) / liczbaUczestnikow)
     // 2) osoby i hotel
-    const hotelPrice = (Number(wybranyHotel?.cena) / Math.min(liczbaUczestnikow + liczbaOpiekunow, 30)) * (liczbaUczestnikow + liczbaOpiekunow) || 0;
+    const hotelPrice = standardHotelu === 3 ? 0 : (Number(wybranyHotel?.cena) / Math.min(liczbaUczestnikow + liczbaOpiekunow, 30)) * (liczbaUczestnikow + liczbaOpiekunow) || 0;
     const perPerson = Number(liczbaUczestnikow) > 0 ? (x) => x / Number(liczbaUczestnikow) : (x) => x;
 
     // 3) wariant “tylko hotel + aktywności” (np. standardTransportu == 2)
-    if (standardTransportu === 2) {
-        return aktywnosciPerUczestnik + perPerson(hotelPrice);
-    }
+ 
 
     // 4) przejazdy
     let sumaPrzejazdow = 0;
@@ -102,6 +104,7 @@ async function computePrice({
     }
 
     let przejazdyPerUczestnik = Math.ceil(sumaPrzejazdow * (liczbaOpiekunow + liczbaUczestnikow) / (liczbaUczestnikow))
+    
     // console.log("Podzial ceny", sumaAktywnosci, aktywnosciPerUczestnik, hotelPrice, perPerson(hotelPrice), sumaPrzejazdow, przejazdyPerUczestnik, )
     const nettoResult = aktywnosciPerUczestnik + przejazdyPerUczestnik + perPerson(hotelPrice);
     console.log("Calkowita cena netto per osoba:",
@@ -125,7 +128,8 @@ app.post("/computePrice", async (req, res, next) => {
             routeSchedule,
             wybranyHotel,
             chosenTransportSchedule,
-            standardTransportu
+            standardTransportu,
+            standardHotelu = 3,
         } = req.body;
 
         if (
@@ -147,7 +151,8 @@ app.post("/computePrice", async (req, res, next) => {
             routeSchedule,
             wybranyHotel,
             chosenTransportSchedule,
-            standardTransportu
+            standardTransportu,
+            standardHotelu,
         });
 
         // Bezpieczne rzutowanie + zaokrąglenie w górę
@@ -860,6 +865,7 @@ async function getWikipediaImageUrl(attractionName, options = {}) {
 // Usage: const title = await getWikipediaExactTitle({ name, location: { lat, lng }, city, address });
 
 async function getWikipediaExactTitle(nameWithCity) {
+   
     const PERPLEXITY_API_KEY = process.env.PERPLEXITY_API_KEY;
     if (!PERPLEXITY_API_KEY) throw new Error("Missing PERPLEXITY_API_KEY");
 
@@ -976,7 +982,9 @@ app.get("/api/wiki-image", async (req, res) => {
         }
 
         // 1) Perplexity -> tytuł + język
-        const { title, lang: detectedLang } = await getWikipediaExactTitle(name);
+        //const { title, lang: detectedLang } = await getWikipediaExactTitle(name);
+        const title = name;
+        const detectedLang = "pl";
         name = String(title || "").trim();
         lang = (detectedLang || lang || "pl").trim();
 
@@ -1016,22 +1024,22 @@ app.get("/api/wiki-image", async (req, res) => {
 
         // 3) (Opcjonalnie) zapis do bazy
         let saved = false;
-        if (googleId) {
-            const updated = await Attraction.findOneAndUpdate(
-                { googleId },
-                {
-                    $set: {
-                        wallpaper: imageUrl,
-                        updatedAt: new Date(),
-                    },
-                },
-                { new: true, projection: { _id: 0, googleId: 1, wallpaper: 1 } }
-            )
-                .lean()
-                .catch(() => null);
+        // if (googleId) {
+        //     const updated = await Attraction.findOneAndUpdate(
+        //         { googleId },
+        //         {
+        //             $set: {
+        //                 wallpaper: imageUrl,
+        //                 updatedAt: new Date(),
+        //             },
+        //         },
+        //         { new: true, projection: { _id: 0, googleId: 1, wallpaper: 1 } }
+        //     )
+        //         .lean()
+        //         .catch(() => null);
 
-            saved = Boolean(updated);
-        }
+        //     saved = Boolean(updated);
+        // }
 
         return res.status(200).json({
             ok: true,
