@@ -18,14 +18,7 @@ const app = express();
 
 const CLIENT_URL = process.env.CLIENT_URL || "http://localhost:3000";
 
-// Endpoint do wybudzania/podtrzymywania serwera na Render (serverAcc)
-app.get('/wakeup', (req, res) => {
-    res.status(200).json({
-        ok: true,
-        message: "serverAcc is awake!",
-        timestamp: new Date()
-    });
-});
+
 // bardzo ważne dla Render / Heroku / proxy
 app.set('trust proxy', 1);
 /* =========================
@@ -3144,6 +3137,15 @@ app.get('/api/trip-plans/:tripId/payment-statuses', requireAuth, async (req, res
         console.error("Błąd sprawdzania statusów płatności:", err);
         res.status(500).json({ error: "ServerError" });
     }
+});
+
+// Endpoint do wybudzania/podtrzymywania serwera na Render (serverAcc)
+app.get('/wakeup', (req, res) => {
+    res.status(200).json({
+        ok: true,
+        message: "serverAcc is awake!",
+        timestamp: new Date()
+    });
 });
 const port = process.env.PORT || 5007;
 

@@ -160,18 +160,45 @@ function IfFooter() {
   )
 }
 function App() {
-  // 2. DODAJEMY STAN DLA SERWERÓW
-  const [serversReady, setServersReady] = useState(false);
+  // 1. INICJALIZACJA STANU Z SESSION STORAGE
+  // Sprawdzamy, czy w tej sesji już obudziliśmy serwery. Jeśli tak, od razu ustawiamy na true.
+  const [serversReady, setServersReady] = useState(() => {
+    return sessionStorage.getItem('serversAwake') === 'true';
+  });
 
-  // 3. ZMIENIAMY USE EFFECT
   useEffect(() => {
-    // Odpalamy autoryzację DOPIERO gdy serwery poinformują, że wstały
+    // Jednorazowe sprawdzenie istniejącej sesji (cookie) i hydratacja store
+    // (Pamiętaj, by zostawić to tutaj, jeśli miałeś to wcześniej!)
+    initAuth();
+  }, []);
+
+  useEffect(() => {
+    // Kiedy loader zgłosi gotowość, zapisujemy ten fakt w sesji
     if (serversReady) {
-      initAuth();
+      sessionStorage.setItem('serversAwake', 'true');
+
+      // 1. Pukaj do serwerów co 4 minuty, żeby zresetować licznik Rendera
+      const keepAliveInterval = setInterval(() => {
+        fetch(`${process.env.REACT_APP_API_URL}/wakeup`).catch(() => { });
+        fetch(`${process.env.REACT_APP_ACC_URL}/wakeup`).catch(() => { });
+        console.log("Podtrzymuję serwery...");
+      }, 4 * 60 * 1000); // 4 minuty
+
+      // 2. Po równe 15 minutach (900 000 ms) ubij ten proces całkowicie
+      const stopKeepAliveTimeout = setTimeout(() => {
+        clearInterval(keepAliveInterval);
+        console.log("Koniec podtrzymywania serwerów (minęło 15 min).");
+      }, 15 * 60 * 1000); // 15 minut
+
+      // Czyszczenie przy odmontowaniu App
+      return () => {
+        clearInterval(keepAliveInterval);
+        clearTimeout(stopKeepAliveTimeout);
+      };
     }
   }, [serversReady]);
 
-  // 4. WYŚWIETLAMY LOADER LUB APLIKACJĘ
+  // 2. WYŚWIETLAMY LOADER LUB APLIKACJĘ
   if (!serversReady) {
     return <ServerWakeupLoader onReady={() => setServersReady(true)} />;
   }
@@ -200,3 +227,4 @@ function App() {
 }
 
 export default React.memo(App);
+

@@ -20,14 +20,7 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// Endpoint do wybudzania/podtrzymywania serwera na Render (serverApi)
-app.get('/wakeup', (req, res) => {
-    res.status(200).json({ 
-        ok: true, 
-        message: "serverApi is awake!", 
-        timestamp: new Date() 
-    });
-});
+
 function computeTransitCost(transitRoute, czas = 0) {
     const CAP = 150;     // maksymalna opłata
     const UNIT = 4;      // jednostka taryfowa (np. co 4 min)
@@ -59,7 +52,7 @@ async function computePrice({
     liczbaUczestnikow,
     liczbaOpiekunow,
     routeSchedule,
-    wybranyHotel,    
+    wybranyHotel,
     chosenTransportSchedule,
     standardTransportu,
 
@@ -82,7 +75,7 @@ async function computePrice({
     const perPerson = Number(liczbaUczestnikow) > 0 ? (x) => x / Number(liczbaUczestnikow) : (x) => x;
 
     // 3) wariant “tylko hotel + aktywności” (np. standardTransportu == 2)
- 
+
 
     // 4) przejazdy
     let sumaPrzejazdow = 0;
@@ -112,7 +105,7 @@ async function computePrice({
     }
 
     let przejazdyPerUczestnik = Math.ceil(sumaPrzejazdow * (liczbaOpiekunow + liczbaUczestnikow) / (liczbaUczestnikow))
-    
+
     // console.log("Podzial ceny", sumaAktywnosci, aktywnosciPerUczestnik, hotelPrice, perPerson(hotelPrice), sumaPrzejazdow, przejazdyPerUczestnik, )
     const nettoResult = aktywnosciPerUczestnik + przejazdyPerUczestnik + perPerson(hotelPrice);
     console.log("Calkowita cena netto per osoba:",
@@ -873,7 +866,7 @@ async function getWikipediaImageUrl(attractionName, options = {}) {
 // Usage: const title = await getWikipediaExactTitle({ name, location: { lat, lng }, city, address });
 
 async function getWikipediaExactTitle(nameWithCity) {
-   
+
     const PERPLEXITY_API_KEY = process.env.PERPLEXITY_API_KEY;
     if (!PERPLEXITY_API_KEY) throw new Error("Missing PERPLEXITY_API_KEY");
 
@@ -1657,7 +1650,7 @@ app.put("/admin/attractions/:googleId", async (req, res) => {
         // Usuwamy pola systemowe, których nie chcemy edytować ręcznie
         delete updateData._id;
         delete updateData.__v;
-        delete updateData.createdAt; 
+        delete updateData.createdAt;
         // updatedAt zaktualizuje się samo (w pre-save hooku lub przez ustawienia mongoose)
 
         const updatedAttraction = await Attraction.findOneAndUpdate(
@@ -1724,12 +1717,12 @@ app.post("/admin/attractions", async (req, res) => {
             stronaInternetowa,
             wallpaper,
             warianty: warianty || [],
-            
+
             // --- ZMIANA: Używamy danych z frontu lub domyślnie 'Admin' ---
             dataSource: dataSource || "Admin",
             locationSource: locationSource || "Admin",
             // -------------------------------------------------------------
-            
+
             ocena: 0,
             liczbaOpinie: 0,
             typy: ["custom"],
@@ -1738,9 +1731,9 @@ app.post("/admin/attractions", async (req, res) => {
 
         await newAttraction.save();
 
-        res.status(201).json({ 
-            message: "Atrakcja utworzona pomyślnie", 
-            attraction: newAttraction 
+        res.status(201).json({
+            message: "Atrakcja utworzona pomyślnie",
+            attraction: newAttraction
         });
 
     } catch (err) {
@@ -3651,7 +3644,14 @@ async function fetchTicketmasterEventsNormalized({
     const events = response.data?._embedded?.events || [];
     return events.map(normalizeTicketmasterEvent);
 }
-
+// Endpoint do wybudzania/podtrzymywania serwera na Render (serverApi)
+app.get('/wakeup', (req, res) => {
+    res.status(200).json({
+        ok: true,
+        message: "serverApi is awake!",
+        timestamp: new Date()
+    });
+});
 /**
  * GET /ticketmasterEvents
  */
