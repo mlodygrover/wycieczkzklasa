@@ -20,6 +20,14 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+// Endpoint do wybudzania/podtrzymywania serwera na Render (serverApi)
+app.get('/wakeup', (req, res) => {
+    res.status(200).json({ 
+        ok: true, 
+        message: "serverApi is awake!", 
+        timestamp: new Date() 
+    });
+});
 function computeTransitCost(transitRoute, czas = 0) {
     const CAP = 150;     // maksymalna opłata
     const UNIT = 4;      // jednostka taryfowa (np. co 4 min)

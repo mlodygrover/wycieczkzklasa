@@ -1,6 +1,6 @@
 import logo from './logo.svg';
 import './App.css';
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 
 import styled from 'styled-components';
@@ -54,6 +54,7 @@ import { Privacy } from './privacy.js';
 import { JoiningToTrip } from './joiningToTrip.js';
 import { RealizationPage } from './realizationPage.js';
 import AdminPanel from './admin.js';
+import { ServerWakeupLoader } from './serverWakeupLoader.js';
 
 const teksty = [
   { tyt: "Połącz twój pomysł z naszym doświadczeniem", tekst: "Dzięki konfiguratorowi wycieczek WycieczkaZKlasą, zrealizuj swój pomysł na wyjazd, nie martwiąc się niczym poza pasjonującym programem wyjazdu!" },
@@ -158,74 +159,43 @@ function IfFooter() {
       }</>
   )
 }
-
 function App() {
+  // 2. DODAJEMY STAN DLA SERWERÓW
+  const [serversReady, setServersReady] = useState(false);
+
+  // 3. ZMIENIAMY USE EFFECT
   useEffect(() => {
-    // Jednorazowe sprawdzenie istniejącej sesji (cookie) i hydratacja store
-    initAuth();
-  }, []);
+    // Odpalamy autoryzację DOPIERO gdy serwery poinformują, że wstały
+    if (serversReady) {
+      initAuth();
+    }
+  }, [serversReady]);
+
+  // 4. WYŚWIETLAMY LOADER LUB APLIKACJĘ
+  if (!serversReady) {
+    return <ServerWakeupLoader onReady={() => setServersReady(true)} />;
+  }
 
   return (
-    <>
-      <div className="App">
-        <Router>
-
-          <Menus />
-          <Routes>
-
-            <Route path="/" element={<><HomePage trips={exampleTrips} /></>} />
-            <Route path="/profil" element={<ProfilePage />} />
-            <Route path="/konfigurator-lounge" element={<PreConfigure />} />
-            <Route path="/login" element={<LoginPage />} />
-            <Route
-              path="/konfigurator"
-              element={
-                <KonfiguratorLoader />
-
-              }
-            />
-            <Route
-              path="/konfigurator/old"
-              element={
-                <KreatorWyjazdu />
-
-              }
-            />
-            <Route
-              path="privacy"
-              element={
-                <Privacy />
-
-              }
-            />
-            <Route
-              path="admin"
-              element={
-                <AdminPanel/>
-
-              }
-            />
-            <Route
-              path="realizacja"
-              element={
-                <RealizationPage />
-
-              }
-            />
-            <Route
-              path="join-trip"
-              element={
-                <JoiningToTrip />
-
-              }
-            />
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </Routes>
-
-          <IfFooter />
-        </Router>
-      </div>
-    </>
+    <div className="App">
+      <Router>
+        <Menus />
+        <Routes>
+          <Route path="/" element={<HomePage trips={exampleTrips} />} />
+          <Route path="/profil" element={<ProfilePage />} />
+          <Route path="/konfigurator-lounge" element={<PreConfigure />} />
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/konfigurator" element={<KonfiguratorLoader />} />
+          <Route path="/konfigurator/old" element={<KreatorWyjazdu />} />
+          <Route path="/privacy" element={<Privacy />} />
+          <Route path="/admin" element={<AdminPanel />} />
+          <Route path="/realizacja" element={<RealizationPage />} />
+          <Route path="/join-trip" element={<JoiningToTrip />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+        <IfFooter />
+      </Router>
+    </div>
   );
 }
 
