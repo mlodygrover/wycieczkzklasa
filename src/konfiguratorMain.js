@@ -3795,8 +3795,8 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
                     </KonfiguratorMainMainboxRight>
 
                     <KonfiguratorMainMainboxLeft ref={rightRef} className="right">
-                        <section style={{ margin: '0 auto', display: 'flex', justifyContent: 'center' }} id="chatbox">
-                            <ChatBox2 timeSchedule={timeSchedule} activitiesSchedule={activitiesSchedule} basicActivities={basicActivities} miejsceDocelowe={miejsceDocelowe} attractions={atrakcje} addActivity={addActivity} swapActivities={swapActivities} changeActivity={changeActivity} deleteActivity={deleteActivity} />
+                        <section style={{ margin: '0 auto', display: 'flex', justifyContent: 'center', width: '100%' }} id="chatbox">
+                            <ChatBox2 userId={userIdFromStore}tripId={tripId} timeSchedule={timeSchedule} activitiesSchedule={activitiesSchedule} basicActivities={basicActivities} miejsceDocelowe={miejsceDocelowe} attractions={atrakcje} addActivity={addActivity} swapActivities={swapActivities} changeActivity={changeActivity} deleteActivity={deleteActivity} />
 
 
                         </section><div className="mainboxLeftTitle">

@@ -985,8 +985,10 @@ app.get("/api/wiki-image", async (req, res) => {
 
         // 1) Perplexity -> tytuł + język
         //const { title, lang: detectedLang } = await getWikipediaExactTitle(name);
+
         const title = name;
         const detectedLang = "pl";
+
         name = String(title || "").trim();
         lang = (detectedLang || lang || "pl").trim();
 
@@ -2004,6 +2006,7 @@ const puppeteer = require("puppeteer");
 const { url } = require("inspector");
 const { Console } = require("console");
 const { render } = require("@testing-library/react");
+const { type } = require("os");
 
 function isDynamicHTML(html) {
     if (!html || typeof html !== "string") return true;
@@ -3201,7 +3204,6 @@ app.get("/findHotel", async (req, res) => {
 
 // === ENDPOINT: czat planujący wyjazd ===
 // WYMAGANE: const OpenAI = require("openai"); const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-
 app.post("/chat-planner", async (req, res) => {
     try {
         const {
@@ -3328,7 +3330,230 @@ PRZYKŁAD WYJŚCIA (w komendach nie uzywaj spacji):
         return res.status(500).json({ error: "Błąd generowania odpowiedzi czatu." });
     }
 });
+// === MODEL CHAT MESSAGE ===
+const ChatMessage = mongoose.model('ChatMessage', new mongoose.Schema({
+    tripId: { type: mongoose.Schema.Types.ObjectId, index: true },
+    userId: { type: String, index: true }, // Opcjonalnie, jeśli chcesz czaty per user
+    sender: { type: String, enum: ['user', 'ai'], required: true },
+    text: { type: String, required: true },
+    commands: { type: [String], default: [] }, // Tablica komend do wykonania
+    executed: { type: Boolean, default: false }, // Czy komendy zostały wykonane przez front
+    createdAt: { type: Date, default: Date.now }
+}));
+// 1. GET /api/chat/:tripId - Pobiera historię
+app.get('/api/chat/:tripId', async (req, res) => {
+    try {
+        const { tripId } = req.params;
+        // Pobieramy wiadomości posortowane chronologicznie
+        const messages = await ChatMessage.find({ tripId }).sort({ createdAt: 1 });
+        res.json(messages);
+    } catch (e) {
+        res.status(500).json({ error: 'Błąd pobierania czatu' });
+    }
+});
 
+
+
+// === 1. GET /api/chat/:tripId - Pobiera historię ===
+app.get('/api/chat/:tripId', async (req, res) => {
+    try {
+        const { tripId } = req.params;
+        // Pobieramy wiadomości posortowane chronologicznie
+        const messages = await ChatMessage.find({ tripId }).sort({ createdAt: 1 });
+        res.json(messages);
+    } catch (e) {
+        res.status(500).json({ error: 'Błąd pobierania czatu' });
+    }
+});
+
+// === 2. POST /api/chat/message - Wysyła wiadomość i asynchronicznie wywołuje AI ===
+app.post('/api/chat/message', async (req, res) => {
+    try {
+        const { tripId, message, userId, contextData } = req.body;
+        // contextData musi zawierać: activitiesSchedule, attractions, miejsceDocelowe, basicActivities
+
+        if (!tripId || !message) return res.status(400).json({ error: 'Brak tripId lub message' });
+
+        // A. Zapisz wiadomość usera od razu
+        const userMsg = await ChatMessage.create({
+            tripId,
+            userId,
+            sender: 'user',
+            text: message,
+            executed: true // Wiadomości usera nie mają komend
+        });
+
+        // B. Odpowiedz klientowi od razu (UI nie czeka na AI)
+        res.json({ ok: true, message: userMsg });
+
+        // C. ASYNCHRONICZNIE wywołaj AI (w tle)
+        (async () => {
+            try {
+                // 1. Przygotowanie danych z contextData (jak w starym chat-planner)
+                const { activitiesSchedule = [], attractions = [], miejsceDocelowe = null, basicActivities = [] } = contextData || {};
+
+                const slimAttractions = attractions.slice(0, 50).map(a => ({
+                    googeleId: a.googleId || null,
+                    nazwa: a.nazwa || null
+                }));
+
+                const slimSchedule = activitiesSchedule.map(day =>
+                    Array.isArray(day)
+                        ? day.map(act => ({
+                            googleId: act?.googleId || null,
+                            nazwa: act?.nazwa || null,
+                            czasZwiedzania: act?.czasZwiedzania || 0,
+                            godzinaRozpoczecia: act?.godzinaRozpoczecia || null,
+                        }))
+                        : []
+                );
+
+                // 2. Pobierz historię z BAZY dla kontekstu (ostatnie 10)
+                // Uwaga: pomijamy tę najnowszą wiadomość usera, bo dodamy ją ręcznie w kontekście
+                const historyDocs = await ChatMessage.find({ tripId })
+                    .sort({ createdAt: 1 })
+                    .limit(10);
+
+                // Wycinamy ostatnią (tą którą właśnie dodaliśmy w pkt A), żeby nie dublować w prompt
+                // (chyba że wolisz pobrać wszystko i sformatować)
+                const historyForAI = historyDocs.slice(0, -1).map(m => ({
+                    role: m.sender === 'ai' ? 'assistant' : 'user',
+                    content: m.text // Uwaga: stare wiadomości AI w bazie mają czysty tekst bez komend
+                })).slice(-10); // Ostatnie 10 interakcji
+
+                // 3. SYSTEM PROMPT (Identiko jak w chat-planner)
+                const systemPrompt = `
+Jesteś inteligentnym asystentem planowania szkolnego wyjazdu do miejsca "${miejsceDocelowe?.nazwa || "?"}".
+Masz dostęp do:
+- "activitiesSchedule": obecny plan dni i atrakcji (googleId + nazwa + ustawiony czas zwiedzania + godzinaRozpoczecia, ktora jest niemodyfikowalna przez usera - jest obliczana na bazie calego planu, dodana pogladowo), aktywnosci baseHotelIn, baseHotelOut, baseRouteTo, baseRouteFrom sa sztywno ustawione na poczatku i koncu dnia, baseBookIn oraz baseBookOut moga byc przesuwane w ciagu dnia uwzgledniajac dobe hotelowa
+- "attractions": dostępne atrakcje w miejscu docelowym (googleId + nazwa),
+- "basicActivities": aktywnosci podstawowe, pojawiajace sie w ciagu dnia wyjazdu turystycznego - obslugiwane podobnie do attractions
+- funkcji, które możesz zaproponować w odpowiedzi:
+  addActivity(dayIndex, activity) - dodajesz nowa aktywnosc na koniec planu, przed powrotem na nocleg.
+  swapActivities(dayIndex, actIndexA, actIndexB) - zamieniasz aktywnosci o podanych indeksach 
+  changeActivity(dayIndex, actIndex, activity) - zamieniasz aktywnosc o podanym indeksie na nowa, nie dziala dla aktywnosci podstawowych o googleId base...
+  deleteActivity(dayIndex, actIndex) - usuwasz aktywnosc, nie dziala dla aktywnosci podstawowych o googleId base...
+ Dni numerowane sa od 0. Miedzy aktywnosciami doliczony bedzie czas transportu, aktywnosci dodajesz po kolei, nie musisz sie martwic o czas przejazdow. Godziny ich rozpoczecia sa wyliczane automatycznie na podstawie przejazdow.
+
+ZASADY:
+-Zwracaj wielką uwage na googleId - jest to zdecydowanie najwazniejsze pole i nie moga pojawic sie w nim bledy!!
+- Odpowiadaj po polsku, zwięźle (2–4 zdania), naturalnie i profesjonalnie.
+-Nie podawaj w odpowiedziach w czacie googleId, jest to informacja wzglednie poufna.
+- W odpowiedzi podaj:
+   1️⃣ Krótką wiadomość tekstową.
+   2️⃣ NOWĄ LINIĘ i linijkę w formacie:
+       **commands** <komenda1>; <komenda2>; ...
+- Jeśli nie masz komend, zwróć: **commands** (pusta lista).
+- W komendach:
+   • Jeśli atrakcja pochodzi z bazy (jest w "attractions" lub "basicActivities"), zwracaj tylko { googleId, nazwa, czasZwiedzania }.
+   • Nie wolno ci wymyslac wlasnych aktywnosci lub atrakcji spoza bazy.
+- Jeśli użytkownik pisze coś niezwiązanego z planowaniem wyjazdu lub używa wulgaryzmów — nie podawaj żadnych komend i odpowiedz stosownym komunikatem.
+
+PRZYKŁAD WYJŚCIA (w komendach nie uzywaj spacji, czesc wiadomosci przed **commands** to tresc odpowiedzi AI, napisz ja w naturalny sposob):
+"Świetny pomysł! Możemy dodać wizytę w Muzeum Narodowym w pierwszym dniu, by rozpocząć kulturalnie."
+**commands** addActivity(0, { googleId:"123XYZ", nazwa:"Muzeum Narodowe", czasZwiedzania:90 }); deleteActivity(1, 0)
+`;
+
+                const messagesForModel = [
+                    { role: "system", content: systemPrompt },
+                    ...historyForAI,
+                    {
+                        role: "user",
+                        content:
+                            `KONTEKST:\n` +
+                            `- Miejsce docelowe: ${miejsceDocelowe?.nazwa}\n` +
+                            `- Atrakcje (skrót): ${JSON.stringify(slimAttractions)}\n` +
+                            `- Podstawowe aktywnosci: ${JSON.stringify(basicActivities)}\n` +
+                            `- Obecny plan: ${JSON.stringify(slimSchedule)}\n\n` +
+                            `WIADOMOŚĆ UŻYTKOWNIKA:\n${message}`
+                    }
+                ];
+                console.log(miejsceDocelowe)
+                const completion = await openai.chat.completions.create({
+                    model: "gpt-5-mini", // Użyj swojego modelu
+                    messages: messagesForModel,
+                });
+
+                let reply = (completion.choices?.[0]?.message?.content || "").trim();
+
+                // 4. Parsowanie odpowiedzi (Twoja logika)
+                let messageAnswer = reply;
+                let commands = [];
+                // Wycięcie komend z tekstu
+                if (reply.includes("**commands**")) {
+                    messageAnswer = reply.split("**commands**")[0].trim();
+                }
+
+                // Ekstrakcja komend do tablicy
+                let commandsLine = "";
+                const lines = reply.split("\n");
+                for (const ln of lines) {
+                    if (ln.trim().startsWith("**commands**")) {
+                        commandsLine = ln.trim();
+                        break;
+                    }
+                }
+
+                if (commandsLine) {
+                    const afterMarker = commandsLine.replace("**commands**", "").trim();
+                    if (afterMarker.length > 0) {
+                        commands = afterMarker
+                            .split(";")
+                            .map(s => s.trim())
+                            .filter(Boolean);
+                    }
+                }
+                console.log("Wyodrębnione komendy:", reply, messageAnswer, commands);
+                // 5. Zapisz odpowiedź AI w bazie
+                await ChatMessage.create({
+                    tripId,
+                    userId, // Opcjonalnie null
+                    sender: 'ai',
+                    text: messageAnswer, // Tylko tekst dla użytkownika
+                    commands: commands,  // Komendy w osobnym polu
+                    executed: commands.length === 0 // Jeśli brak komend, oznaczamy jako wykonane
+                });
+
+            } catch (aiError) {
+                console.error("AI Error (async):", aiError);
+                // Opcjonalnie zapisz błąd w czacie
+                await ChatMessage.create({
+                    tripId,
+                    sender: 'ai',
+                    text: "Przepraszam, wystąpił błąd po stronie asystenta. Spróbuj ponownie.",
+                    executed: true
+                });
+            }
+        })();
+
+    } catch (e) {
+        console.error(e);
+        res.status(500).json({ error: 'Błąd serwera' });
+    }
+});
+
+// === 3. POST /api/chat/mark-executed - Oznacza komendy jako wykonane ===
+app.post('/api/chat/mark-executed', async (req, res) => {
+    try {
+        const { messageId } = req.body;
+        // Używamy findByIdAndUpdate, zakładając że messageId to _id dokumentu w Mongo
+        await ChatMessage.findByIdAndUpdate(messageId, { executed: true });
+        res.json({ ok: true });
+    } catch (e) {
+        res.status(500).json({ error: 'Błąd oznaczania wiadomości' });
+    }
+});
+
+// 3. POST /api/chat/mark-executed - Oznacza komendy jako wykonane
+app.post('/api/chat/mark-executed', async (req, res) => {
+    try {
+        const { messageId } = req.body;
+        await ChatMessage.findByIdAndUpdate(messageId, { executed: true });
+        res.json({ ok: true });
+    } catch (e) {
+        res.status(500).json({ error: 'Błąd' });
+    }
+});
 const UNSPLASH_ACCESS_KEY = process.env.UNSPLASH_ACCESS_KEY;
 const APP_NAME = process.env.UNSPLASH_APP_NAME || "YourApp";
 
