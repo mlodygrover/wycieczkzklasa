@@ -602,7 +602,7 @@ async function getWikipediaDescription(attractionName, lang = 'pl') {
 const port = process.env.REACT_APP__SERVER_API_SOURCE || "https://wycieczkzklasa.onrender.com";
 export function getOptimizedImage(url, w = 200, h = 200) {
     if (!url) return "";
-    return `${port}/imgCompression?url=${encodeURIComponent(url)}&w=${w}&h=${h}`;
+    return `${port}/imgCompression?url=${encodeURIComponent(url)}&w=${300}&h=${300}`;
 }
 
 // --- COMPONENT ---

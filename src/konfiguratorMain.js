@@ -1312,7 +1312,7 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
                 const res = await axios.get(`${port}/getAttractions`, {
                     params: { placeId, lat, lng },
                 });
-                setAtrakcje(res.data.slice(0, 10)); // ograniczamy do 10 atrakcji
+                setAtrakcje(res.data.slice(0, 50)); // ograniczamy do 10 atrakcji
                 localStorage.setItem("lsAtrakcje", JSON.stringify(res.data));
             } catch (err) {
                 console.error("Błąd przy pobieraniu atrakcji:", err);
@@ -1351,7 +1351,7 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
 
                 const data = await resp.json();
                 //console.log("wynik z nearby", data)
-                setAtrakcje(data.slice(0, 10)); // ograniczamy do 10 atrakcji
+                setAtrakcje(data.slice(0, 50)); // ograniczamy do 10 atrakcji
             } catch (err) {
                 if (err.name !== "AbortError") {
                     console.error("❌ /attractions/nearby error:", err);
@@ -3208,8 +3208,6 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
     }, [routeSchedule])
 
     const [filtersLeftOpened, setFiltersLeftOpened] = useState(false)
-    const [chosenFilters, setChosenFilters] = useState([])
-    const mainRef = useRef(null);
     const leftRef = useRef(null);
     const centerRef = useRef(null); // KonfiguratorMainMainboxRight
     const rightRef = useRef(null);  // prawa kolumna (KonfiguratorMainMainboxLeft z className="right")

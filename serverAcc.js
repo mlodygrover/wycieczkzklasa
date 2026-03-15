@@ -379,6 +379,7 @@ app.post('/auth/login', async (req, res) => {
                 profilePic: user.profilePic,
                 credits: user.credits,
             };
+            console.log(`[Auth] User logged in: ${user.email} (id: ${user._id})`);
             return res.json({ ok: true, user: safeUser });
         });
     } catch (err) {

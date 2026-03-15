@@ -124,6 +124,7 @@ export default function LoginPage() {
     try {
       if (formMode === 'login') {
         // LOGOWANIE
+        console.log(portacc)
         const resp = await fetch(`${portacc}/auth/login`, {
           method: 'POST',
           credentials: 'include',

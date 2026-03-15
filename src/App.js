@@ -131,6 +131,7 @@ const miasta = [
 ];
 
 function Menus() {
+  //return null; // tymczasowo ukrywamy menu, żeby skupić się na innych elementach
   const location = useLocation();
   const isHome = location.pathname === '/' || location.pathname === '';
   const isLogin = location.pathname === "/login" || location.pathname === "/admin";
