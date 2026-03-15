@@ -596,9 +596,13 @@ async function getWikipediaDescription(attractionName, lang = 'pl') {
         const data = await response.json();
         return data.extract;
     } catch (error) {
-        console.error("Błąd pobierania opisu:", error);
         return null;
     }
+}
+const port = process.env.REACT_APP__SERVER_API_SOURCE || "https://wycieczkzklasa.onrender.com";
+export function getOptimizedImage(url, w = 200, h = 200) {
+    if (!url) return "";
+    return `${port}/imgCompression?url=${encodeURIComponent(url)}&w=${w}&h=${h}`;
 }
 
 // --- COMPONENT ---
@@ -615,17 +619,17 @@ export const AttractionResultMediumVerifiedComponent = ({
     const containerRef = useRef(null);
     const [bgImage, setBgImage] = useState(null);
     const [description, setDescription] = useState(atrakcja.opis || null);
-    
+
     // Stan paneli (tylko jeden otwarty na raz)
     const [activeOverlay, setActiveOverlay] = useState(null); // 'info' | 'variants' | null
 
     const [selectedVariantIdx, setSelectedVariantIdx] = useState(0);
 
     const FALLBACK_WALLPAPER = 'https://images.unsplash.com/photo-1716481631637-e2d4fd2456e2?q=80&w=870&auto=format&fit=crop';
-    
-    const hasCoords = atrakcja?.lokalizacja && 
-                      typeof atrakcja.lokalizacja.lat === 'number' && 
-                      typeof atrakcja.lokalizacja.lng === 'number';
+
+    const hasCoords = atrakcja?.lokalizacja &&
+        typeof atrakcja.lokalizacja.lat === 'number' &&
+        typeof atrakcja.lokalizacja.lng === 'number';
 
     function getStaticMapUrl(lat, lng, zoom = 10) {
         const latRad = (lat * Math.PI) / 180;
@@ -635,46 +639,63 @@ export const AttractionResultMediumVerifiedComponent = ({
         return `https://tile.openstreetmap.org/${zoom}/${xTile}/${yTile}.png`;
     }
 
-    let targetUrl = FALLBACK_WALLPAPER;
+    let originalTargetUrl = FALLBACK_WALLPAPER;
+
     if (atrakcja?.wallpaper) {
-        targetUrl = atrakcja.wallpaper;
+        originalTargetUrl = atrakcja.wallpaper;
     } else if (typ === 2 && hasCoords) {
-        targetUrl = getStaticMapUrl(atrakcja.lokalizacja.lat, atrakcja.lokalizacja.lng, 14);
+        originalTargetUrl = getStaticMapUrl(atrakcja.lokalizacja.lat, atrakcja.lokalizacja.lng, 14);
     } else if (typ === 2 && !hasCoords) {
-        targetUrl = atrakcja.wallpaper || FALLBACK_WALLPAPER;
+        originalTargetUrl = atrakcja.wallpaper || FALLBACK_WALLPAPER;
     }
 
+    // dobór rozmiaru zależnie od typu kafla
+    const optimizedTargetUrl =
+        typ === 1
+            ? getOptimizedImage(originalTargetUrl, 500, 350)
+            : typ === 2
+                ? getOptimizedImage(originalTargetUrl, 700, 450)
+                : getOptimizedImage(originalTargetUrl, 900, 500);
+
+
     // Wykrywanie źródeł
-    const isWikipediaImage = targetUrl.includes('wikimedia.org');
-    const isUnsplashImage = targetUrl.includes('unsplash.com');
+    const isWikipediaImage = originalTargetUrl.includes('wikimedia.org');
+    const isUnsplashImage = originalTargetUrl.includes('unsplash.com');
     const isGoogleSource = atrakcja.dataSource === 'Google' || (atrakcja.googleId && !atrakcja.googleId.startsWith('custom_') && !atrakcja.googleId.startsWith('dAct_'));
-    const googleMapsUrl = atrakcja.googleId 
+    const googleMapsUrl = atrakcja.googleId
         ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(atrakcja.nazwa)}&query_place_id=${atrakcja.googleId}`
         : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(atrakcja.nazwa)}`;
 
     // Lazy Loading
     useEffect(() => {
-        if (typ === 3 && hasCoords && targetUrl === FALLBACK_WALLPAPER) return;
+        if (typ === 3 && hasCoords && originalTargetUrl === FALLBACK_WALLPAPER) return;
 
         const observer = new IntersectionObserver(
             (entries) => {
                 entries.forEach((entry) => {
                     if (entry.isIntersecting) {
-                        setBgImage(`url(${targetUrl})`);
+                        setBgImage(`url(${optimizedTargetUrl})`);
+
                         if (!description && atrakcja.nazwa) {
                             getWikipediaDescription(atrakcja.nazwa).then(desc => {
                                 if (desc) setDescription(desc);
                             });
                         }
+
                         observer.unobserve(entry.target);
                     }
                 });
-            }, { rootMargin: "100px", threshold: 0.01 }
+            },
+            { rootMargin: "100px", threshold: 0.01 }
         );
 
         if (containerRef.current) observer.observe(containerRef.current);
-        return () => { if (containerRef.current) observer.unobserve(containerRef.current); };
-    }, [targetUrl, typ, hasCoords, description, atrakcja.nazwa]);
+
+        return () => {
+            if (containerRef.current) observer.unobserve(containerRef.current);
+        };
+    }, [optimizedTargetUrl, typ, hasCoords, description, atrakcja.nazwa, originalTargetUrl]);
+
 
     // Initial Variant Setup
     useEffect(() => {
@@ -687,8 +708,8 @@ export const AttractionResultMediumVerifiedComponent = ({
     }, [atrakcja]);
 
     const updateVariantData = (idx) => {
-        if(!atrakcja.warianty || !atrakcja.warianty[idx]) return;
-        
+        if (!atrakcja.warianty || !atrakcja.warianty[idx]) return;
+
         setSelectedVariantIdx(idx);
         atrakcja.czasZwiedzania = atrakcja.warianty[idx].czasZwiedzania || 60;
         atrakcja.cenaZwiedzania = atrakcja.warianty[idx].cenaZwiedzania || 0;
@@ -698,7 +719,7 @@ export const AttractionResultMediumVerifiedComponent = ({
 
     function formatDistanceKm(latA, lngA, latB, lngB) {
         const toRad = (deg) => (deg * Math.PI) / 180;
-        const R = 6371; 
+        const R = 6371;
         const dLat = toRad(latB - latA);
         const dLng = toRad(lngB - lngA);
         const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) + Math.cos(toRad(latA)) * Math.cos(toRad(latB)) * Math.sin(dLng / 2) * Math.sin(dLng / 2);
@@ -717,7 +738,7 @@ export const AttractionResultMediumVerifiedComponent = ({
             style={((typ === 1 || typ === 2 || typ === 3) && bgImage) ? { backgroundImage: bgImage } : { backgroundColor: '#f0f0f0' }}
         >
             {/* Tło Mapy */}
-            {typ === 3 && hasCoords && targetUrl === FALLBACK_WALLPAPER && (
+            {typ === 3 && hasCoords && originalTargetUrl === FALLBACK_WALLPAPER && (
                 <div style={{ position: 'absolute', inset: 0, borderRadius: 15, overflow: 'hidden', zIndex: 0, pointerEvents: 'none' }}>
                     <MapContainer center={[atrakcja.lokalizacja.lat, atrakcja.lokalizacja.lng]} zoom={13} style={{ width: '100%', height: '100%' }} scrollWheelZoom={false} dragging={false} doubleClickZoom={false} zoomControl={false} attributionControl={false}>
                         <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
@@ -764,7 +785,14 @@ export const AttractionResultMediumVerifiedComponent = ({
                             <span>Dane: <a href={googleMapsUrl} target="_blank" rel="noreferrer">Google Maps</a></span>
                         </div>
                     )}
-                    {isWikipediaImage && <div className="attr-row"><Camera /><span>Zdjęcie: <a href={targetUrl} target="_blank" rel="noreferrer">Wikimedia Commons</a></span></div>}
+                    {isWikipediaImage && (
+                        <div className="attr-row">
+                            <Camera />
+                            <span>
+                                Zdjęcie: <a href={originalTargetUrl} target="_blank" rel="noreferrer">Wikimedia Commons</a>
+                            </span>
+                        </div>
+                    )}
                     {isUnsplashImage && <div className="attr-row"><Camera /><span>Zdjęcie: <a href="https://unsplash.com/" target="_blank" rel="noreferrer">Unsplash</a></span></div>}
                 </div>
             </OverlayPanel>
@@ -775,11 +803,11 @@ export const AttractionResultMediumVerifiedComponent = ({
                     <h4>Wybierz wariant</h4>
                     <X size={20} className="close-btn" onClick={(e) => toggleOverlay('variants', e)} />
                 </div>
-                
+
                 <VariantList>
                     {atrakcja.warianty?.map((wariant, idx) => (
-                        <div 
-                            key={idx} 
+                        <div
+                            key={idx}
                             className={`variant-item ${selectedVariantIdx === idx ? 'active' : ''}`}
                             onClick={() => {
                                 updateVariantData(idx);
@@ -787,7 +815,7 @@ export const AttractionResultMediumVerifiedComponent = ({
                             }}
                         >
                             <span className="var-name">{wariant.nazwaWariantu}</span>
-                            <div style={{display:'flex', alignItems:'center', gap:'10px'}}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                                 {wariant.cenaZwiedzania != null && (
                                     <span className="var-price">{wariant.cenaZwiedzania} zł</span>
                                 )}
@@ -804,7 +832,7 @@ export const AttractionResultMediumVerifiedComponent = ({
                     <div className="titleTextBox">
                         <div className="attractionResultMediumTitle">{atrakcja?.nazwa ?? 'Atrakcja turystyczna'}</div>
                         <div className="attractionResultMediumSubtitle">{atrakcja?.adres ?? 'Adres atrakcji'}</div>
-                        
+
                         <div className="attractionResultMediumSubtitle b">
                             <span><Timer size={15} /> {atrakcja.czasZwiedzania != null ? ` ${atrakcja.czasZwiedzania} min` : ''}</span>
                             <span><Ticket size={15} /> {(!Array.isArray(atrakcja?.warianty) || atrakcja.warianty.length === 0) ? 'Dodaj aby obliczyć' : atrakcja?.cenaZwiedzania === 0 ? 'Bezpłatne' : atrakcja?.cenaZwiedzania != null ? `${Number(atrakcja.cenaZwiedzania)} zł` : ''}</span>

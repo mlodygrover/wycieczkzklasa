@@ -611,7 +611,7 @@ export const PreConfigure = (
     const [publicPlan, setPublicPlan] = useState(true)
     const [nazwaWyjazdu, setNazwaWyjazdu] = useState(urlDefaults.nazwaWyjazdu ?? nazwaWyjazduInit)
     const [selectedMenu, setSelectedMenu] = useState(urlDefaults.initPage ?? 0);
- 
+
     // 4) Stany / błędy planów
     const [synchronisedPlan, setsynchronisedPlan] = useState(null);
     const [paymentStatuses, setPaymentStatuses] = useState(null);
@@ -1236,6 +1236,11 @@ export const PreConfigure = (
         console.log(synchronisingPlan)
     }, [synchronisingPlan])
     const isParticipantsTab = selectedMenu === 1;
+
+    // globalny user ze store
+    const { user, loading } = useUserStore();
+    const isLoggedIn = !!user;
+
     return (
         <PreConfigureMainbox>
             <PreConfigureHeader>
@@ -1307,7 +1312,7 @@ export const PreConfigure = (
                 </PreConfigureHeaderWrapper>
             </PreConfigureHeader>
 
-            <TripStatusCard status={realizationStatus} />
+            {isLoggedIn && <TripStatusCard status={realizationStatus} />}
             <TabsContainer>
                 <Tab $active={selectedMenu === 0} onClick={() => setSelectedMenu(0)}>Podstawowe</Tab>
                 {

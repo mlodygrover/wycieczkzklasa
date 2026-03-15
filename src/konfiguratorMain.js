@@ -1312,7 +1312,7 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
                 const res = await axios.get(`${port}/getAttractions`, {
                     params: { placeId, lat, lng },
                 });
-                setAtrakcje(res.data);
+                setAtrakcje(res.data.slice(0, 10)); // ograniczamy do 10 atrakcji
                 localStorage.setItem("lsAtrakcje", JSON.stringify(res.data));
             } catch (err) {
                 console.error("Błąd przy pobieraniu atrakcji:", err);
@@ -1351,7 +1351,7 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
 
                 const data = await resp.json();
                 //console.log("wynik z nearby", data)
-                setAtrakcje(data);
+                setAtrakcje(data.slice(0, 10)); // ograniczamy do 10 atrakcji
             } catch (err) {
                 if (err.name !== "AbortError") {
                     console.error("❌ /attractions/nearby error:", err);
@@ -3781,16 +3781,8 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
                     <KonfiguratorMainMainboxRight ref={centerRef}>
 
                         <KonfiguratorWyjazduComp redirecting={redirecting} setRedirecting={setRedirecting} handleSaveClick={handleSaveClick} hasPendingAutoSave={hasPendingAutoSave} dataPrzyjazdu={dataPrzyjazdu} dataWyjazdu={dataWyjazdu} standardHotelu={standardHotelu} standardTransportu={standardTransportu} liczbaOpiekunow={liczbaOpiekunow} liczbaUczestnikow={liczbaUczestnikow} tripId={tripId} miejsceStartowe={miejsceStartowe} computedPrice={tripPrice + insurancePrice} computingPrice={computingPrice} miejsceDocelowe={miejsceDocelowe} changeActivity={changeActivity} checkOut={timeToMinutes(wybranyHotel?.checkOut) || 720} changeStartHour={changeStartHour} deleteActivity={deleteActivity} startModifyingAct={startModifyingAct} setActivityPanelOpened={setActivityPanelOpened} onAttractionTimeChange={changeActivityTime} swapActivities={swapActivities} onTransportChange={changeChosenTransport} timeSchedule={timeSchedule} routeSchedule={routeSchedule} chosenTransportSchedule={chosenTransportSchedule} loading={konfiguratorLoading} activitiesSchedule={activitiesSchedule} liczbaDni={liczbaDni} key={`schedule-${liczbaDni}-${konfiguratorLoading}-${activitiesSchedule}`} wybranyDzien={wybranyDzien} setWybranyDzien={setWybranyDzien} addActivity={addActivity} />
-                        {activityPanelOpened && 1 == 2 &&
-                            <AddAttractionWrapper>
-                                <AddActivityPanelContainer>
-                                    <AddActivityPanel atrakcje={atrakcje} key={`${modyfikacja}${atrakcje}`} setModAct={setModyfikacja} dayIndex={wybranyDzien} closePanel={() => setActivityPanelOpened(false)} miejsceDocelowe={miejsceDocelowe.nazwa} modActIdx={modyfikacja.flag ? modyfikacja.idx : null} addActivity={modyfikacja.flag ? changeActivity : addActivity} />
-                                </AddActivityPanelContainer>
-                            </AddAttractionWrapper>
-                        }
-                        {//<AttractionsMap attractions={atrakcje}/>
-                        }
-                        {activityPanelOpened &&
+                     
+                        {/* {activityPanelOpened &&
                             <AddActivityNew
                                 miejsceDocelowe={miejsceDocelowe}
                                 atrakcje={atrakcje}
@@ -3798,7 +3790,7 @@ export const KonfiguratorMain = ({ activitiesScheduleInit, chosenTransportSchedu
                                 wybranyDzien={wybranyDzien}
                                 addActivity={addActivity}
                                 events={events}>
-                            </AddActivityNew>}
+                            </AddActivityNew>} */}
 
                     </KonfiguratorMainMainboxRight>
 

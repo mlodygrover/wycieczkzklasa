@@ -13,13 +13,14 @@ const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY || "" });
 console.log(process.env.OPENAI_API_KEY)
 const fs = require("fs");
 const cheerio = require("cheerio");
+const imgCompressionRouter = require("./imgCompression");
 
 const app = express();
 
 // użycie CORS dla wszystkich domen (dev)
 app.use(cors());
 app.use(express.json());
-
+app.use("/imgCompression", imgCompressionRouter);
 
 function computeTransitCost(transitRoute, czas = 0) {
     const CAP = 150;     // maksymalna opłata
