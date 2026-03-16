@@ -184,7 +184,6 @@ app.get("/searchCityNew", async (req, res) => {
                 limit: 15,
                 countrycodes: "pl,de,cz,sk,lt,fr,at",
                 "accept-language": "pl",
-                autocomplete: 1,
                 dedupe: 1
             },
             headers: {
