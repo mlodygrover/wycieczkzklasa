@@ -171,73 +171,45 @@ app.post("/computePrice", async (req, res, next) => {
 
 app.get("/searchCityNew", async (req, res) => {
     const { query } = req.query;
-    if (!query) {
+    if (!query || !String(query).trim()) {
         return res.status(400).json({ error: "Brak parametru 'query'" });
     }
 
     try {
-        const response = await axios.get("https://nominatim.openstreetmap.org/search", {
+        const response = await axios.get("https://photon.komoot.io/api", {
             params: {
-                q: query,
-                format: "json",
-                addressdetails: 1,
+                q: String(query).trim(),
                 limit: 15,
-                countrycodes: "pl,de,cz,sk,lt,fr,at",
-                "accept-language": "pl",
-                dedupe: 1
+                lang: "pl"
             },
-            headers: {
-                "User-Agent": "WycieczkaZKlasa/1.0 (twoj.mail@twojadomena.pl)",
-                "Accept-Language": "pl"
-            }
+            timeout: 8000
         });
 
-        const uniqueMap = new Map();
+        const features = response.data?.features || [];
 
-        response.data.forEach((place) => {
-            const addr = place.address || {};
-            const nazwa =
-                addr.city ||
-                addr.town ||
-                addr.village ||
-                addr.hamlet ||
-                (place.display_name ? place.display_name.split(",")[0] : "");
+        const results = features.map((f, idx) => {
+            const p = f.properties || {};
+            const coords = Array.isArray(f.geometry?.coordinates) ? f.geometry.coordinates : [null, null];
 
-            if (!nazwa) return;
+            return {
+                id: p.osm_id || idx,
+                nazwa: p.city || p.name || "",
+                wojewodztwo: p.state || "",
+                kraj: p.country || "",
+                priority: 1,
+                location: {
+                    lat: coords[1] != null ? Number(coords[1]) : null,
+                    lng: coords[0] != null ? Number(coords[0]) : null,
+                },
+            };
+        }).filter(x => x.nazwa);
 
-            const wojewodztwo = addr.state || "";
-            const kraj = addr.country || "";
-            const key = `${nazwa}-${wojewodztwo}-${kraj}`;
-
-            if (!uniqueMap.has(key)) {
-                let priority = 5;
-                if (addr.city) priority = 1;
-                else if (addr.town) priority = 2;
-                else if (addr.village) priority = 3;
-                else if (addr.hamlet) priority = 4;
-
-                uniqueMap.set(key, {
-                    id: place.place_id,
-                    nazwa,
-                    wojewodztwo,
-                    kraj,
-                    priority,
-                    location: {
-                        lat: place.lat ? Number(place.lat) : null,
-                        lng: place.lon ? Number(place.lon) : null,
-                    },
-                });
-            }
-        });
-
-        const results = Array.from(uniqueMap.values()).sort((a, b) => a.priority - b.priority);
-        res.json(results);
+        return res.json(results);
     } catch (error) {
-        console.error("Nominatim 403:", error.response?.status, error.response?.data);
-        res.status(500).json({ error: "Błąd serwera (Nominatim)" });
+        console.error("Photon error:", error.response?.status, error.response?.data || error.message);
+        return res.status(500).json({ error: "Błąd serwera (Photon)" });
     }
 });
-
 
 app.get("/searchCity", async (req, res) => {
     const { query } = req.query;
