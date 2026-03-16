@@ -169,7 +169,7 @@ app.post("/computePrice", async (req, res, next) => {
 
 
 
-app.get("/searchCityNew", async (req, res) => {
+app.get("/broke_searchCityNew", async (req, res) => {
     const { query } = req.query;
     if (!query || !String(query).trim()) {
         return res.status(400).json({ error: "Brak parametru 'query'" });
@@ -180,7 +180,9 @@ app.get("/searchCityNew", async (req, res) => {
             params: {
                 q: String(query).trim(),
                 limit: 15,
-                lang: "pl"
+                lat: 52.0,
+                lon: 19.0,
+                zoom: 6
             },
             timeout: 8000
         });
@@ -190,7 +192,7 @@ app.get("/searchCityNew", async (req, res) => {
         const results = features.map((f, idx) => {
             const p = f.properties || {};
             const coords = Array.isArray(f.geometry?.coordinates) ? f.geometry.coordinates : [null, null];
-
+            console.log("Zwraca lokalizajce", p.city)
             return {
                 id: p.osm_id || idx,
                 nazwa: p.city || p.name || "",
@@ -210,7 +212,52 @@ app.get("/searchCityNew", async (req, res) => {
         return res.status(500).json({ error: "Błąd serwera (Photon)" });
     }
 });
+app.get("/searchCityNew", async (req, res) => {
+    const { query } = req.query;
 
+    if (!query || !String(query).trim()) {
+        return res.status(400).json({ error: "Brak parametru 'query'" });
+    }
+
+    try {
+        const response = await axios.get("https://api.geoapify.com/v1/geocode/autocomplete", {
+            params: {
+                text: String(query).trim(),
+                limit: 15,
+                lang: "pl",
+                type: "city",
+                filter: "countrycode:pl,de,cz,sk,lt,fr,at",
+                bias: "countrycode:pl",
+                apiKey: process.env.GEOAPIFY_API_KEY
+            },
+            timeout: 8000
+        });
+
+        const features = response.data?.features || [];
+
+        const results = features.map((f, idx) => {
+            const p = f.properties || {};
+            console.log("Zwraca")
+            return {
+                id: p.place_id || idx,
+                nazwa: p.city || p.name || p.formatted || "",
+                wojewodztwo: p.state || "",
+                kraj: p.country || "",
+                priority: p.country_code === "pl" ? 1 : 2,
+                location: {
+                    lat: p.lat != null ? Number(p.lat) : null,
+                    lng: p.lon != null ? Number(p.lon) : null,
+                },
+            };
+        }).filter(x => x.nazwa)
+            .sort((a, b) => a.priority - b.priority);
+
+        return res.json(results);
+    } catch (error) {
+        console.error("Geoapify error:", error.response?.status, error.response?.data || error.message);
+        return res.status(500).json({ error: "Błąd serwera (Geoapify)" });
+    }
+});
 app.get("/searchCity", async (req, res) => {
     const { query } = req.query;
     if (!query) {
